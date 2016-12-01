@@ -1,0 +1,41 @@
+#include "../interface/SuperClustersFiller.h"
+
+#include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
+#include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
+#include "DataFormats/EgammaReco/interface/SuperCluster.h"
+
+#include <cmath>
+
+SuperClustersFiller::SuperClustersFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
+  FillerBase(_name)
+{
+  getToken_(superClustersToken_, _cfg, _coll, "superClusters");
+  getToken_(ebHitsToken_, _cfg, _coll, "ebHits");
+  getToken_(eeHitsToken_, _cfg, _coll, "eeHits");
+}
+
+void
+SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+{
+  auto& inSuperClusters(getProduct_(_inEvent, superClustersToken_, "superClusters"));
+
+  noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_, eeHitsToken_);
+
+  auto& outSuperClusters(_outEvent.superClusters);
+
+  auto& objectMap(_objectMaps.get<reco::SuperCluster, panda::PSuperCluster>("superClusters"));
+
+  unsigned iSC(-1);
+  for (auto& inSC : inSuperClusters) {
+    ++iSC;
+    auto& outSC(outSuperClusters.create_back());
+
+    outSC.eta = inSC.eta();
+    outSC.phi = inSC.phi();
+    outSC.rawPt = inSC.rawEnergy() / std::cosh(outSC.eta);
+
+    objectMap.add(inSuperClusters.ptrAt(iSC), outSC);
+  }
+}
+
+DEFINE_TREEFILLER(SuperClustersFiller);

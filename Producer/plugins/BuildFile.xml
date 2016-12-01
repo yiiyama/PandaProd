@@ -1,0 +1,7 @@
+<use name="FWCore/Framework"/>
+<use name="PandaTree/Objects"/>
+<use name="PandaProd/Producer"/>
+<use name="root"/>
+<library file="*.cc" name="PandaProdProducersPlugins">
+   <flags EDM_PLUGIN="1"/>
+</library>

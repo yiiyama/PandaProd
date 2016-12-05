@@ -3,19 +3,37 @@
 #include "DataFormats/PatCandidates/interface/MET.h"
 
 MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
-
-  getToken_(metToken_, fillerCfg, _coll, "met");
-  getToken_(candidatesToken_, _cfg, _coll, "pfCandidates");
+  getToken_(metToken_, _cfg, _coll, "met");
+  getToken_(noHFMetToken_, _cfg, _coll, "noHFMet");
+  getToken_(candidatesToken_, _cfg, _coll, "pfCandidates", "candidates");
 }
 
 void
-MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore&)
+MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  auto& inMet(getProduct_(_inEvent, metToken_, "met").at(0));
-  auto& candidates(getProduct_(_inEvent, candidatesToken_, "pfCandidates"));
+  if (isRealData_) {
+    char const* skipped[] = {
+      "!genMet",
+      "!met.ptSmear",
+      "!met.ptSmearUp",
+      "!met.ptSmearDown",
+      "!met.phiSmear",
+      "!met.phiSmearUp",
+      "!met.phiSmearDown"
+    };
+
+    _eventBranches.insert(_eventBranches.end(), skipped, skipped + sizeof(skipped));
+  }
+}
+
+void
+MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
+{
+  auto& inMet(getProduct_(_inEvent, metToken_).at(0));
+  auto& inNoHFMet(getProduct_(_inEvent, noHFMetToken_).at(0));
+  auto& candidates(getProduct_(_inEvent, candidatesToken_));
 
   if (dynamic_cast<pat::MET const*>(&inMet)) {
     auto& patMet(static_cast<pat::MET const&>(inMet));
@@ -37,13 +55,17 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     t1Met.ptUnclDown = patMet.shiftedPt(pat::MET::UnclusteredEnDown);
     t1Met.phiUnclDown = patMet.shiftedPhi(pat::MET::UnclusteredEnDown);
 
-    if (!_inEvent.isRealData()) {
+    if (!isRealData_) {
       t1Met.ptSmear = patMet.corPt(pat::MET::Type1Smear);
       t1Met.phiSmear = patMet.corPhi(pat::MET::Type1Smear);
       t1Met.ptSmearUp = patMet.shiftedPt(pat::MET::JetResUpSmear, pat::MET::Type1Smear);
       t1Met.phiSmearUp = patMet.shiftedPhi(pat::MET::JetResUpSmear, pat::MET::Type1Smear);
       t1Met.ptSmearDown = patMet.shiftedPt(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
       t1Met.phiSmearDown = patMet.shiftedPhi(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
+    }
+    else {
+      _outEvent.genMet.pt = patMet.genMET()->pt();
+      _outEvent.genMet.phi = patMet.genMET()->phi();
     }
 
     _outEvent.rawMet.pt = patMet.uncorPt();
@@ -52,6 +74,9 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     _outEvent.caloMet.pt = patMet.caloMETPt();
     _outEvent.caloMet.phi = patMet.caloMETPhi();
   }
+
+  _outEvent.noHFMet.pt = inNoHFMet.pt();
+  _outEvent.noHFMet.phi = inNoHFMet.phi();
 
   double noMuMex(inMet.px());
   double noMuMey(inMet.py());

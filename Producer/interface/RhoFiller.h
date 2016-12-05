@@ -8,10 +8,11 @@ class RhoFiller : public FillerBase {
   RhoFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~RhoFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
-  edm::EDGetTokenT<double> rhoToken_;
+ protected:
+  NamedToken<double> rhoToken_;
+  NamedToken<double> rhoCentralCaloToken_;
 };
 
 #endif

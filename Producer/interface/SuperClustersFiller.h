@@ -13,14 +13,14 @@ class SuperClustersFiller : public FillerBase {
   SuperClustersFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~SuperClustersFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::SuperCluster> SuperClusterView;
 
-  edm::EDGetTokenT<SuperClusterView> superClustersToken_;
-  edm::EDGetTokenT<EcalRecHitCollection> ebHitsToken_;
-  edm::EDGetTokenT<EcalRecHitCollection> eeHitsToken_;
+  NamedToken<SuperClusterView> superClustersToken_;
+  NamedToken<EcalRecHitCollection> ebHitsToken_;
+  NamedToken<EcalRecHitCollection> eeHitsToken_;
 };
 
 #endif

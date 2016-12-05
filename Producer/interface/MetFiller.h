@@ -12,13 +12,15 @@ class MetFiller : public FillerBase {
   MetFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~MetFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::MET> METView;
 
-  edm::EDGetTokenT<METView> metToken_;
-  edm::EDGetTokenT<reco::CandidateView> candidatesToken_;
+  NamedToken<METView> metToken_;
+  NamedToken<METView> noHFMetToken_;
+  NamedToken<reco::CandidateView> candidatesToken_;
 };
 
 #endif

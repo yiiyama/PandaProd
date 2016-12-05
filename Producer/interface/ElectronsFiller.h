@@ -20,28 +20,30 @@ class ElectronsFiller : public FillerBase {
   ElectronsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~ElectronsFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::Photon> PhotonView;
   typedef edm::View<reco::GsfElectron> GsfElectronView;
   typedef edm::ValueMap<bool> BoolMap;
   typedef edm::ValueMap<float> FloatMap;
 
-  edm::EDGetTokenT<GsfElectronView> electronsToken_;
-  edm::EDGetTokenT<PhotonView> photonsToken_;
-  edm::EDGetTokenT<BoolMap> vetoIdToken_;
-  edm::EDGetTokenT<BoolMap> looseIdToken_;
-  edm::EDGetTokenT<BoolMap> mediumIdToken_;
-  edm::EDGetTokenT<BoolMap> tightIdToken_;
-  edm::EDGetTokenT<FloatMap> phCHIsoToken_;
-  edm::EDGetTokenT<FloatMap> phNHIsoToken_;
-  edm::EDGetTokenT<FloatMap> phPhIsoToken_;
-  edm::EDGetTokenT<FloatMap> ecalIsoToken_;
-  edm::EDGetTokenT<FloatMap> hcalIsoToken_;
-  edm::EDGetTokenT<double> rhoToken_;
-  edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
+  NamedToken<GsfElectronView> electronsToken_;
+  NamedToken<PhotonView> photonsToken_;
+  NamedToken<BoolMap> vetoIdToken_;
+  NamedToken<BoolMap> looseIdToken_;
+  NamedToken<BoolMap> mediumIdToken_;
+  NamedToken<BoolMap> tightIdToken_;
+  NamedToken<FloatMap> phCHIsoToken_;
+  NamedToken<FloatMap> phNHIsoToken_;
+  NamedToken<FloatMap> phPhIsoToken_;
+  NamedToken<FloatMap> ecalIsoToken_;
+  NamedToken<FloatMap> hcalIsoToken_;
+  NamedToken<double> rhoToken_;
+  NamedToken<double> rhoCentralCaloToken_;
+  NamedToken<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
 
   EffectiveAreas combIsoEA_;
   EffectiveAreas ecalIsoEA_;
@@ -50,12 +52,9 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phNHIsoEA_;
   EffectiveAreas phPhIsoEA_;
 
-  bool useTrigger_;
   VString hltFilters_;
   double minPt_{-1.};
   double maxEta_{10.};
-
-  std::vector<std::pair<panda::PElectron*, edm::Ptr<reco::SuperCluster>>> scPtrs_;
 };
 
 #endif

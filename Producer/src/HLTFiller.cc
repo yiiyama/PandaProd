@@ -4,7 +4,7 @@
 #include "DataFormats/PatCandidates/interface/MET.h"
 
 HLTFiller::HLTFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
   getToken_(triggerResultsToken_, _cfg, _coll, "triggerResults");
 }
@@ -15,16 +15,18 @@ HLTFiller::~HLTFiller()
 }
 
 void
-HLTFiller::addOutput(TFile& outputFile_)
+HLTFiller::addOutput(TFile& _outputFile)
 {
-  outputFile_.cd();
+  TDirectory::TContext(&_outputFile);
   hltTree_ = new TTree("hlt", "HLT");
+  menu_ = new TString;
   paths_ = new std::vector<TString>;
+  hltTree_->Branch("menu", "TString", &menu_);
   hltTree_->Branch("paths", "std::vector<TString>", &paths_, 32000, 0);
 }
 
 void
-HLTFiller::fillRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup const& _setup)
+HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup const& _setup)
 {
   bool configChanged(false);
   if (!hltConfig_.init(_inRun, _setup, "HLT", configChanged)) {
@@ -32,16 +34,18 @@ HLTFiller::fillRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup 
       << "Cannot access hlt config";
   }
 
-  auto&& menuName(hltConfig_.tableName());
-  auto menuItr(menuMap_.find(menuName));
+  TString menu(hltConfig_.tableName());
 
   if (!configChanged) {
-    if (menuItr != menuMap_.end() && menuItr->second == currentMenu_)
+    if (menu == *menu_)
       return;
     else
       throw edm::Exception(edm::errors::Configuration, "HLTFiller")
         << "HLTConfigProvider claims nothing is changed, but the menu name did.";
   }
+
+  *menu_ = menu;
+  auto menuItr(menuMap_.find(menu));
 
   if (menuItr != menuMap_.end()) {
     _outRun.hltMenu = menuItr->second;
@@ -50,7 +54,7 @@ HLTFiller::fillRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup 
   }
 
   _outRun.hltMenu = menuMap_.size();
-  menuMap_.emplace(menuName, _outRun.hltMenu);
+  menuMap_.emplace(menu, _outRun.hltMenu);
 
   paths_->clear();
   for (unsigned iP(0); iP != hltConfig_.size(); ++iP)
@@ -60,9 +64,9 @@ HLTFiller::fillRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup 
 }
 
 void
-HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore&)
+HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
-  auto& inTriggerResults(getProduct_(_inEvent, triggerResultsToken_, "hlt"));
+  auto& inTriggerResults(getProduct_(_inEvent, triggerResultsToken_));
 
   auto& outHLT(_outEvent.triggers);
 

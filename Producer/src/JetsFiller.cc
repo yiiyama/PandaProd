@@ -18,19 +18,30 @@
 #include "JetMETCorrections/Modules/interface/JetResolution.h"
 
 JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
+  if (_name == "chsAK4Jets")
+    outputType_ = kCHSAK4;
+  else if (_name == "puppiAK4Jets")
+    outputType_ = kPuppiAK4;
+  if (_name == "chsAK8Jets")
+    outputType_ = kCHSAK8;
+  if (_name == "puppiAK8Jets")
+    outputType_ = kPuppiAK8;
+  if (_name == "chsCA15Jets")
+    outputType_ = kCHSCA15;
+  if (_name == "puppiCA15Jets")
+    outputType_ = kPuppiCA15;
 
   getToken_(jetsToken_, _cfg, _coll, "jets");
-  if (!_cfg.getUntrackedParameter<bool>("isRealData")) {
-    getToken_(genJetsToken_, _cfg, _coll, "genJets");
-    getToken_(rhoToken_, _cfg, _coll, "rho");
+  if (!isRealData_) {
+    getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
+    getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   }
 
-  R_ = fillerCfg.getUntrackedParameter<double>("R", 0.4);
-  minPt_ = fillerCfg.getUntrackedParameter<double>("minPt", 15.);
-  maxEta_ = fillerCfg.getUntrackedParameter<double>("maxEta", 4.7);
+  R_ = getParameter_<double>(_cfg, "R", 0.4);
+  minPt_ = getParameter_<double>(_cfg, "minPt", 15.);
+  maxEta_ = getParameter_<double>(_cfg, "maxEta", 4.7);
 }
 
 JetsFiller::~JetsFiller()
@@ -39,15 +50,56 @@ JetsFiller::~JetsFiller()
 }
 
 void
-JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  auto& inJets(getProduct_(_inEvent, jetsToken_, "jets"));
+  if (isRealData_) {
+    char const* genBranches[] = {
+      ".ptSmear",
+      ".ptSmearUp",
+      ".ptSmearDown"
+      ".matchedGenJet_"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.push_back(("!" + getName() + b).c_str());
+  }
+}
 
-  auto& outJets(_outEvent.jets);
+void
+JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
+{
+  auto& inJets(getProduct_(_inEvent, jetsToken_));
 
-  if (!jecUncertainty_) {
+  panda::PJetCollection* pOutJets(0);
+  std::string jetCorrName;
+  switch (outputType_) {
+  case kCHSAK4:
+    pOutJets = &_outEvent.chsAK4Jets;
+    jetCorrName = "AK4PFchs";
+    break;
+  case kPuppiAK4:
+    pOutJets = &_outEvent.puppiAK4Jets;
+    jetCorrName = "AK4PFPuppi";
+    break;
+  case kCHSAK8:
+    pOutJets = &_outEvent.chsAK8Jets;
+    jetCorrName = "AK8PFchs";
+    break;
+  case kPuppiAK8:
+    pOutJets = &_outEvent.puppiAK8Jets;
+    jetCorrName = "AK8PFPuppi";
+    break;
+  case kCHSCA15:
+    pOutJets = &_outEvent.chsCA15Jets;
+    break;
+  case kPuppiCA15:
+    pOutJets = &_outEvent.puppiCA15Jets;
+    break;
+  }
+  panda::PJetCollection& outJets(*pOutJets);
+
+  if (!jecUncertainty_ && !jetCorrName.empty()) {
     edm::ESHandle<JetCorrectorParametersCollection> jecColl;
-    _setup.get<JetCorrectionsRecord>().get("AK4PFchs", jecColl);
+    _setup.get<JetCorrectionsRecord>().get(jetCorrName, jecColl);
     jecUncertainty_ = new JetCorrectionUncertainty((*jecColl)["Uncertainty"]);
   }
 
@@ -58,12 +110,14 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   CLHEP::RandGauss* random(0);
   
   if (!_inEvent.isRealData()) {
-    ptRes = JME::JetResolution::get(_setup, "AK4PFchs_pt");
-    ptResSF = JME::JetResolutionScaleFactor::get(_setup, "AK4PFchs");
-    genJets = &getProduct_(_inEvent, genJetsToken_, "genJets");
-    rho = getProduct_(_inEvent, rhoToken_, "rho");
+    ptRes = JME::JetResolution::get(_setup, jetCorrName + "_pt");
+    ptResSF = JME::JetResolutionScaleFactor::get(_setup, jetCorrName);
+    if (!genJetsToken_.isUninitialized())
+      genJets = &getProduct_(_inEvent, genJetsToken_);
+    rho = getProduct_(_inEvent, rhoToken_);
     random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
   }
+
 
   std::vector<edm::Ptr<reco::Jet>> ptrList;
 
@@ -130,14 +184,16 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         double sfDown(ptResSF.getScaleFactor(sfParams, Variation::DOWN));
 
         bool matched(false);
-        for (auto& genJet : *genJets) {
-          double dpt(inJet.pt() - genJet.pt());
-          if (reco::deltaR(genJet, inJet) < R_ * 0.5 && std::abs(dpt) < res * 3.) {
-            matched = true;
-            outJet.ptSmear = std::max(0., genJet.pt() + sf * dpt);
-            outJet.ptSmearUp = std::max(0., genJet.pt() + sfUp * dpt);
-            outJet.ptSmearDown = std::max(0., genJet.pt() + sfDown * dpt);
-            break;
+        if (genJets_) {
+          for (auto& genJet : *genJets) {
+            double dpt(inJet.pt() - genJet.pt());
+            if (reco::deltaR(genJet, inJet) < R_ * 0.5 && std::abs(dpt) < res * 3.) {
+              matched = true;
+              outJet.ptSmear = std::max(0., genJet.pt() + sf * dpt);
+              outJet.ptSmearUp = std::max(0., genJet.pt() + sfUp * dpt);
+              outJet.ptSmearDown = std::max(0., genJet.pt() + sfDown * dpt);
+              break;
+            }
           }
         }
 
@@ -156,9 +212,9 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       outJet.loose = loose;
       outJet.tight = tight;
       outJet.monojet = monojet;
-
-      ptrList.push_back(inJets.ptrAt(iJet));
     }
+
+    ptrList.push_back(inJets.ptrAt(iJet));
   }
 
   // sort the output jets
@@ -166,13 +222,15 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
   // export panda <-> reco mapping
 
-  auto& objectMap(_objectMaps.get<reco::Jet, panda::PJet>("jets"));
+  auto& objectMap(objectMap_->get<reco::Jet, panda::PJet>());
 
   for (unsigned iP(0); iP != outJets.size(); ++iP) {
     auto& outJet(outJets[iP]);
     unsigned idx(originalIndices[iP]);
     objectMap.add(ptrList[idx], outJet);
   }
+
+  fillDetails_(_outEvent, _inEvent, _setup);
 
   delete random;
 }

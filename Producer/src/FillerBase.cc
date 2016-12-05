@@ -1,5 +1,12 @@
 #include "../interface/FillerBase.h"
 
+FillerBase::FillerBase(std::string const& _fillerName, edm::ParameterSet const& _cfg) :
+  fillerName_(_fillerName),
+  isRealData_(getGlobalParameter_<bool>(_cfg, "isRealData")),
+  useTrigger_(getGlobalParameter_<bool>(_cfg, "useTrigger"))
+{
+}
+
 void
 fillP4(panda::PParticle& _out, reco::Candidate const& _in)
 {

@@ -16,61 +16,185 @@
 
 #include "tbb/concurrent_unordered_map.h"
 
+typedef std::vector<std::string> VString;
+
+//! Base class for tree fillers
+/*!
+  There is no strict (programmatic) rule on the scope of each Filler. One basic guideline is to
+  define one Filler per object branch (collection etc.) of the Event.
+*/
 class FillerBase {
  public:
-  FillerBase(std::string const& fillerName) : fillerName_(fillerName) {}
+  FillerBase(std::string const& fillerName, edm::ParameterSet const&);
   virtual ~FillerBase() {}
 
+  //! Add names of branches the filler wants to book. If nothing is specified, all branches are booked.
+  virtual void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList& runBranches) const {}
+  //! Override when the filler writes additional objects to the output file
   virtual void addOutput(TFile&) {}
-  virtual void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) = 0;
+  //! Main function
+  virtual void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) = 0;
+  //! Set references
   virtual void setRefs(ObjectMapStore const&) {}
-  virtual void fillRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
+  //! Fill "all events" information (guaranteed write regardless of skims)
+  virtual void fillAll(edm::Event const&, edm::EventSetup const&) {}
+  //! Fill the run tree
+  virtual void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
+  //! Fill the run tree
+  virtual void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
 
   std::string const& getName() const { return fillerName_; }
+  void setObjectMap(FillerObjectMap& map) { objectMap_ = &map; }
+
+ private:
+  std::string const fillerName_;
 
  protected:
-  typedef std::vector<std::string> VString;
+  template <class Product>
+  using NamedToken = std::pair<std::string, edm::EDGetTokenT<Product>>;
 
-  template<class Product, edm::BranchType B = edm::InEvent>
-  void getToken_(edm::EDGetTokenT<Product>&, edm::ParameterSet const&, edm::ConsumesCollector&, std::string const& pname, bool mandatory = true);
+  //! get a parameter in the "global" (i.e. PSet for PandaProducer) scope. Use dots to descend into sub-PSets
+  template<class T>
+  static T getGlobalParameter_(edm::ParameterSet const&, std::string const&);
+  //! get a parameter in the "global" (i.e. PSet for PandaProducer) scope. Use dots to descend into sub-PSets
+  template<class T>
+  static T getGlobalParameter_(edm::ParameterSet const&, std::string const&, T const&);
 
+  //! shortcut to a filler-specific parameter.
+  template<class T>
+  static T getFillerParameter_(edm::ParameterSet const& cfg, std::string const& fname, std::string const& pname)
+  { return getGlobalParameter_<T>(cfg, "fillers." + fname + "." + pname); }
+  //! shortcut to a filler-specific parameter.
+  template<class T>
+  static T getFillerParameter_(edm::ParameterSet const& cfg, std::string const& fname, std::string const& pname, T const& d)
+  { return getGlobalParameter_<T>(cfg, "fillers." + fname + "." + pname, d); }
+
+  //! parameter for this filler module
+  template<class T>
+  T getParameter_(edm::ParameterSet const& cfg, std::string const& pname) const
+  { return getFillerParameter_<T>(cfg, getName(), pname); }
+  //! parameter for this filler module
+  template<class T>
+  T getParameter_(edm::ParameterSet const& cfg, std::string const& pname, T const& d) const
+  { return getFillerParameter_<T>(cfg, getName(), pname, d); }
+
+  //! get a token from a tag in this module's configuration
   template<class Product>
-  Product const& getProduct_(edm::Event const&, edm::EDGetTokenT<Product> const&, std::string name);
+  void getToken_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InEvent>(token, cfg, coll, getName(), pname, mandatory); }
+  //! get a token from a tag in the configuration of a module
+  template<class Product>
+  void getToken_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InEvent>(token, cfg, coll, fname, pname, mandatory); }
 
-  std::string fillerName_;
+  //! get a token from a tag in this module's configuration
+  template<class Product>
+  void getTokenLumi_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InLumi>(token, cfg, coll, getName(), pname, mandatory); }
+  //! get a token from a tag in the configuration of a module
+  template<class Product>
+  void getTokenLumi_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InLumi>(token, cfg, coll, fname, pname, mandatory); }
+
+  //! get a token from a tag in this module's configuration
+  template<class Product>
+  void getTokenRun_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InRun>(token, cfg, coll, getName(), pname, mandatory); }
+  //! get a token from a tag in the configuration of a module
+  template<class Product>
+  void getTokenRun_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InRun>(token, cfg, coll, fname, pname, mandatory); }
+
+  //! get a token from a tag in the configuration of a module
+  template<class Product, edm::BranchType B>
+  void getTokenImpl_(NamedToken<Product>&, edm::ParameterSet const&, edm::ConsumesCollector&, std::string const& fname, std::string const& pname, bool mandatory = true);
+
+  //! get a product from the Event or Run.
+  template<class Principal, class Product>
+  Product const& getProduct_(Principal const&, NamedToken<Product> const&);
+  //! get a product from the Event or Run. Return a null pointer if the product does not exist
+  template<class Principal, class Product>
+  Product const* getProductSafe_(Principal const&, NamedToken<Product> const&);
+
+  FillerObjectMap* objectMap_{0};
+
+  bool isRealData_;
+  bool useTrigger_;
 };
 
-template<class Product, edm::BranchType B/* = edm::Event*/>
-void
-FillerBase::getToken_(edm::EDGetTokenT<Product>& _token, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll, std::string const& _pname, bool _mandatory/* = true*/)
+template<class T>
+/*static*/
+T
+FillerBase::getGlobalParameter_(edm::ParameterSet const& _cfg, std::string const& _pname)
 {
-  std::string paramValue;
-  
-  if (_mandatory)
-    paramValue = _cfg.getUntrackedParameter<std::string>(_pname);
-  else
-    paramValue = _cfg.getUntrackedParameter<std::string>(_pname, "");
+  edm::ParameterSet const* pset(&_cfg);
+
+  size_t begin(0);
+  size_t end(std::string::npos);
+  while ((end = _pname.find('.', begin)) != std::string::npos) {
+    pset = &pset->getUntrackedParameterSet(_pname.substr(begin, end - begin));
+    begin = end + 1;
+  }
+
+  return pset->getUntrackedParameter<T>(_pname.substr(begin, end));
+}
+
+template<class T>
+/*static*/
+T
+FillerBase::getGlobalParameter_(edm::ParameterSet const& _cfg, std::string const& _pname, T const& _default)
+{
+  edm::ParameterSet const* pset(&_cfg);
+
+  size_t begin(0);
+  size_t end(std::string::npos);
+  while ((end = _pname.find('.', begin)) != std::string::npos) {
+    pset = &pset->getUntrackedParameterSet(_pname.substr(begin, end - begin));
+    begin = end + 1;
+  }
+
+  return pset->getUntrackedParameter<T>(_pname.substr(begin, end), _default);
+}
+
+template<class Product, edm::BranchType B>
+void
+FillerBase::getTokenImpl_(NamedToken<Product>& _token, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll, std::string const& _fname, std::string const& _pname, bool _mandatory/* = true*/)
+{
+  _token.first = _pname;
+
+  std::string paramValue(getGlobalParameter_<std::string>(_cfg, "fillers." + _fname + "." + _pname, ""));
 
   if (paramValue.empty()) {
     if (_mandatory)
-      throw edm::Exception(edm::errors::Configuration, fillerName_ + "::getToken_()")
-        << "Missing or empty parameter " << _pname;
+      throw edm::Exception(edm::errors::Configuration, getName() + "::getToken_()")
+        << "Missing or empty parameter fillers." << _fname << "." << _pname;
     else
-      _token = edm::EDGetTokenT<Product>();
+      _token.second = edm::EDGetTokenT<Product>();
   }
  
-  edm::InputTag tag(paramValue);
-  _token = _coll.consumes<Product, B>(tag);
+  _token.second = _coll.consumes<Product, B>(edm::InputTag(paramValue));
 }
 
-template<class Product>
+template<class Principal, class Product>
 Product const&
-FillerBase::getProduct_(edm::Event const& _event, edm::EDGetTokenT<Product> const& _token, std::string _name)
+FillerBase::getProduct_(Principal const& _prn, NamedToken<Product> const& _token)
 {
   edm::Handle<Product> handle;
-  if (!_event.getByToken(_token, handle))
-    throw cms::Exception("ProductNotFound") << _name;
+  if (!_prn.getByToken(_token.second, handle))
+    throw cms::Exception("ProductNotFound") << _token.first;
+
   return *handle;
+}
+
+template<class Principal, class Product>
+Product const*
+FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _token)
+{
+  edm::Handle<Product> handle;
+  if (!_prn.getByToken(_token.second, handle))
+    return 0;
+
+  return handle.product();
 }
 
 void fillP4(panda::PParticle&, reco::Candidate const&);
@@ -107,7 +231,7 @@ class FillerFactoryStore {
 
   static FillerFactoryStore* singleton();
 
- private:
+ protected:
   tbb::concurrent_unordered_map<std::string, FillerFactory> fillerFactories_;
 };
 

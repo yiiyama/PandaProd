@@ -11,12 +11,12 @@ class TausFiller : public FillerBase {
   TausFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~TausFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::BaseTau> TauView;
 
-  edm::EDGetTokenT<TauView> tausToken_;
+  NamedToken<TauView> tausToken_;
 
   double minPt_;
   double maxEta_;

@@ -12,61 +12,80 @@
 #include <cmath>
 
 ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name),
-  combIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name).getUntrackedParameter<edm::FileInPath>("combIsoEA").fullPath()),
-  ecalIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name).getUntrackedParameter<edm::FileInPath>("electronEcalIsoEA").fullPath()),
-  hcalIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name).getUntrackedParameter<edm::FileInPath>("electronHcalIsoEA").fullPath()),
-  phCHIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet("photons").getUntrackedParameter<edm::FileInPath>("chIsoEA").fullPath()),
-  phNHIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet("photons").getUntrackedParameter<edm::FileInPath>("nhIsoEA").fullPath()),
-  phPhIsoEA_(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet("photons").getUntrackedParameter<edm::FileInPath>("phIsoEA").fullPath()),
-  useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger"))
+  FillerBase(_name, _cfg),
+  combIsoEA_(getParameter_<edm::FileInPath>(_cfg, "combIsoEA").fullPath()),
+  ecalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "ecalIsoEA").fullPath()),
+  hcalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "hcalIsoEA").fullPath()),
+  phCHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "chIsoEA").fullPath()),
+  phNHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "nhIsoEA").fullPath()),
+  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
-  auto& photonCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet("photons"));
-
   getToken_(electronsToken_, _cfg, _coll, "electrons");
-  getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(vetoIdToken_, fillerCfg, _coll, "vetoId");
-  getToken_(looseIdToken_, fillerCfg, _coll, "looseId");
-  getToken_(mediumIdToken_, fillerCfg, _coll, "mediumId");
-  getToken_(tightIdToken_, fillerCfg, _coll, "tightId");
-  getToken_(phCHIsoToken_, photonCfg, _coll, "chIso");
-  getToken_(phNHIsoToken_, photonCfg, _coll, "nhIso");
-  getToken_(phPhIsoToken_, photonCfg, _coll, "phIso");
-  getToken_(ecalIsoToken_, fillerCfg, _coll, "ecalIso");
-  getToken_(hcalIsoToken_, fillerCfg, _coll, "hcalIso");
-  getToken_(rhoToken_, _cfg, _coll, "rho");
+  getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
+  getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
+  getToken_(looseIdToken_, _cfg, _coll, "looseId");
+  getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
+  getToken_(tightIdToken_, _cfg, _coll, "tightId");
+  getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
+  getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
+  getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
+  getToken_(ecalIsoToken_, _cfg, _coll, "ecalIso");
+  getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso");
+  getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
+  getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
   if (useTrigger_) {
-    getToken_(triggerObjectsToken_, _cfg, _coll, "triggerObjects");
-    hltFilters_ = fillerCfg.getUntrackedParameter<VString>("hltFilters");
+    getToken_(triggerObjectsToken_, _cfg, _coll, "common", "triggerObjects");
+    hltFilters_ = getParameter_<VString>(_cfg, "hltFilters");
     if (hltFilters_.size() != panda::nElectronHLTObjects)
       throw edm::Exception(edm::errors::Configuration, "ElectronsFiller")
         << "electronHLTFilters.size()";
   }
 
-  minPt_ = fillerCfg.getUntrackedParameter<double>("minPt", -1.);
-  maxEta_ = fillerCfg.getUntrackedParameter<double>("maxEta", 10.);
+  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
+  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
 }
 
 void
-ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+ElectronsFiller::addOutput(TFile& _outputFile)
 {
-  auto& inElectrons(getProduct_(_inEvent, electronsToken_, "electrons"));
-  auto& photons(getProduct_(_inEvent, photonsToken_, "photons"));
-  auto& vetoId(getProduct_(_inEvent, vetoIdToken_, "vetoId"));
-  auto& looseId(getProduct_(_inEvent, looseIdToken_, "looseId"));
-  auto& mediumId(getProduct_(_inEvent, mediumIdToken_, "mediumId"));
-  auto& tightId(getProduct_(_inEvent, tightIdToken_, "tightId"));
-  auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_, "chIso"));
-  auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_, "nhIso"));
-  auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_, "phIso"));
-  auto& ecalIso(getProduct_(_inEvent, ecalIsoToken_, "ecalIso"));
-  auto& hcalIso(getProduct_(_inEvent, hcalIsoToken_, "hcalIso"));
-  double rho(getProduct_(_inEvent, rhoToken_, "rho"));
+  TDirectory::TContext(&_outputFile);
+  auto* t(panda::makeElectronHLTObjectTree());
+  t->Write();
+  delete t;
+}
+
+void
+ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (isRealData_) {
+    char const* genBranches[] = {"!electrons.tauDecay", "!electrons.hadDecay", "!electrons.matchedGen_"};
+    _eventBranches.insert(_eventBranches.end(), genBranches, genBranches + sizeof(genBranches));
+  }
+  if (!useTrigger_) {
+    _eventBranches.push_back("!electrons.matchHLT");
+  }
+}
+
+void
+ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
+{
+  auto& inElectrons(getProduct_(_inEvent, electronsToken_));
+  auto& photons(getProduct_(_inEvent, photonsToken_));
+  auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
+  auto& looseId(getProduct_(_inEvent, looseIdToken_));
+  auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
+  auto& tightId(getProduct_(_inEvent, tightIdToken_));
+  auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
+  auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
+  auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
+  auto& ecalIso(getProduct_(_inEvent, ecalIsoToken_));
+  auto& hcalIso(getProduct_(_inEvent, hcalIsoToken_));
+  double rho(getProduct_(_inEvent, rhoToken_));
+  double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
 
   std::vector<pat::TriggerObjectStandAlone const*> hltObjects[panda::nElectronHLTObjects];
   if (useTrigger_) {
-    auto& triggerObjects(getProduct_(_inEvent, triggerObjectsToken_, "triggerObjects"));
+    auto& triggerObjects(getProduct_(_inEvent, triggerObjectsToken_));
     for (auto& obj : triggerObjects) {
       for (unsigned iF(0); iF != panda::nElectronHLTObjects; ++iF) {
         if (obj.hasFilterLabel(hltFilters_[iF]))
@@ -78,7 +97,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& outElectrons(_outEvent.electrons);
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
-  std::vector<edm::Ptr<reco::SuperCluster>> scPtrList;
 
   unsigned iEl(-1);
   for (auto& inElectron : inElectrons) {
@@ -121,8 +139,8 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.phoiso = pfIso.sumPhotonEt;
     outElectron.puiso = pfIso.sumPUPt;
     outElectron.isoPUOffset = combIsoEA_.getEffectiveArea(scEta) * rho;
-    outElectron.ecaliso = ecalIso[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rho;
-    outElectron.hcaliso = hcalIso[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rho;
+    outElectron.ecaliso = ecalIso[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+    outElectron.hcaliso = hcalIso[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
 
     unsigned iPh(0);
     for (auto& photon : photons) {
@@ -151,34 +169,35 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     }
 
     ptrList.push_back(inElectrons.ptrAt(iEl));
-    scPtrList.push_back(edm::refToPtr(scRef));
   }
 
   // sort the output electrons
   auto originalIndices(outElectrons.sort(panda::ptGreater));
 
   // make reco <-> panda mapping
-
-  auto& objectMap(_objectMaps.get<reco::GsfElectron, panda::PElectron>("electrons"));
-  scPtrs_.clear();
+  auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::PElectron>());
+  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::PElectron>());
   
   for (unsigned iP(0); iP != outElectrons.size(); ++iP) {
     auto& outElectron(outElectrons[iP]);
     unsigned idx(originalIndices[iP]);
-    objectMap.add(ptrList[idx], outElectron);
-    scPtrs_.emplace_back(&outElectron, scPtrList[idx]);
+    eleEleMap.add(ptrList[idx], outElectron);
+    scEleMap.add(edm::refToPtr(ptrList[idx]->superCluster()), outElectron);
   }
 }
 
 void
 ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
-  auto& scMap(_objectMaps.get<reco::SuperCluster, panda::PSuperCluster>("superClusters"));
-  for (auto& link : scPtrs_) {
+  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::PElectron>());
+
+  auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::PSuperCluster>().fwdMap);
+
+  for (auto& link : scEleMap.bwdMap) { // panda -> edm
     auto& outElectron(*link.first);
     auto& scPtr(link.second);
 
-    outElectron.superCluster = scMap.fwdMap.at(scPtr);
+    outElectron.superCluster = scMap.at(scPtr);
   }
 }
 

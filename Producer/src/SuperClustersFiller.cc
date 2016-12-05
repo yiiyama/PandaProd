@@ -7,7 +7,7 @@
 #include <cmath>
 
 SuperClustersFiller::SuperClustersFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
   getToken_(superClustersToken_, _cfg, _coll, "superClusters");
   getToken_(ebHitsToken_, _cfg, _coll, "ebHits");
@@ -15,15 +15,15 @@ SuperClustersFiller::SuperClustersFiller(std::string const& _name, edm::Paramete
 }
 
 void
-SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
-  auto& inSuperClusters(getProduct_(_inEvent, superClustersToken_, "superClusters"));
+  auto& inSuperClusters(getProduct_(_inEvent, superClustersToken_));
 
-  noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_, eeHitsToken_);
+  noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
   auto& outSuperClusters(_outEvent.superClusters);
 
-  auto& objectMap(_objectMaps.get<reco::SuperCluster, panda::PSuperCluster>("superClusters"));
+  auto& objectMap(objectMap_->get<reco::SuperCluster, panda::PSuperCluster>());
 
   unsigned iSC(-1);
   for (auto& inSC : inSuperClusters) {

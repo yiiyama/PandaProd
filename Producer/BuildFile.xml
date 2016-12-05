@@ -22,7 +22,10 @@
 <use name="PandaTree/Objects"/>
 <use name="PandaTree/Framework"/>
 <use name="clhep"/>
+<use name="fastjet"/>
+<use name="fastjet-contrib"/>
 <use name="root"/>
+<use name="rootxml"/>
 <export>
   <lib name="1"/>
 </export>

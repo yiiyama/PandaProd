@@ -12,16 +12,17 @@ class HLTFiller : public FillerBase {
   ~HLTFiller();
 
   void addOutput(TFile&) override;
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
-  void fillRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 
- private:
-  edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
+ protected:
+  NamedToken<edm::TriggerResults> triggerResultsToken_;
+
   HLTConfigProvider hltConfig_;
-  unsigned currentMenu_{};
-  std::map<std::string, unsigned> menuMap_{};
+  std::map<TString, unsigned> menuMap_{};
 
   TTree* hltTree_{0};
+  TString* menu_{0};
   std::vector<TString>* paths_{0};
 };
 

@@ -1,12 +1,11 @@
 #ifndef PandaProd_Producer_FatJetsFiller_h
 #define PandaProd_Producer_FatJetsFiller_h
 
-#include "FillerBase.h"
+#include "JetsFiller.h"
 
-#include "DataFormats/Common/interface/View.h"
-#include "DataFormats/JetReco/interface/Jet.h"
-#include "DataFormats/JetReco/interface/GenJetCollection.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/BTauReco/interface/JetTag.h"
+#include "DataFormats/Common/interface/ValueMap.h"
 
 // fastjet
 #include "fastjet/PseudoJet.hh"
@@ -19,33 +18,34 @@
 #include "fastjet/contrib/MeasureDefinition.hh"
 #include "fastjet/contrib/EnergyCorrelator.hh"
 
-class JetCorrectionUncertainty;
-
-class FatJetsFiller : public FillerBase {
+class FatJetsFiller : public JetsFiller {
  public:
   FatJetsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~FatJetsFiller();
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void setRefs(ObjectMapStore const&) override;
 
- private:
-  typedef edm::View<reco::Jet> JetView;
+ protected:
+  void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+
   typedef edm::ValueMap<float> FloatMap;
 
-  edm::EDGetTokenT<JetView> jetsToken_;
-  edm::EDGetTokenT<JetView> subjetsToken_;
-  edm::EDGetTokenT<reco::JetTagCollection> btagsToken_;
-  edm::EDGetTokenT<FloatMap> qglToken_;
-  edm::EDGetTokenT<reco::GenJetCollection> genJetsToken_;
-  edm::EDGetTokenT<double> rhoToken_;
+  NamedToken<JetView> subjetsToken_;
+  NamedToken<reco::JetTagCollection> btagsToken_;
+  NamedToken<FloatMap> qglToken_;
+  NamedToken<reco::CandidateView> candidatesToken_;
 
-  JetCorrectionUncertainty* jecUncertainty_{0};
+  fastjet::GhostedAreaSpec activeArea_;
+  fastjet::AreaDefinition areaDef_;
+  fastjet::JetDefinition* jetDefCA_{0};
+  fastjet::contrib::SoftDrop* softdrop_{0};
+  fastjet::contrib::Njettiness* tau_{0};
+  //  fastjet::HEPTopTaggerV2* htt_{0};
+  //  ECFNManager* ecfnManager_{0};
 
-  //! anti-kT distance parameter
-  double R_{0.8};
-  double minPt_{180.};
-  double maxEta_{2.5};
+  bool computeSubstructure_{false};
+  bool fillConstituents_{false};
 };
 
 #endif

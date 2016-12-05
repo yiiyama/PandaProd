@@ -6,34 +6,41 @@
 #include "DataFormats/PatCandidates/interface/Muon.h"
 
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
-
   getToken_(muonsToken_, _cfg, _coll, "muons");
-  getToken_(verticesToken_, _cfg, _coll, "vertices");
+  getToken_(verticesToken_, _cfg, _coll, "vertices", "vertices");
 
   if (useTrigger_) {
-    getToken_(triggerObjectsToken_, _cfg, _coll, "triggerObjects");
-    hltFilters_ = fillerCfg.getUntrackedParameter<VString>("hltFilters");
+    getToken_(triggerObjectsToken_, _cfg, _coll, "common", "triggerObjects");
+    hltFilters_ = getParameter_<VString>(_cfg, "hltFilters");
     if (hltFilters_.size() != panda::nMuonHLTObjects)
       throw edm::Exception(edm::errors::Configuration, "MuonsFiller")
         << "muonHLTFilters.size()";
   }
 
-  minPt_ = fillerCfg.getUntrackedParameter<double>("minPt", -1.);
-  maxEta_ = fillerCfg.getUntrackedParameter<double>("maxEta", 10.);
+  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
+  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
 }
 
 void
-MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+MuonsFiller::addOutput(TFile& _outputFile)
 {
-  auto& inMuons(getProduct_(_inEvent, muonsToken_, "muons"));
-  auto& vertices(getProduct_(_inEvent, verticesToken_, "vertices"));
+  TDirectory::TContext(&_outputFile);
+  auto* t(panda::makeMuonHLTObjectTree());
+  t->Write();
+  delete t;
+}
+
+void
+MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
+{
+  auto& inMuons(getProduct_(_inEvent, muonsToken_));
+  auto& vertices(getProduct_(_inEvent, verticesToken_));
 
   std::vector<pat::TriggerObjectStandAlone const*> hltObjects[panda::nMuonHLTObjects];
   if (useTrigger_) {
-    auto& triggerObjects(getProduct_(_inEvent, triggerObjectsToken_, "triggerObjects"));
+    auto& triggerObjects(getProduct_(_inEvent, triggerObjectsToken_));
     for (auto& obj : triggerObjects) {
       for (unsigned iF(0); iF != panda::nMuonHLTObjects; ++iF) {
         if (obj.hasFilterLabel(hltFilters_[iF]))
@@ -105,7 +112,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
   // export panda <-> reco mapping
 
-  auto& objectMap(_objectMaps.get<reco::Muon, panda::PMuon>("muons"));
+  auto& objectMap(objectMap_->get<reco::Muon, panda::PMuon>());
 
   for (unsigned iP(0); iP != outMuons.size(); ++iP) {
     auto& outMuon(outMuons[iP]);

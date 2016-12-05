@@ -10,12 +10,12 @@ class MetFiltersFiller : public FillerBase {
   MetFiltersFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~MetFiltersFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
-  edm::EDGetTokenT<edm::TriggerResults> filterResultsToken_;
-  edm::EDGetTokenT<bool> badTrackToken_;
-  edm::EDGetTokenT<bool> badMuonTrackToken_;
+ protected:
+  NamedToken<edm::TriggerResults> filterResultsToken_;
+  NamedToken<bool> badTrackToken_;
+  NamedToken<bool> badMuonTrackToken_;
 };
 
 #endif

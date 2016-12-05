@@ -4,21 +4,19 @@
 #include "DataFormats/PatCandidates/interface/MET.h"
 
 MetFiltersFiller::MetFiltersFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
-
-  getToken_(filterResultsToken_, fillerCfg, _coll, "generalFilters");
-  getToken_(badTrackToken_, fillerCfg, _coll, "badTrack");
-  getToken_(badMuonTrackToken_, fillerCfg, _coll, "badMuonTrack");
+  getToken_(filterResultsToken_, _cfg, _coll, "generalFilters");
+  getToken_(badTrackToken_, _cfg, _coll, "badTrack");
+  getToken_(badMuonTrackToken_, _cfg, _coll, "badMuonTrack");
 }
 
 void
-MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore&)
+MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
-  auto& inFilterResults(getProduct_(_inEvent, filterResultsToken_, "metFilters"));
-  auto& inBadTrack(getProduct_(_inEvent, badTrackToken_, "badTrack"));
-  auto& inBadMuonTrack(getProduct_(_inEvent, badMuonTrackToken_, "badMuonTrack"));
+  auto& inFilterResults(getProduct_(_inEvent, filterResultsToken_));
+  auto& inBadTrack(getProduct_(_inEvent, badTrackToken_));
+  auto& inBadMuonTrack(getProduct_(_inEvent, badMuonTrackToken_));
 
   auto& outMetFilters(_outEvent.metFilters);
 

@@ -19,28 +19,29 @@ class PhotonsFiller : public FillerBase {
   PhotonsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~PhotonsFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void addOutput(TFile&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::Photon> PhotonView;
   typedef edm::View<reco::GsfElectron> GsfElectronView;
   typedef edm::ValueMap<bool> BoolMap;
   typedef edm::ValueMap<float> FloatMap;
 
-  edm::EDGetTokenT<PhotonView> photonsToken_;
-  edm::EDGetTokenT<EcalRecHitCollection> ebHitsToken_;
-  edm::EDGetTokenT<EcalRecHitCollection> eeHitsToken_;
-  //  edm::EDGetTokenT<GsfElectronView> electronsToken_;
-  edm::EDGetTokenT<BoolMap> looseIdToken_;
-  edm::EDGetTokenT<BoolMap> mediumIdToken_;
-  edm::EDGetTokenT<BoolMap> tightIdToken_;
-  edm::EDGetTokenT<FloatMap> chIsoToken_;
-  edm::EDGetTokenT<FloatMap> nhIsoToken_;
-  edm::EDGetTokenT<FloatMap> phIsoToken_;
-  edm::EDGetTokenT<FloatMap> wchIsoToken_;
-  edm::EDGetTokenT<double> rhoToken_;
-  edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
+  NamedToken<PhotonView> photonsToken_;
+  NamedToken<EcalRecHitCollection> ebHitsToken_;
+  NamedToken<EcalRecHitCollection> eeHitsToken_;
+  //  NamedToken<GsfElectronView> electronsToken_;
+  NamedToken<BoolMap> looseIdToken_;
+  NamedToken<BoolMap> mediumIdToken_;
+  NamedToken<BoolMap> tightIdToken_;
+  NamedToken<FloatMap> chIsoToken_;
+  NamedToken<FloatMap> nhIsoToken_;
+  NamedToken<FloatMap> phIsoToken_;
+  NamedToken<FloatMap> wchIsoToken_;
+  NamedToken<double> rhoToken_;
+  NamedToken<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
 
   EffectiveAreas chIsoEA_;
   EffectiveAreas nhIsoEA_;
@@ -55,8 +56,6 @@ class PhotonsFiller : public FillerBase {
   VString hltFilters_;
   double minPt_;
   double maxEta_;
-
-  std::vector<std::pair<panda::PPhoton*, edm::Ptr<reco::SuperCluster>>> scPtrs_;
 };
 
 #endif

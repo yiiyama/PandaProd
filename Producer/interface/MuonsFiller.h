@@ -13,14 +13,14 @@ class MuonsFiller : public FillerBase {
   MuonsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~MuonsFiller() {}
 
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&, ObjectMapStore&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
- private:
+ protected:
   typedef edm::View<reco::Muon> MuonView;
 
-  edm::EDGetTokenT<MuonView> muonsToken_;
-  edm::EDGetTokenT<reco::VertexCollection> verticesToken_;
-  edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
+  NamedToken<MuonView> muonsToken_;
+  NamedToken<reco::VertexCollection> verticesToken_;
+  NamedToken<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
 
   bool useTrigger_;
   VString hltFilters_;

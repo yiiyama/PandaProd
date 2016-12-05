@@ -3,26 +3,26 @@
 #include "DataFormats/PatCandidates/interface/Tau.h"
 
 TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name)
+  FillerBase(_name, _cfg)
 {
-  auto& fillerCfg(_cfg.getUntrackedParameterSet("fillers").getUntrackedParameterSet(_name));
-
   getToken_(tausToken_, _cfg, _coll, "taus");
 
-  minPt_ = fillerCfg.getUntrackedParameter<double>("minPt", -1.);
-  maxEta_ = fillerCfg.getUntrackedParameter<double>("maxEta", 10.);
+  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
+  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
 }
 
 void
-TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup, ObjectMapStore& _objectMaps)
+TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
-  auto& inTaus(getProduct_(_inEvent, tausToken_, "taus"));
+  auto& inTaus(getProduct_(_inEvent, tausToken_));
 
   auto& outTaus(_outEvent.taus);
 
   std::vector<edm::Ptr<reco::BaseTau>> ptrList;
 
+  unsigned iTau(-1);
   for (auto& inTau : inTaus) {
+    ++iTau;
     if (inTau.pt() < minPt_)
       continue;
     if (std::abs(inTau.eta()) > maxEta_)
@@ -45,13 +45,15 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       for (auto&& cand : patTau.isolationNeutrHadrCands())
         outTau.iso += cand->pt();
     }
+
+    ptrList.push_back(inTaus.ptrAt(iTau));
   }
 
   auto originalIndices(outTaus.sort(panda::ptGreater));
 
   // export panda <-> reco mapping
 
-  auto& objectMap(_objectMaps.get<reco::BaseTau, panda::PTau>("taus"));
+  auto& objectMap(objectMap_->get<reco::BaseTau, panda::PTau>());
 
   for (unsigned iP(0); iP != outTaus.size(); ++iP) {
     auto& outTau(outTaus[iP]);

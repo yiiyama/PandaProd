@@ -48,7 +48,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
 void
 ElectronsFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext(&_outputFile);
+  TDirectory::TContext context(&_outputFile);
   auto* t(panda::makeElectronHLTObjectTree());
   t->Write();
   delete t;

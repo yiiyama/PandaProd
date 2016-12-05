@@ -26,7 +26,7 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
 void
 MuonsFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext(&_outputFile);
+  TDirectory::TContext context(&_outputFile);
   auto* t(panda::makeMuonHLTObjectTree());
   t->Write();
   delete t;

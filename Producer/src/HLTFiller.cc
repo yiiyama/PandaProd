@@ -17,7 +17,7 @@ HLTFiller::~HLTFiller()
 void
 HLTFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext(&_outputFile);
+  TDirectory::TContext context(&_outputFile);
   hltTree_ = new TTree("hlt", "HLT");
   menu_ = new TString;
   paths_ = new std::vector<TString>;

@@ -5,7 +5,6 @@
 
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
-#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 
 #include "TH1D.h"
 
@@ -22,12 +21,15 @@ class VerticesFiller : public FillerBase {
  protected:
   typedef std::vector<PileupSummaryInfo> PUSummaryCollection;
 
-  NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<reco::VertexCollection> verticesToken_;
   NamedToken<PUSummaryCollection> puSummariesToken_;
 
   TH1D* hNPVReco_{0};
   TH1D* hNPVTrue_{0};
+
+  //! fillAll and fill will collect identical information -> cache it in fillAll
+  unsigned short npvCache_{0};
+  unsigned short npvTrueCache_{0};
 };
 
 #endif

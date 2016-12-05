@@ -21,6 +21,7 @@ class ElectronsFiller : public FillerBase {
   ~ElectronsFiller() {}
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
+  void addOutput(TFile&) override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
 

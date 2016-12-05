@@ -112,7 +112,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   if (!_inEvent.isRealData()) {
     ptRes = JME::JetResolution::get(_setup, jetCorrName + "_pt");
     ptResSF = JME::JetResolutionScaleFactor::get(_setup, jetCorrName);
-    if (!genJetsToken_.isUninitialized())
+    if (!genJetsToken_.second.isUninitialized())
       genJets = &getProduct_(_inEvent, genJetsToken_);
     rho = getProduct_(_inEvent, rhoToken_);
     random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
@@ -184,7 +184,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         double sfDown(ptResSF.getScaleFactor(sfParams, Variation::DOWN));
 
         bool matched(false);
-        if (genJets_) {
+        if (genJets) {
           for (auto& genJet : *genJets) {
             double dpt(inJet.pt() - genJet.pt());
             if (reco::deltaR(genJet, inJet) < R_ * 0.5 && std::abs(dpt) < res * 3.) {

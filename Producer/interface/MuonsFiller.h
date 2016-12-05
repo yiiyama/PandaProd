@@ -13,6 +13,7 @@ class MuonsFiller : public FillerBase {
   MuonsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~MuonsFiller() {}
 
+  void addOutput(TFile&) override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:

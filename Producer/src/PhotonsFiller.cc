@@ -56,7 +56,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 PhotonsFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext(&_outputFile);
+  TDirectory::TContext context(&_outputFile);
   TTree* t;
   t = panda::makePhotonL1ObjectTree();
   t->Write();

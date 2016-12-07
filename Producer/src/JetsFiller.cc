@@ -172,6 +172,8 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       jecUncertainty_->setJetEta(inJet.eta());
       jecUncertainty_->setJetPt(inJet.pt());
       outJet.ptCorrUp = outJet.pt * (1. + jecUncertainty_->getUncertainty(true));
+      jecUncertainty_->setJetEta(inJet.eta());
+      jecUncertainty_->setJetPt(inJet.pt());
       outJet.ptCorrDown = outJet.pt * (1. - jecUncertainty_->getUncertainty(false));
 
       if (!_inEvent.isRealData()) {

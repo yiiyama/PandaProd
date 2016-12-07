@@ -70,6 +70,10 @@ else:
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
+jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+if options.isData:
+    jecLevels.append('L2L3Residual')
+
 ### MONOX FILTER
 process.load('PandaProd.Filters.MonoXFilter_cfi')
 
@@ -154,6 +158,7 @@ process.ak4PFJetsPuppi = ak4PFJetsPuppi.clone(
 #)
 
 from PhysicsTools.PatAlgos.tools.jetTools import addJetCollection
+from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
 
 # no jet correction here - adds unnecessary modules
 # final product is patJetsPuppi + selectedPatJetsPuppi
@@ -180,9 +185,18 @@ addJetCollection(
     genParticles = cms.InputTag('prunedGenParticles'),
     getJetMCFlavour = False # jet flavor disabled
 )
+
+process.puppiJetCorrFactors = patJetCorrFactors.clone(
+    src = cms.InputTag('ak4PFJetsPuppi'),
+    payload = cms.string('AK4PFPuppi'),
+    levels = cms.vstring(*jecLevels),
+    primaryVertices = cms.InputTag('offlineSlimmedPrimaryVertices')
+)
+
+process.patJetsPuppi.addJetCorrFactors = True
+process.patJetsPuppi.jetCorrFactorsSource = [cms.InputTag('puppiJetCorrFactors')]
     
 #process.patJetsPuppi.jetChargeSource = "patJetPuppiCharge::NTUPLES"
-process.patJetsPuppi.jetCorrFactorsSource = [cms.InputTag('puppiJetCorrFactors', '', 'NTUPLES')] # defined below
 process.selectedPatJetsPuppi.cut = 'pt > 15'
 
 if not options.isData:
@@ -209,17 +223,14 @@ puppiJetSequence += cms.Sequence(
     process.pfImpactParameterTagInfosPuppi +
     process.pfInclusiveSecondaryVertexFinderTagInfosPuppi +
     process.pfCombinedInclusiveSecondaryVertexV2BJetTagsPuppi +
+    process.puppiJetCorrFactors +
     process.patJetsPuppi +
     process.selectedPatJetsPuppi
 )
 
-### JETS RE-CORRECTION AND SLIMMING
-from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors, updatedPatJetCorrFactors, updatedPatJets
+### JET RE-CORRECTION AND SLIMMING
+from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 from PhysicsTools.PatAlgos.slimming.slimmedJets_cfi import slimmedJets
-
-jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-if options.isData:
-    jecLevels.append('L2L3Residual')
 
 process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
     src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
@@ -233,18 +244,9 @@ process.slimmedJets = updatedPatJets.clone(
     addDiscriminators = cms.bool(False)
 )
 
-process.puppiJetCorrFactors = patJetCorrFactors.clone(
-    src = cms.InputTag('ak4PFJetsPuppi'),
-    payload = cms.string('AK4PFPuppi'),
-    levels = cms.vstring(*jecLevels),
-    primaryVertices = cms.InputTag('offlineSlimmedPrimaryVertices')
-)
-process.patJetsPuppi.jetCorrFactorsSource = cms.VInputTag(cms.InputTag('puppiJetCorrFactors'))
-
 jetRecorrectionSequence = cms.Sequence(
     process.updatedPatJetCorrFactors +
-    process.slimmedJets +
-    process.puppiJetCorrFactors
+    process.slimmedJets
 )
 
 ### MET RE-CORRECTION

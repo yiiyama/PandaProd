@@ -10,9 +10,8 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
   getToken_(subjetsToken_, _cfg, _coll, "subjets", false);
-  getToken_(btagsToken_, _cfg, _coll, "btags");
-  getToken_(qglToken_, _cfg, _coll, "qgl");
-  getToken_(candidatesToken_, _cfg, _coll, "pfCandidates", "candidates");
+  getToken_(btagsToken_, _cfg, _coll, "btags", false);
+  getToken_(qglToken_, _cfg, _coll, "qgl", false);
 
   computeSubstructure_ = getParameter_<bool>(_cfg, "computeSubstructure", false);
   fillConstituents_ = getParameter_<bool>(_cfg, "fillConstituents", false);
@@ -63,9 +62,14 @@ void
 FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inSubjets(getProduct_(_inEvent, subjetsToken_));
-  auto& inBtags(getProduct_(_inEvent, btagsToken_));
-  auto& inQGL(getProduct_(_inEvent, qglToken_));
-  //  auto& inCandidates(getProduct_(_inEvent, candidatesToken_));
+
+  reco::JetTagCollection const* inBtags(0);
+  if (!btagsToken_.second.isUninitialized())
+    inBtags = &getProduct_(_inEvent, btagsToken_);
+
+  FloatMap const* inQGL(0);
+  if (!qglToken_.second.isUninitialized())
+    inQGL = &getProduct_(_inEvent, qglToken_);
 
   //  double betas[] = {0.5, 1., 2., 4.};
 
@@ -98,8 +102,10 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
         auto&& inRef(inSubjets.refAt(iSJ));
 
-        outSubjet.csv = inBtags[inRef];
-        outSubjet.qgl = inQGL[inRef];
+        if (inBtags)
+          outSubjet.csv = (*inBtags)[inRef];
+        if (inQGL)
+          outSubjet.qgl = (*inQGL)[inRef];
 
         outJet.subjets.push_back(outSubjet);
       }

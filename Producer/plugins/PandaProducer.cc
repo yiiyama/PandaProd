@@ -56,18 +56,22 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   auto& fillersCfg(_cfg.getUntrackedParameterSet("fillers"));
 
   for (auto& fillerName : fillersCfg.getParameterNames()) {
-    auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
-    if (!fillerPSet.getUntrackedParameter<bool>("enabled"))
+    if (fillerName == "common")
       continue;
 
-    auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
+    auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
     try {
+      if (!fillerPSet.getUntrackedParameter<bool>("enabled"))
+        continue;
+
+      auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
+
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
       filler->setObjectMap(objectMaps_[fillerName]);
       fillers_.push_back(filler);
     }
     catch (std::exception& ex) {
-      edm::LogError("FillMitTree") << "Configuration error in " << fillerName << " " << className << "::" << className << "()";
+      edm::LogError("FillMitTree") << "Configuration error in " << fillerName;
       throw;
     }
   }

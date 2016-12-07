@@ -1,0 +1,8 @@
+<use name="FWCore/Framework"/>
+<use name="PhysicsTools/PatUtils"/>
+<use name="DataFormats/PatCandidates"/>
+<use name="JetMETCorrections/Objects"/>
+<use name="CondFormats/JetMETObjects"/>
+<library file="*.cc" name="PandaProdAuxiliaryPlugins">
+   <flags EDM_PLUGIN="1"/>
+</library>

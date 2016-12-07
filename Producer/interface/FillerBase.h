@@ -86,6 +86,10 @@ class FillerBase {
   template<class Product>
   void getToken_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
   { getTokenImpl_<Product, edm::InEvent>(token, cfg, coll, fname, pname, mandatory); }
+  //! necessary overload to enable the second version when passed a c string
+  template<class Product>
+  void getToken_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, char const* pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InEvent>(token, cfg, coll, fname, pname, mandatory); }
 
   //! get a token from a tag in this module's configuration
   template<class Product>
@@ -95,6 +99,10 @@ class FillerBase {
   template<class Product>
   void getTokenLumi_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
   { getTokenImpl_<Product, edm::InLumi>(token, cfg, coll, fname, pname, mandatory); }
+  //! necessary overload to enable the second version when passed a c string
+  template<class Product>
+  void getTokenLumi_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, char const* pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InLumi>(token, cfg, coll, fname, pname, mandatory); }
 
   //! get a token from a tag in this module's configuration
   template<class Product>
@@ -103,6 +111,10 @@ class FillerBase {
   //! get a token from a tag in the configuration of a module
   template<class Product>
   void getTokenRun_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, std::string const& pname, bool mandatory = true)
+  { getTokenImpl_<Product, edm::InRun>(token, cfg, coll, fname, pname, mandatory); }
+  //! necessary overload to enable the second version when passed a c string
+  template<class Product>
+  void getTokenRun_(NamedToken<Product>& token, edm::ParameterSet const& cfg, edm::ConsumesCollector& coll, std::string const& fname, char const* pname, bool mandatory = true)
   { getTokenImpl_<Product, edm::InRun>(token, cfg, coll, fname, pname, mandatory); }
 
   //! get a token from a tag in the configuration of a module

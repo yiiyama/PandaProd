@@ -47,7 +47,7 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (lheEvent) {
       if (weightIndices_.size() == 0) {
         // first event
-        if (lheEvent->weights().size() > sizeof(_outEvent.reweightDW))
+        if (lheEvent->weights().size() > sizeof(_outEvent.reweightDW) / sizeof(float))
           throw std::runtime_error("Too many reweight factors in input");
 
         initIndices_(*lheEvent);
@@ -55,7 +55,7 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         panda::utils::book(*events, "", "reweightDW", TString::Format("[%d]", int(lheEvent->weights().size())), 'F', _outEvent.reweightDW, {"*"});
       }
 
-      std::fill_n(_outEvent.reweightDW, sizeof(_outEvent.reweightDW), 0.);
+      std::fill_n(_outEvent.reweightDW, sizeof(_outEvent.reweightDW) / sizeof(float), 0.);
 
       for (auto& wgt : lheEvent->weights()) {
         unsigned idx(weightIndices_.at(wgt.id));

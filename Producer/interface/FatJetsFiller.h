@@ -3,7 +3,6 @@
 
 #include "JetsFiller.h"
 
-#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/BTauReco/interface/JetTag.h"
 #include "DataFormats/Common/interface/ValueMap.h"
 
@@ -34,7 +33,6 @@ class FatJetsFiller : public JetsFiller {
   NamedToken<JetView> subjetsToken_;
   NamedToken<reco::JetTagCollection> btagsToken_;
   NamedToken<FloatMap> qglToken_;
-  NamedToken<reco::CandidateView> candidatesToken_;
 
   fastjet::GhostedAreaSpec activeArea_;
   fastjet::AreaDefinition areaDef_;

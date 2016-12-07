@@ -29,7 +29,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(nhIsoToken_, _cfg, _coll, "nhIso");
   getToken_(phIsoToken_, _cfg, _coll, "phIso");
   getToken_(wchIsoToken_, _cfg, _coll, "wchIso");
-  getToken_(rhoToken_, _cfg, _coll, "rho");
+  getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   if (useTrigger_) {
     getToken_(triggerObjectsToken_, _cfg, _coll, "common", "triggerObjects");
     l1Filters_ = getParameter_<VString>(_cfg, "l1Filters");

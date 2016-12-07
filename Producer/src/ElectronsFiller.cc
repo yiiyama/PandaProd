@@ -59,7 +59,7 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
 {
   if (isRealData_) {
     char const* genBranches[] = {"!electrons.tauDecay", "!electrons.hadDecay", "!electrons.matchedGen_"};
-    _eventBranches.insert(_eventBranches.end(), genBranches, genBranches + sizeof(genBranches));
+    _eventBranches.insert(_eventBranches.end(), genBranches, genBranches + sizeof(genBranches) / sizeof(char const*));
   }
   if (!useTrigger_) {
     _eventBranches.push_back("!electrons.matchHLT");

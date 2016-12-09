@@ -62,6 +62,16 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
     for (char const* b : genBranches)
       _eventBranches.push_back(("!" + getName() + b).c_str());
   }
+
+  if (outputType_ == kCHSCA15 || outputType_ == kPuppiCA15) {
+    char const* genBranches[] = {
+      ".ptCorrUp",
+      ".ptCorrDown",
+      ".rawPt"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.push_back(("!" + getName() + b).c_str());
+  }
 }
 
 void
@@ -166,14 +176,17 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
       fillP4(outJet, inJet);
 
-      outJet.rawPt = patJet.pt() * patJet.jecFactor("Uncorrected");
+      if (outputType_ != kCHSCA15 && outputType_ != kPuppiCA15)
+        outJet.rawPt = patJet.pt() * patJet.jecFactor("Uncorrected");
 
-      jecUncertainty_->setJetEta(inJet.eta());
-      jecUncertainty_->setJetPt(inJet.pt());
-      outJet.ptCorrUp = outJet.pt * (1. + jecUncertainty_->getUncertainty(true));
-      jecUncertainty_->setJetEta(inJet.eta());
-      jecUncertainty_->setJetPt(inJet.pt());
-      outJet.ptCorrDown = outJet.pt * (1. - jecUncertainty_->getUncertainty(false));
+      if (jecUncertainty_) {
+        jecUncertainty_->setJetEta(inJet.eta());
+        jecUncertainty_->setJetPt(inJet.pt());
+        outJet.ptCorrUp = outJet.pt * (1. + jecUncertainty_->getUncertainty(true));
+        jecUncertainty_->setJetEta(inJet.eta());
+        jecUncertainty_->setJetPt(inJet.pt());
+        outJet.ptCorrDown = outJet.pt * (1. - jecUncertainty_->getUncertainty(false));
+      }
 
       if (!_inEvent.isRealData()) {
         JME::JetParameters resParams({{JME::Binning::JetPt, inJet.pt()}, {JME::Binning::JetEta, inJet.eta()}, {JME::Binning::Rho, rho}});

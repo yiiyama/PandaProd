@@ -14,6 +14,7 @@ class MuonsFiller : public FillerBase {
   ~MuonsFiller() {}
 
   void addOutput(TFile&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:

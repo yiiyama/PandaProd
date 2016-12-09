@@ -33,6 +33,20 @@ MuonsFiller::addOutput(TFile& _outputFile)
 }
 
 void
+JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (isRealData_) {
+    char const* genBranches[] = {
+      ".tauDecay",
+      ".hadDecay",
+      ".matchedGen"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.push_back(("!" + getName() + b).c_str());
+  }
+}
+
+void
 MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inMuons(getProduct_(_inEvent, muonsToken_));

@@ -116,8 +116,9 @@ egmidconf.photonEA = 'RecoEgamma/PhotonIdentification/data/Spring15/effAreaPhoto
 ### PUPPI
 # Copied from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
 process.load('CommonTools.PileupAlgos.Puppi_cff')
-process.puppi.candName = cms.InputTag('packedPFCandidates')
-process.puppi.vertexName = cms.InputTag('offlineSlimmedPrimaryVertices')
+process.puppi.candName = 'packedPFCandidates'
+process.puppi.vertexName = 'offlineSlimmedPrimaryVertices'
+process.puppi.clonePackedCands = True
 process.puppi.useExistingWeights = False # I still don't trust miniaod...
 
 process.pfNoLepPUPPI = cms.EDFilter("CandPtrSelector",
@@ -129,9 +130,8 @@ process.pfLeptonsPUPPET = cms.EDFilter("CandPtrSelector",
     cut = cms.string("abs(pdgId) == 13 || abs(pdgId) == 11 || abs(pdgId) == 15")
 )
 process.puppiNoLep = process.puppi.clone(
-    candName = cms.InputTag('pfNoLepPUPPI'),
-    useExistingWeights = cms.bool(False),
-    useWeightsNoLep = cms.bool(True)
+    candName = 'pfNoLepPUPPI',
+    useWeightsNoLep = True
 )
  
 process.puppiMerged = cms.EDProducer("CandViewMerger",
@@ -347,8 +347,6 @@ process.panda.SelectEvents = ['reco']
 if options.isData:
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.genJets.enabled = False
-
-process.panda.printLevel = 2
 
 process.ntuples = cms.EndPath(process.panda)
 

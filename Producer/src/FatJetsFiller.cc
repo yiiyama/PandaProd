@@ -58,6 +58,9 @@ FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
   _eventBranches.push_back(("!" + getName() + ".matchedGenJet").c_str());
+
+  if (!fillConstituents_)
+    _eventBranches.push_back(("!" + getName() + ".constituents_").c_str());
 }
 
 void
@@ -193,16 +196,22 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 void
 FatJetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
-  auto& jetMap(objectMap_->get<reco::Jet, panda::PJet>());
+  if (fillConstituents_) {
+    auto& jetMap(objectMap_->get<reco::Jet, panda::PJet>());
 
-  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PPFCand>().fwdMap);
+    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PPFCand>().fwdMap);
 
-  for (auto& link : jetMap.fwdMap) { // edm -> panda
-    auto& inJet(*link.first);
-    auto& outJet(static_cast<panda::PFatJet&>(*link.second));
+    for (auto& link : jetMap.fwdMap) { // edm -> panda
+      auto& inJet(*link.first);
+      auto& outJet(static_cast<panda::PFatJet&>(*link.second));
 
-    for (auto&& ptr : inJet.getJetConstituents())
-      outJet.constituents.push_back(*pfMap.at(ptr));
+      for (auto&& ptr : inJet.getJetConstituents()) {
+        reco::CandidatePtr p(ptr);
+        while (p->sourceCandidatePtr(0).isNonnull())
+          p = p->sourceCandidatePtr(0);
+        outJet.constituents.push_back(*pfMap.at(p));
+      }
+    }
   }
 }
 

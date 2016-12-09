@@ -82,7 +82,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& wchIso(getProduct_(_inEvent, wchIsoToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
 
-  auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const& {
+  auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
       EcalRecHitCollection const* hits(0);
       if (id.subdetId() == EcalBarrel)
         hits = &ebHits;
@@ -91,9 +91,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
       auto&& hitItr(hits->find(id));
       if (hitItr == hits->end())
-        throw std::logic_error("Ecal rec hit not found");
+        return 0;
 
-      return *hitItr;
+      return &*hitItr;
     });
 
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
@@ -204,11 +204,11 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     outPhoton.timeSpan = 0.;    
     for (auto& hf : sc.hitsAndFractions()) {
-      auto& hit(findHit(hf.first));
-      if (hit.energy() < 1.)
+      auto* hit(findHit(hf.first));
+      if (!hit || hit->energy() < 1.)
         continue;
 
-      double dt(outPhoton.time - hit.time());
+      double dt(outPhoton.time - hit->time());
       if (std::abs(dt) > std::abs(outPhoton.timeSpan))
         outPhoton.timeSpan = dt;
     }
@@ -220,8 +220,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outPhoton.e2nd = lazyTools.e2nd(seed);
       outPhoton.e4 = lazyTools.eTop(seed) + lazyTools.eRight(seed) + lazyTools.eBottom(seed) + lazyTools.eLeft(seed);
       
-      auto& seedHit(findHit(seed.hitsAndFractions()[0].first));
-      outPhoton.time = seedHit.time();
+      auto* seedHit(findHit(seed.hitsAndFractions()[0].first));
+      if (seedHit)
+        outPhoton.time = seedHit->time();
     }
 
     if (useTrigger_) {

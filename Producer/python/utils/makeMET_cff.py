@@ -1,33 +1,18 @@
 import FWCore.ParameterSet.Config as cms
 import RecoMET.METProducers.PFMET_cfi as PFMET_cfi
+from RecoMET.METProducers.METSignificanceParams_cfi import METSignificanceParams, METSignificanceParams_Data
 import PhysicsTools.PatUtils.patPFMETCorrections_cff as patMET_cff
 from PhysicsTools.PatAlgos.producersLayer1.metProducer_cfi import patMETs
 from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
 from PhysicsTools.PatAlgos.cleaningLayer1.jetCleaner_cfi import cleanPatJets
 from PhysicsTools.PatAlgos.slimming.slimmedMETs_cfi import slimmedMETs
 
+from PandaProd.Producer.utils.addattr import AddAttr
+
 electrons = cms.InputTag('slimmedElectrons')
 muons = cms.InputTag('slimmedMuons')
 taus = cms.InputTag('slimmedTaus')
 photons = cms.InputTag('slimmedPhotons')
-
-class AddAttr(object):
-    def __init__(self, process, sequence, postfix = ''):
-        self.process = process
-        self.sequence = sequence
-        self.postfix = postfix
-        self.last = None
-
-    def __call__(self, name, attr):
-        if hasattr(self.process, name + self.postfix):
-            raise RuntimeError('process already has an attribute named ' + name + self.postfix)
-
-        setattr(self.process, name + self.postfix, attr)
-        self.sequence += attr
-
-        self.last = attr
-
-        return cms.InputTag(name + self.postfix)
 
 def initMET(process, isData):
     """
@@ -130,6 +115,7 @@ def makeMET(process, isData, pfCandidates, jetSource, jetFlavor, postfix = ''):
             genMETSource = 'genMetTrue',
             srcPFCands = pfCandidates,
             computeMETSignificance = True,
+            parameters = (METSignificanceParams_Data if isData else METSignificanceParams),
             srcJets = crossCleanedJets,
             srcLeptons = [electrons, muons, photons],
             addGenMET = (not isData and postfix == '')

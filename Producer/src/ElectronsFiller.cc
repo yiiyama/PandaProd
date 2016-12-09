@@ -29,8 +29,8 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
-  getToken_(ecalIsoToken_, _cfg, _coll, "ecalIso");
-  getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso");
+  getToken_(ecalIsoToken_, _cfg, _coll, "ecalIso", false);
+  getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso", false);
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
   if (useTrigger_) {
@@ -78,8 +78,12 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
-  auto& ecalIso(getProduct_(_inEvent, ecalIsoToken_));
-  auto& hcalIso(getProduct_(_inEvent, hcalIsoToken_));
+  FloatMap const* ecalIso(0);
+  if (!ecalIsoToken_.second.isUninitialized())
+    ecalIso = &getProduct_(_inEvent, ecalIsoToken_);
+  FloatMap const* hcalIso(0);
+  if (!hcalIsoToken_.second.isUninitialized())
+    hcalIso = &getProduct_(_inEvent, hcalIsoToken_);
   double rho(getProduct_(_inEvent, rhoToken_));
   double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
 
@@ -139,8 +143,20 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.phoiso = pfIso.sumPhotonEt;
     outElectron.puiso = pfIso.sumPUPt;
     outElectron.isoPUOffset = combIsoEA_.getEffectiveArea(scEta) * rho;
-    outElectron.ecaliso = ecalIso[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
-    outElectron.hcaliso = hcalIso[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+
+    if (dynamic_cast<pat::Electron const*>(&inElectron)) {
+      auto& patElectron(static_cast<pat::Electron const&>(inElectron));
+      outElectron.ecaliso = patElectron.ecalPFClusterIso() - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      outElectron.hcaliso = patElectron.hcalPFClusterIso() - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+    }
+    else {
+      if (!ecalIso)
+        throw edm::Exception(edm::errors::Configuration, "ECAL PF cluster iso missing");
+      outElectron.ecaliso = (*ecalIso)[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      if (!hcalIso)
+        throw edm::Exception(edm::errors::Configuration, "HCAL PF cluster iso missing");
+      outElectron.hcaliso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+    }
 
     unsigned iPh(0);
     for (auto& photon : photons) {

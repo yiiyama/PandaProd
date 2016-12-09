@@ -15,6 +15,8 @@ process.load('FWCore.MessageService.MessageLogger_cfi')
 # If you run over many samples and you save the log, remember to reduce
 # the size of the output by prescaling the report of the event number
 process.MessageLogger.cerr.FwkReport.reportEvery = 5000
+process.MessageLogger.categories.append('PandaProducer')
+process.MessageLogger.cerr.PandaProducer = cms.untracked.PSet(limit = cms.untracked.int32(10000))
 
 ############
 ## SOURCE ##
@@ -73,6 +75,16 @@ else:
 jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
 if options.isData:
     jecLevels.append('L2L3Residual')
+
+### GEN JETS
+if not options.isData:
+    from RecoJets.JetProducers.ak4GenJets_cfi import ak4GenJets
+    process.packedGenParticlesForJetsNoNu = cms.EDFilter('CandPtrSelector', 
+        src = cms.InputTag('packedGenParticles'), 
+        cut = cms.string('abs(pdgId) != 12 && abs(pdgId) != 14 && abs(pdgId) != 16 && !(abs(pdgId) > 1000000 && charge == 0)')
+    )
+    process.ak4GenJetsNoNu = ak4GenJets.clone(src = 'packedGenParticlesForJetsNoNu')
+    process.ak4GenJetsYesNu = ak4GenJets.clone(src = 'packedGenParticles')
 
 ### MONOX FILTER
 process.load('PandaProd.Filters.MonoXFilter_cfi')
@@ -157,34 +169,7 @@ process.ak4PFJetsPuppi = ak4PFJetsPuppi.clone(
 #    exp = cms.double(1.0)
 #)
 
-from PhysicsTools.PatAlgos.tools.jetTools import addJetCollection
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
-
-# no jet correction here - adds unnecessary modules
-# final product is patJetsPuppi + selectedPatJetsPuppi
-addJetCollection(
-    process,
-    postfix = '',
-    labelName = 'Puppi',
-    jetSource = cms.InputTag('ak4PFJetsPuppi'),
-    algo = 'AK',
-    rParam = 0.4,
-    pfCandidates = cms.InputTag('puppiForMET'),
-    pvSource = cms.InputTag('offlineSlimmedPrimaryVertices'),
-    svSource = cms.InputTag('slimmedSecondaryVertices'),
-    muSource = cms.InputTag('slimmedMuons'),
-    elSource = cms.InputTag('slimmedElectrons'),
-    btagInfos = [
-        'pfImpactParameterTagInfos',
-        'pfInclusiveSecondaryVertexFinderTagInfos'
-    ],
-    btagDiscriminators = [
-        'pfCombinedInclusiveSecondaryVertexV2BJetTags'
-    ],
-    genJetCollection = cms.InputTag('ak4GenJetsNoNu'),
-    genParticles = cms.InputTag('prunedGenParticles'),
-    getJetMCFlavour = False # jet flavor disabled
-)
 
 process.puppiJetCorrFactors = patJetCorrFactors.clone(
     src = cms.InputTag('ak4PFJetsPuppi'),
@@ -193,37 +178,59 @@ process.puppiJetCorrFactors = patJetCorrFactors.clone(
     primaryVertices = cms.InputTag('offlineSlimmedPrimaryVertices')
 )
 
+from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
+
+# btag on puppi should also use packedPFCandidates
+puppiInclusiveVertexingSequence = initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
+
+puppiJetsBTagSequence = setupBTag(
+    process,
+    jetCollection = 'ak4PFJetsPuppi',
+    suffix = 'Puppi',
+    vsuffix = '',
+    muons = 'slimmedMuons',
+    electrons = 'slimmedElectrons',
+    tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
+)
+
+from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
+
+process.patJetsPuppi = patJets.clone(
+    jetSource = cms.InputTag('ak4PFJetsPuppi'),
+    addJetCorrFactors = True,
+    jetCorrFactorsSource = [cms.InputTag('puppiJetCorrFactors')],
+    addBTagInfo = True,
+    discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTagsPuppi')],
+    addAssociatedTracks = False,
+    addJetCharge = False,
+    addGenPartonMatch = False,
+    genJetMatch = 'ak4GenJetsNoNu',
+    getJetMCFlavour = False,
+    addJetFlavourInfo = False
+)
 process.patJetsPuppi.addJetCorrFactors = True
 process.patJetsPuppi.jetCorrFactorsSource = [cms.InputTag('puppiJetCorrFactors')]
-    
-#process.patJetsPuppi.jetChargeSource = "patJetPuppiCharge::NTUPLES"
-process.selectedPatJetsPuppi.cut = 'pt > 15'
 
-if not options.isData:
-    from RecoJets.JetProducers.ak4GenJets_cfi import ak4GenJets
-    process.packedGenParticlesForJetsNoNu = cms.EDFilter('CandPtrSelector', 
-        src = cms.InputTag('packedGenParticles'), 
-        cut = cms.string('abs(pdgId) != 12 && abs(pdgId) != 14 && abs(pdgId) != 16 && !(abs(pdgId) > 1000000 && charge == 0)')
-    )
-    process.ak4GenJetsNoNu = ak4GenJets.clone(src = 'packedGenParticlesForJetsNoNu')
-    process.ak4GenJetsYesNu = ak4GenJets.clone(src = 'packedGenParticles')
+from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
 
-puppiJetSequence = cms.Sequence(
-    process.ak4PFJetsPuppi #+
-#    process.ak4PFJetsPuppiTracksAssociatorAtVertex +
-#    process.patJetPuppiCharge
+process.selectedPatJetsPuppi = selectedPatJets.clone(
+    src = 'patJetsPuppi',
+    cut = 'pt > 15'
 )
-if not options.isData:
-    puppiJetSequence += cms.Sequence(
+
+if options.isData:
+    puppiJetSequence = cms.Sequence()
+else:
+    puppiJetSequence = cms.Sequence(
         process.packedGenParticlesForJetsNoNu +
         process.ak4GenJetsNoNu
     )
 
 puppiJetSequence += cms.Sequence(
-    process.pfImpactParameterTagInfosPuppi +
-    process.pfInclusiveSecondaryVertexFinderTagInfosPuppi +
-    process.pfCombinedInclusiveSecondaryVertexV2BJetTagsPuppi +
+    process.ak4PFJetsPuppi +
     process.puppiJetCorrFactors +
+    puppiInclusiveVertexingSequence +
+    puppiJetsBTagSequence +
     process.patJetsPuppi +
     process.selectedPatJetsPuppi
 )
@@ -269,38 +276,30 @@ metSequence = cms.Sequence(
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-fatJetInitSequence = initFatJets(process, options.isData)
+fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
     process,
     isData = options.isData,
-    pfCandidates = 'pfCHS',
-    algoLabel = 'AK',
-    jetRadius = 0.8
+    label = 'AK8PFchs'
 )
 
 ak8PuppiSequence = makeFatJets(
     process,
     isData = options.isData,
-    pfCandidates = 'puppi',
-    algoLabel = 'AK',
-    jetRadius = 0.8
+    label = 'AK8PFPuppi'
 )
 
 ca15CHSSequence = makeFatJets(
     process,
     isData = options.isData,
-    pfCandidates = 'pfCHS',
-    algoLabel = 'CA',
-    jetRadius = 1.5
+    label = 'CA15PFchs'
 )
 
 ca15PuppiSequence = makeFatJets(
     process,
     isData = options.isData,
-    pfCandidates = 'puppi',
-    algoLabel = 'CA',
-    jetRadius = 1.5
+    label = 'CA15PFPuppi'
 )
 
 fatJetSequence = cms.Sequence(
@@ -345,6 +344,11 @@ process.reco = cms.Path(
 process.load('PandaProd.Producer.panda_cfi')
 process.panda.isRealData = options.isData
 process.panda.SelectEvents = ['reco']
+if options.isData:
+    process.panda.fillers.genParticles.enabled = False
+    process.panda.fillers.genJets.enabled = False
+
+process.panda.printLevel = 2
 
 process.ntuples = cms.EndPath(process.panda)
 

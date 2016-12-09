@@ -44,7 +44,6 @@ install-pkg() {
 #
 # You should delete the CMSSW area once done. git cms-init pulls in so many files that are unnecessary.
 
-install-pkg cms-met origin/metTool80X PhysicsTools/PatUtils/python RecoMET/METProducers/python
 install-pkg cms-met origin/fromCMSSW_8_0_20_postICHEPfilter RecoMET/METFilters
 install-pkg emanueledimarco origin/ecal_smear_fix_80X EgammaAnalysis/ElectronTools
 git clone -b ICHEP2016_v2 https://github.com/ECALELFS/ScalesSmearings.git $CMSSW_BASE/src/EgammaAnalysis/ElectronTools/data/ScalesSmearings

@@ -118,7 +118,6 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
   }
 
-
   std::vector<edm::Ptr<reco::Jet>> ptrList;
 
   unsigned iJet(-1);

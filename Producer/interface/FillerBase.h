@@ -183,8 +183,8 @@ FillerBase::getTokenImpl_(NamedToken<Product>& _token, edm::ParameterSet const& 
     else
       _token.second = edm::EDGetTokenT<Product>();
   }
- 
-  _token.second = _coll.consumes<Product, B>(edm::InputTag(paramValue));
+  else 
+    _token.second = _coll.consumes<Product, B>(edm::InputTag(paramValue));
 }
 
 template<class Principal, class Product>
@@ -193,7 +193,7 @@ FillerBase::getProduct_(Principal const& _prn, NamedToken<Product> const& _token
 {
   edm::Handle<Product> handle;
   if (!_prn.getByToken(_token.second, handle))
-    throw cms::Exception("ProductNotFound") << _token.first;
+    throw cms::Exception("ProductNotFound") << "fillers." << getName() << "." << _token.first;
 
   return *handle;
 }

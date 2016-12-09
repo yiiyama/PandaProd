@@ -6,6 +6,8 @@
 
 FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   JetsFiller(_name, _cfg, _coll),
+  njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
+  sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
@@ -73,6 +75,16 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
   //  double betas[] = {0.5, 1., 2., 4.};
 
+  std::string substrLabel;
+  if (getName() == "chsAK8Jets")
+    substrLabel = "AK8PFchs";
+  else if (getName() == "chsCA15Jets")
+    substrLabel = "CA15PFchs";
+  else if (getName() == "puppiAK8Jets")
+    substrLabel = "AK8PFPuppi";
+  else if (getName() == "puppiCA15Jets")
+    substrLabel = "CA15PFPuppi";
+
   auto& outSubjets(_outEvent.subjets);
 
   typedef std::vector<fastjet::PseudoJet> VPseudoJet;
@@ -85,10 +97,10 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
     if (dynamic_cast<pat::Jet const*>(link.second.get())) {
       auto& inJet(static_cast<pat::Jet const&>(*link.second));
 
-      outJet.tau1 = inJet.userFloat(getName() + "Njettiness:tau1");
-      outJet.tau2 = inJet.userFloat(getName() + "Njettiness:tau2");
-      outJet.tau3 = inJet.userFloat(getName() + "Njettiness:tau3");
-      outJet.mSD  = inJet.userFloat(getName() + "SDKinematics:Mass");
+      outJet.tau1 = inJet.userFloat(njettinessTag_ + ":tau1");
+      outJet.tau2 = inJet.userFloat(njettinessTag_ + ":tau2");
+      outJet.tau3 = inJet.userFloat(njettinessTag_ + ":tau3");
+      outJet.mSD  = inJet.userFloat(sdKinematicsTag_ + ":Mass");
 
       unsigned iSJ(-1);
       for (auto& inSubjet : inSubjets) {

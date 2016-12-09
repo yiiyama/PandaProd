@@ -40,6 +40,7 @@ class ElectronsFiller : public FillerBase {
   NamedToken<FloatMap> phCHIsoToken_;
   NamedToken<FloatMap> phNHIsoToken_;
   NamedToken<FloatMap> phPhIsoToken_;
+  // Iso tokens only used if filling from AOD
   NamedToken<FloatMap> ecalIsoToken_;
   NamedToken<FloatMap> hcalIsoToken_;
   NamedToken<double> rhoToken_;

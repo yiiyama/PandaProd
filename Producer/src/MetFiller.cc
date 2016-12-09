@@ -62,8 +62,7 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
       t1Met.phiSmearUp = patMet.shiftedPhi(pat::MET::JetResUpSmear, pat::MET::Type1Smear);
       t1Met.ptSmearDown = patMet.shiftedPt(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
       t1Met.phiSmearDown = patMet.shiftedPhi(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
-    }
-    else {
+
       _outEvent.genMet.pt = patMet.genMET()->pt();
       _outEvent.genMet.phi = patMet.genMET()->phi();
     }

@@ -33,6 +33,8 @@ class FatJetsFiller : public JetsFiller {
   NamedToken<JetView> subjetsToken_;
   NamedToken<reco::JetTagCollection> btagsToken_;
   NamedToken<FloatMap> qglToken_;
+  std::string njettinessTag_;
+  std::string sdKinematicsTag_;
 
   fastjet::GhostedAreaSpec activeArea_;
   fastjet::AreaDefinition areaDef_;

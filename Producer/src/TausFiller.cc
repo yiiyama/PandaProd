@@ -3,12 +3,23 @@
 #include "DataFormats/PatCandidates/interface/Tau.h"
 
 TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
+  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(tausToken_, _cfg, _coll, "taus");
+}
 
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
-  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
+void
+TausFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (isRealData_) {
+    char const* genBranches[] = {
+      ".matchedGen_"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.push_back("!" + getName() + b);
+  }
 }
 
 void

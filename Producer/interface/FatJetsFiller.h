@@ -5,6 +5,8 @@
 
 #include "DataFormats/BTauReco/interface/JetTag.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "PandaUtilities/Substructure/interface/HEPTopTaggerWrapperV2.h"
+#include "PandaUtilities/Substructure/interface/EnergyCorrelations.h"
 
 // fastjet
 #include "fastjet/PseudoJet.hh"
@@ -41,11 +43,10 @@ class FatJetsFiller : public JetsFiller {
   fastjet::JetDefinition* jetDefCA_{0};
   fastjet::contrib::SoftDrop* softdrop_{0};
   fastjet::contrib::Njettiness* tau_{0};
-  //  fastjet::HEPTopTaggerV2* htt_{0};
-  //  ECFNManager* ecfnManager_{0};
+  fastjet::HEPTopTaggerV2* htt_{0};
+  ECFNManager* ecfnManager_{0};
 
   bool computeSubstructure_{false};
-  bool fillConstituents_{false};
 };
 
 #endif

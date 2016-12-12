@@ -44,10 +44,12 @@ class FillerBase {
   virtual void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
 
   std::string const& getName() const { return fillerName_; }
+  bool enabled() const { return enabled_; }
   void setObjectMap(FillerObjectMap& map) { objectMap_ = &map; }
 
  private:
   std::string const fillerName_;
+  bool const enabled_;
 
  protected:
   template <class Product>

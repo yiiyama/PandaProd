@@ -3,11 +3,10 @@
 #include "DataFormats/Common/interface/RefToPtr.h"
 
 GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.))
 {
   getToken_(genParticlesToken_, _cfg, _coll, "genParticles");
-
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
 
   auto vPdgIds(getParameter_<VString>(_cfg, "pdgIds"));
   for (auto& idstr : vPdgIds) {
@@ -28,6 +27,13 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
     else
       pdgIds_.insert(std::stoi(idstr));
   }
+}
+
+void
+GenParticlesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (!enabled())
+    _eventBranches.emplace_back("!" + getName());
 }
 
 void

@@ -18,7 +18,9 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   hcalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "hcalIsoEA").fullPath()),
   phCHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "chIsoEA").fullPath()),
   phNHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "nhIsoEA").fullPath()),
-  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
+  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath()),
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
+  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
@@ -40,9 +42,6 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
       throw edm::Exception(edm::errors::Configuration, "ElectronsFiller")
         << "electronHLTFilters.size()";
   }
-
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
-  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
 }
 
 void
@@ -58,11 +57,16 @@ void
 ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   if (isRealData_) {
-    char const* genBranches[] = {"!electrons.tauDecay", "!electrons.hadDecay", "!electrons.matchedGen_"};
-    _eventBranches.insert(_eventBranches.end(), genBranches, genBranches + sizeof(genBranches) / sizeof(char const*));
+    char const* genBranches[] = {
+      ".tauDecay",
+      ".hadDecay",
+      ".matchedGen_"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.emplace_back("!" + getName() + b);
   }
   if (!useTrigger_) {
-    _eventBranches.push_back("!electrons.matchHLT");
+    _eventBranches.emplace_back("!" + getName() + ".matchHLT");
   }
 }
 

@@ -18,7 +18,11 @@
 #include "JetMETCorrections/Modules/interface/JetResolution.h"
 
 JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  R_(getParameter_<double>(_cfg, "R", 0.4)),
+  minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
+  maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
+  fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false))
 {
   if (_name == "chsAK4Jets")
     outputType_ = kCHSAK4;
@@ -38,10 +42,6 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
     getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   }
-
-  R_ = getParameter_<double>(_cfg, "R", 0.4);
-  minPt_ = getParameter_<double>(_cfg, "minPt", 15.);
-  maxEta_ = getParameter_<double>(_cfg, "maxEta", 4.7);
 }
 
 JetsFiller::~JetsFiller()
@@ -60,7 +60,7 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
       ".matchedGenJet_"
     };
     for (char const* b : genBranches)
-      _eventBranches.push_back(("!" + getName() + b).c_str());
+      _eventBranches.emplace_back("!" + getName() + b);
   }
 
   if (outputType_ == kCHSCA15 || outputType_ == kPuppiCA15) {
@@ -70,8 +70,11 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
       ".rawPt"
     };
     for (char const* b : genBranches)
-      _eventBranches.push_back(("!" + getName() + b).c_str());
+      _eventBranches.emplace_back("!" + getName() + b);
   }
+
+  if (!fillConstituents_)
+    _eventBranches.emplace_back("!" + getName() + ".constituents_");
 }
 
 void

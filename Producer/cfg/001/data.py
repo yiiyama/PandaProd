@@ -4,6 +4,7 @@ options =VarParsing('analysis')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, info = 'Global tag')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
+options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
 
 options.parseArguments()
 
@@ -114,41 +115,9 @@ egmidconf.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-
 egmidconf.photonEA = 'RecoEgamma/PhotonIdentification/data/Spring15/effAreaPhotons_cone03_'
 
 ### PUPPI
-# Copied from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-process.load('CommonTools.PileupAlgos.Puppi_cff')
-process.puppi.candName = 'packedPFCandidates'
-process.puppi.vertexName = 'offlineSlimmedPrimaryVertices'
-process.puppi.clonePackedCands = True
-process.puppi.useExistingWeights = False # I still don't trust miniaod...
 
-process.pfNoLepPUPPI = cms.EDFilter("CandPtrSelector",
-    src = cms.InputTag("packedPFCandidates"),
-    cut = cms.string("abs(pdgId) != 13 && abs(pdgId) != 11 && abs(pdgId) != 15")
-)
-process.pfLeptonsPUPPET = cms.EDFilter("CandPtrSelector",
-    src = cms.InputTag("packedPFCandidates"),
-    cut = cms.string("abs(pdgId) == 13 || abs(pdgId) == 11 || abs(pdgId) == 15")
-)
-process.puppiNoLep = process.puppi.clone(
-    candName = 'pfNoLepPUPPI',
-    useWeightsNoLep = True
-)
- 
-process.puppiMerged = cms.EDProducer("CandViewMerger",
-    src = cms.VInputTag('puppiNoLep', 'pfLeptonsPUPPET')
-)
-
-from CommonTools.PileupAlgos.PhotonPuppi_cff import puppiPhoton
-process.puppiForMET = puppiPhoton.clone()
-
-puppiSequence = cms.Sequence(
-    process.puppi +
-    process.pfNoLepPUPPI +
-    process.pfLeptonsPUPPET +
-    process.puppiNoLep +
-    process.puppiMerged +
-    process.puppiForMET
-)
+# Imports puppiSequence
+process.load('PandaProd.Producer.utils.puppi_cff')
 
 ### RECLUSTER PUPPI JET
 # Copied from PhysicsTools.PatAlgos.slimming.miniAOD_tools
@@ -329,7 +298,7 @@ metFilterSequence = cms.Sequence(
 process.reco = cms.Path(
     process.MonoXFilter +
     egmIdSequence +
-    puppiSequence +
+    process.puppiSequence +
     puppiJetSequence +
     jetRecorrectionSequence +
     metSequence +
@@ -343,11 +312,15 @@ process.reco = cms.Path(
 
 process.load('PandaProd.Producer.panda_cfi')
 process.panda.isRealData = options.isData
+process.panda.useTrigger = options.useTrigger
 process.panda.SelectEvents = ['reco']
 if options.isData:
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.genJets.enabled = False
+if not options.useTrigger:
+    process.panda.fillers.hlt.enabled = False
 
 process.ntuples = cms.EndPath(process.panda)
 
 process.schedule = cms.Schedule(process.reco, process.ntuples)
+

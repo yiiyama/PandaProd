@@ -1,11 +1,17 @@
 #include "../interface/GenJetsFiller.h"
 
 GenJetsFiller::GenJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.))
 {
   getToken_(genJetsToken_, _cfg, _coll, "genJets");
+}
 
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
+void
+GenJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (!enabled())
+    _eventBranches.emplace_back("!" + getName());
 }
 
 void

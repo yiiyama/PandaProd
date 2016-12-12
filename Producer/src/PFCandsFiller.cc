@@ -7,12 +7,20 @@ PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& 
   FillerBase(_name, _cfg)
 {
   getToken_(candidatesToken_, _cfg, _coll, "candidates");
+  getToken_(puppiMapToken_, _cfg, _coll, "puppiMap", false);
+  getToken_(puppiNoLepMapToken_, _cfg, _coll, "puppiNoLepMap", false);
 }
 
 void
 PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
   auto& inCands(getProduct_(_inEvent, candidatesToken_));
+  FloatMap const* inPuppiMap(0);
+  if (!puppiMapToken_.second.isUninitialized())
+    inPuppiMap = &getProduct_(_inEvent, puppiMapToken_);
+  FloatMap const* inPuppiNoLepMap(0);
+  if (!puppiNoLepMapToken_.second.isUninitialized())
+    inPuppiNoLepMap = &getProduct_(_inEvent, puppiNoLepMapToken_);
 
   auto& outCands(_outEvent.pfCandidates);
 
@@ -22,17 +30,30 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   for (auto& inCand : inCands) {
     ++iP;
 
+    auto&& ref(inCands.refAt(iP));
+
+    auto* inPacked(dynamic_cast<pat::PackedCandidate const*>(&inCand));
+
     auto& outCand(outCands.create_back());
 
     fillP4(outCand, inCand);
 
     outCand.q = inCand.charge();
     outCand.pftype = inCand.pdgId();
-    if (dynamic_cast<pat::PackedCandidate const*>(&inCand)) {
-      auto& patCand(static_cast<pat::PackedCandidate const&>(inCand));
-      outCand.puppiW = patCand.puppiWeight();
-      outCand.puppiWNoLep = patCand.puppiWeightNoLep();
+
+    if (inPuppiMap) {
+      // if puppi collection is given, use its weight
+      outCand.puppiW = (*inPuppiMap)[ref];
     }
+    else if (inPacked) {
+      // just fill what's stored in packed candidate
+      outCand.puppiW = inPacked->puppiWeight();
+    }
+
+    if (inPuppiNoLepMap)
+      outCand.puppiWNoLep = (*inPuppiNoLepMap)[ref];
+    else if (inPacked)
+      outCand.puppiWNoLep = inPacked->puppiWeightNoLep();
 
     ptrList.push_back(inCands.ptrAt(iP));
   }

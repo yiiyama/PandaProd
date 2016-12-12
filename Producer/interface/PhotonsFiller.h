@@ -20,6 +20,7 @@ class PhotonsFiller : public FillerBase {
   ~PhotonsFiller() {}
 
   void addOutput(TFile&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
 
@@ -51,7 +52,6 @@ class PhotonsFiller : public FillerBase {
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
 
-  bool useTrigger_;
   VString l1Filters_;
   VString hltFilters_;
   double minPt_;

@@ -16,7 +16,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   chIsoEA_(getParameter_<edm::FileInPath>(_cfg, "chIsoEA").fullPath()),
   nhIsoEA_(getParameter_<edm::FileInPath>(_cfg, "nhIsoEA").fullPath()),
   phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath()),
-  useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger"))
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
+  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
   getToken_(ebHitsToken_, _cfg, _coll, "ebHits");
@@ -48,9 +49,29 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   nhIsoLeakage_[1].Compile(getParameter_<std::string>(_cfg, "nhIsoLeakage.EE", "").c_str());
   phIsoLeakage_[0].Compile(getParameter_<std::string>(_cfg, "phIsoLeakage.EB", "").c_str());
   phIsoLeakage_[1].Compile(getParameter_<std::string>(_cfg, "phIsoLeakage.EE", "").c_str());
+}
 
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
-  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
+void
+PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (isRealData_) {
+    char const* genBranches[] = {
+      ".geniso",
+      ".genMatchDR",
+      ".matchedGen_"
+    };
+    for (char const* b : genBranches)
+      _eventBranches.emplace_back("!" + getName() + b);
+  }
+
+  if (!useTrigger_) {
+    char const* trgBranches[] = {
+      ".matchL1",
+      ".matchHLT"
+    };
+    for (char const* b : trgBranches)
+      _eventBranches.emplace_back("!" + getName() + b);
+  }
 }
 
 void
@@ -202,17 +223,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.etaWidth = sc.etaWidth();
     outPhoton.phiWidth = sc.phiWidth();
 
-    outPhoton.timeSpan = 0.;    
-    for (auto& hf : sc.hitsAndFractions()) {
-      auto* hit(findHit(hf.first));
-      if (!hit || hit->energy() < 1.)
-        continue;
-
-      double dt(outPhoton.time - hit->time());
-      if (std::abs(dt) > std::abs(outPhoton.timeSpan))
-        outPhoton.timeSpan = dt;
-    }
-
     auto&& seedRef(sc.seed());
     if (seedRef.isNonnull()) {
       auto& seed(*seedRef);
@@ -223,6 +233,19 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       auto* seedHit(findHit(seed.hitsAndFractions()[0].first));
       if (seedHit)
         outPhoton.time = seedHit->time();
+      else
+        outPhoton.time = 0.;
+    }
+
+    outPhoton.timeSpan = 0.;    
+    for (auto& hf : sc.hitsAndFractions()) {
+      auto* hit(findHit(hf.first));
+      if (!hit || hit->energy() < 1.)
+        continue;
+
+      double dt(outPhoton.time - hit->time());
+      if (std::abs(dt) > std::abs(outPhoton.timeSpan))
+        outPhoton.timeSpan = dt;
     }
 
     if (useTrigger_) {
@@ -246,7 +269,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     outPhoton.genMatchDR = -1.;
     outPhoton.matchedGen = 0;
-    outPhoton.genIso = 0.;
+    outPhoton.geniso = 0.;
 
     if (!_inEvent.isRealData()) {
       // TODO

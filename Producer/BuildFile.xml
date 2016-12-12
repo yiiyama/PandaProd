@@ -21,6 +21,7 @@
 <use name="HLTrigger/HLTcore"/>
 <use name="PandaTree/Objects"/>
 <use name="PandaTree/Framework"/>
+<use name="PandaUtilities/Substructure"/>
 <use name="clhep"/>
 <use name="fastjet"/>
 <use name="fastjet-contrib"/>

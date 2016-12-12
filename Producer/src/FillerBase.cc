@@ -2,6 +2,7 @@
 
 FillerBase::FillerBase(std::string const& _fillerName, edm::ParameterSet const& _cfg) :
   fillerName_(_fillerName),
+  enabled_(getParameter_<bool>(_cfg, "enabled")),
   isRealData_(getGlobalParameter_<bool>(_cfg, "isRealData")),
   useTrigger_(getGlobalParameter_<bool>(_cfg, "useTrigger"))
 {

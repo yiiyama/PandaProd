@@ -24,7 +24,8 @@ MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::B
       "!met.phiSmearDown"
     };
 
-    _eventBranches.insert(_eventBranches.end(), skipped, skipped + sizeof(skipped) / sizeof(char const*));
+    for (char const* b : skipped)
+      _eventBranches.emplace_back(b);
   }
 }
 

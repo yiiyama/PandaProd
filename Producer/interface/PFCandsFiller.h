@@ -4,6 +4,7 @@
 #include "FillerBase.h"
 
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
+#include "DataFormats/Common/interface/ValueMap.h"
 
 class PFCandsFiller : public FillerBase {
  public:
@@ -13,7 +14,11 @@ class PFCandsFiller : public FillerBase {
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:
+  typedef edm::ValueMap<float> FloatMap;
+
   NamedToken<reco::CandidateView> candidatesToken_;
+  NamedToken<FloatMap> puppiMapToken_;
+  NamedToken<FloatMap> puppiNoLepMapToken_;
 };
 
 #endif

@@ -6,7 +6,9 @@
 #include "DataFormats/PatCandidates/interface/Muon.h"
 
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
+  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
   getToken_(verticesToken_, _cfg, _coll, "vertices", "vertices");
@@ -18,9 +20,6 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
       throw edm::Exception(edm::errors::Configuration, "MuonsFiller")
         << "muonHLTFilters.size()";
   }
-
-  minPt_ = getParameter_<double>(_cfg, "minPt", -1.);
-  maxEta_ = getParameter_<double>(_cfg, "maxEta", 10.);
 }
 
 void
@@ -33,17 +32,20 @@ MuonsFiller::addOutput(TFile& _outputFile)
 }
 
 void
-JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+MuonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   if (isRealData_) {
     char const* genBranches[] = {
       ".tauDecay",
       ".hadDecay",
-      ".matchedGen"
+      ".matchedGen_"
     };
     for (char const* b : genBranches)
-      _eventBranches.push_back(("!" + getName() + b).c_str());
+      _eventBranches.emplace_back("!" + getName() + b);
   }
+
+  if (!useTrigger_)
+    _eventBranches.emplace_back("!" + getName() + ".matchHLT");
 }
 
 void

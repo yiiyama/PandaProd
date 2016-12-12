@@ -9,38 +9,36 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
   sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
   activeArea_(7., 1, 0.01),
-  areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
+  areaDef_(fastjet::active_area_explicit_ghosts, activeArea_),
+  computeSubstructure_(getParameter_<bool>(_cfg, "computeSubstructure", false))
 {
   getToken_(subjetsToken_, _cfg, _coll, "subjets", false);
   getToken_(btagsToken_, _cfg, _coll, "btags", false);
   getToken_(qglToken_, _cfg, _coll, "qgl", false);
 
-  computeSubstructure_ = getParameter_<bool>(_cfg, "computeSubstructure", false);
-  fillConstituents_ = getParameter_<bool>(_cfg, "fillConstituents", false);
-
   if (computeSubstructure_) {
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
     softdrop_ = new fastjet::contrib::SoftDrop(1., 0.15, R_);
-    //    ecfnManager_ = new ECFNManager();
+    ecfnManager_ = new ECFNManager();
     tau_ = new fastjet::contrib::Njettiness(fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::NormalizedMeasure(1., R_));
 
     //htt
-    // bool optimalR=true; bool doHTTQ=false;
-    // double minSJPt=0.; double minCandPt=0.;
-    // double sjmass=30.; double mucut=0.8;
-    // double filtR=0.3; int filtN=5;
-    // int mode=4; double minCandMass=0.;
-    // double maxCandMass=9999999.; double massRatioWidth=9999999.;
-    // double minM23Cut=0.; double minM13Cut=0.;
-    // double maxM13Cut=9999999.;  bool rejectMinR=false;
-    // htt_ = new fastjet::HEPTopTaggerV2(optimalR,doHTTQ,
-    //                                   minSJPt,minCandPt,
-    //                                   sjmass,mucut,
-    //                                   filtR,filtN,
-    //                                   mode,minCandMass,
-    //                                   maxCandMass,massRatioWidth,
-    //                                   minM23Cut,minM13Cut,
-    //                                   maxM13Cut,rejectMinR);
+    bool optimalR=true; bool doHTTQ=false;
+    double minSJPt=0.; double minCandPt=0.;
+    double sjmass=30.; double mucut=0.8;
+    double filtR=0.3; int filtN=5;
+    int mode=4; double minCandMass=0.;
+    double maxCandMass=9999999.; double massRatioWidth=9999999.;
+    double minM23Cut=0.; double minM13Cut=0.;
+    double maxM13Cut=9999999.;  bool rejectMinR=false;
+    htt_ = new fastjet::HEPTopTaggerV2(optimalR,doHTTQ,
+                                        minSJPt,minCandPt,
+                                        sjmass,mucut,
+                                        filtR,filtN,
+                                        mode,minCandMass,
+                                        maxCandMass,massRatioWidth,
+                                        minM23Cut,minM13Cut,
+                                        maxM13Cut,rejectMinR);
   }
 }
 
@@ -48,19 +46,29 @@ FatJetsFiller::~FatJetsFiller()
 {
   delete jetDefCA_;
   delete softdrop_;
-  //  delete ecfnManager_;
+  delete ecfnManager_;
   delete tau_;
-  //  delete htt_;
+  delete htt_;
 }
 
 void
 FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList& _runBranches) const
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
-  _eventBranches.push_back(("!" + getName() + ".matchedGenJet").c_str());
+  _eventBranches.emplace_back("!" + getName() + ".matchedGenJet_");
 
-  if (!fillConstituents_)
-    _eventBranches.push_back(("!" + getName() + ".constituents_").c_str());
+  if (!computeSubstructure_) {
+    char const* substrBranches[] = {
+      ".tau1SD",
+      ".tau2SD",
+      ".tau3SD",
+      ".htt_mass",
+      ".htt_frec",
+      ".ecfs"
+    };
+    for (char const* b : substrBranches)
+      _eventBranches.emplace_back("!" + getName() + b);
+  }
 }
 
 void
@@ -76,7 +84,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
   if (!qglToken_.second.isUninitialized())
     inQGL = &getProduct_(_inEvent, qglToken_);
 
-  //  double betas[] = {0.5, 1., 2., 4.};
+  double betas[] = {0.5, 1., 2., 4.};
 
   std::string substrLabel;
   if (getName() == "chsAK8Jets")
@@ -162,28 +170,28 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           VPseudoJet sdconstsFiltered(sdconsts.begin(), sdconsts.begin() + nFilter);
 
           // calculate ECFs
-//          for (unsigned iB(0); iB != 4; ++iB) {
-//            calcECFN(betas[iB], sdconstsFiltered, ecfnManager_); // calculate for all Ns and os
-//            for (int N : {1, 2, 3, 4}) {
-//              for (int order : {1, 2, 3}) {
-//                float ecf(ecfnManager_->ecfns[TString::Format("%i_%i", N, order)]);
-//                if (!outJet.set_ecf(order, N, iB, ecf))
-//                  throw std::runtime_error(TString::Format("FatJetsFiller Could not save o=%i, N=%i, iB=%i", order, N, iB).Data());
-//              } // o loop
-//            } // N loop
-//          } // beta loop
+          for (unsigned iB(0); iB != 4; ++iB) {
+            calcECFN(betas[iB], sdconstsFiltered, ecfnManager_); // calculate for all Ns and os
+            for (int N : {1, 2, 3, 4}) {
+              for (int order : {1, 2, 3}) {
+                float ecf(ecfnManager_->ecfns[TString::Format("%i_%i", N, order)]);
+                if (!outJet.set_ecf(order, N, iB, ecf))
+                  throw std::runtime_error(TString::Format("FatJetsFiller Could not save o=%i, N=%i, iB=%i", order, N, iB).Data());
+              } // o loop
+            } // N loop
+          } // beta loop
 
           outJet.tau3SD = tau_->getTau(3, sdconsts);
           outJet.tau2SD = tau_->getTau(2, sdconsts);
           outJet.tau1SD = tau_->getTau(1, sdconsts);
 
           // HTT
-//          fastjet::PseudoJet httJet(htt_->result(leadingJet));
-//          if (httJet != 0) {
-//            auto* s(static_cast<fastjet::HEPTopTaggerV2Structure*>(httJet.structure_non_const_ptr()));
-//            outJet.htt_mass = s->top_mass();
-//            outJet.htt_frec = s->fRec();
-//          }
+          fastjet::PseudoJet httJet(htt_->result(leadingJet));
+          if (httJet != 0) {
+            auto* s(static_cast<fastjet::HEPTopTaggerV2Structure*>(httJet.structure_non_const_ptr()));
+            outJet.htt_mass = s->top_mass();
+            outJet.htt_frec = s->fRec();
+          }
         }
         else
           throw std::runtime_error("PandaProd::Ntupler::FatJetFiller: Jet could not be clustered");

@@ -64,17 +64,16 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
 
     auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
     try {
-      if (!fillerPSet.getUntrackedParameter<bool>("enabled"))
-        continue;
-
       auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
 
       if (printLevel_ > 0)
         std::cerr << "Constructing " << className << "::" << fillerName << std::endl;
 
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
-      filler->setObjectMap(objectMaps_[fillerName]);
       fillers_.push_back(filler);
+
+      if (filler->enabled())
+        filler->setObjectMap(objectMaps_[fillerName]);
     }
     catch (std::exception& ex) {
       edm::LogError("PandaProducer") << "Configuration error in " << fillerName;
@@ -96,6 +95,9 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
   // Fill "all events" information
   for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     try {
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fillAll()" << std::endl;
@@ -136,6 +138,9 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   outEvent_.eventNumber = _event.id().event();
 
   for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     try {
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fill()" << std::endl;
@@ -150,6 +155,9 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
   // Set inter-branch references
   for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     try {
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->setRefs()" << std::endl;
@@ -173,6 +181,9 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
   outRun_.run = _run.run();
 
   for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     try {
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fillBeginRun()" << std::endl;
@@ -190,6 +201,9 @@ void
 PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
 {
   for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     try {
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fillEndRun()" << std::endl;
@@ -212,16 +226,20 @@ PandaProducer::beginJob()
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
 
-  panda::utils::BranchList eventBranches{{"*"}};
-  panda::utils::BranchList runBranches{{"*"}};
+  panda::utils::BranchList eventBranches;
+  panda::utils::BranchList runBranches;
   for (auto* filler : fillers_)
     filler->branchNames(eventBranches, runBranches);
 
   outEvent_.book(*eventTree_, eventBranches);
   outRun_.book(*runTree_, runBranches);
 
-  for (auto* filler : fillers_)
+  for (auto* filler : fillers_) {
+    if (!filler->enabled())
+      continue;
+
     filler->addOutput(*outputFile_);
+  }
 
   eventCounter_ = new TH1D("eventcounter", "", 2, 0., 2.);
   eventCounter_->GetXaxis()->SetBinLabel(1, "all");

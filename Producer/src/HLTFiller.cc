@@ -26,6 +26,13 @@ HLTFiller::addOutput(TFile& _outputFile)
 }
 
 void
+HLTFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  if (!enabled())
+    _eventBranches.emplace_back("!triggers");
+}
+
+void
 HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup const& _setup)
 {
   bool configChanged(false);

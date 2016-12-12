@@ -11,7 +11,7 @@ void
 RhoFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   _outEvent.rho = getProduct_(_inEvent, rhoToken_);
-  _outEvent.rhoCentralCalo = getProduct_(_inEvent, rhoToken_);
+  _outEvent.rhoCentralCalo = getProduct_(_inEvent, rhoCentralCaloToken_);
 }
 
 DEFINE_TREEFILLER(RhoFiller);

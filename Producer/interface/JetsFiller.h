@@ -43,6 +43,8 @@ class JetsFiller : public FillerBase {
   double R_{0.4};
   double minPt_{15.};
   double maxEta_{4.7};
+
+  bool fillConstituents_{false};
 };
 
 #endif

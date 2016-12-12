@@ -12,6 +12,7 @@ class HLTFiller : public FillerBase {
   ~HLTFiller();
 
   void addOutput(TFile&) override;
+  void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 

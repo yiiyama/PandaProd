@@ -70,7 +70,7 @@ def makeMET(process, isData, pfCandidates, jetSource, jetFlavor, postfix = ''):
         pfMet = addattr('pfMet',
             PFMET_cfi.pfMet.clone(
                 src = pfCandidates,
-                calculateSignificance = False
+                calculateSignificance = False # done in PAT
             )
         )
 

@@ -6,44 +6,45 @@ recursive-mv() {
 
   SRC=$1
   TARG=$2
+  
+  mv $SRC $TARG/ 2>/dev/null && return
+
   for F in $(ls $SRC)
   do
-    mv $SRC/$F $TARG/ 2>/dev/null || recursive-mv $SRC/$F $TARG/$F
+    recursive-mv $SRC/$F $TARG/$(basename $SRC)
   done
 }
 
 install-pkg() {
-  GITGROUP=$1
+  ACCOUNT=$1
   REF=$2
   shift 2
   PKGS="$@"
 
   mkdir tmp
   cd tmp
-  git clone -n https://github.com/$GITGROUP/cmssw.git
+  git clone -n https://github.com/$ACCOUNT/cmssw.git
   cd cmssw
   git fetch origin
-  git checkout $REF $PKGS
+  if git branch -r | grep origin/$REF
+  then
+    # this is a branch name
+    git checkout -t origin/$REF
+  else
+    # this is a commit
+    git checkout $REF 2>/dev/null
+  fi
 
-  recursive-mv $PWD $CMSSW_BASE/src
+  for PKG in $PKGS
+  do
+    recursive-mv $PWD/$PKG $CMSSW_BASE/src
+  done
 
   cd ../..
-  rm -rf tmp
+#  rm -rf tmp
 }
 
-# To figure out which packages a specific repository branch updates with respect to your base workspace, go to github
-# and find the commit where the developper branched off. Then
-#  scram p CMSSW CMSSW_{release}
-#  cd CMSSW_{release}/src
-#  cmsenv
-#  git cms-init
-#  git remote add <name> <url>
-#  git fetch <name>
-#  git checkout -t <name>/<branch>
-#  git diff --name-only {branch-off commit}..HEAD
-#
-# You should delete the CMSSW area once done. git cms-init pulls in so many files that are unnecessary.
+# Use PandaProd/Producer/scripts/cms-git-diff to find out which packages should be checked out from each branch.
 
-install-pkg cms-met origin/fromCMSSW_8_0_20_postICHEPfilter RecoMET/METFilters
-install-pkg emanueledimarco origin/ecal_smear_fix_80X EgammaAnalysis/ElectronTools
-git clone -b ICHEP2016_v2 https://github.com/ECALELFS/ScalesSmearings.git $CMSSW_BASE/src/EgammaAnalysis/ElectronTools/data/ScalesSmearings
+install-pkg cms-met fromCMSSW_8_0_20_postICHEPfilter RecoMET/METFilters
+install-pkg ahinzmann METRecipe_8020_Spring16 CommonTools/PileupAlgos PhysicsTools/PatAlgos PhysicsTools/PatUtils RecoMET/METAlgorithms RecoMET/METAlgorithms

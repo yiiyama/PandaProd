@@ -7,6 +7,8 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
+#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
+#include "DataFormats/HepMCCandidate/interface/GenStatusFlags.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
 #include <cmath>
@@ -24,6 +26,8 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
+  getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
+  getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
   getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
@@ -35,12 +39,13 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso", false);
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
+
   if (useTrigger_) {
-    getToken_(triggerObjectsToken_, _cfg, _coll, "common", "triggerObjects");
-    hltFilters_ = getParameter_<VString>(_cfg, "hltFilters");
-    if (hltFilters_.size() != panda::nElectronHLTObjects)
-      throw edm::Exception(edm::errors::Configuration, "ElectronsFiller")
-        << "electronHLTFilters.size()";
+    for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
+      std::string name(panda::ElectronTriggerObjectName[iT]); // "f<trigger filter name>"
+      auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
+      triggerObjects_[iT].insert(filters.begin(), filters.end());
+    }
   }
 }
 
@@ -48,7 +53,7 @@ void
 ElectronsFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
-  auto* t(panda::makeElectronHLTObjectTree());
+  auto* t(panda::makeElectronTriggerObjectTree());
   t->Write();
   delete t;
 }
@@ -58,16 +63,13 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
 {
   if (isRealData_) {
     char const* genBranches[] = {
-      ".tauDecay",
-      ".hadDecay",
       ".matchedGen_"
     };
     for (char const* b : genBranches)
       _eventBranches.emplace_back("!" + getName() + b);
   }
-  if (!useTrigger_) {
-    _eventBranches.emplace_back("!" + getName() + ".matchHLT");
-  }
+  if (!useTrigger_)
+    _eventBranches.emplace_back("!" + getName() + ".triggerMatch");
 }
 
 void
@@ -75,6 +77,8 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
+  auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
+  auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
   auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
@@ -91,16 +95,19 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   double rho(getProduct_(_inEvent, rhoToken_));
   double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
 
-  std::vector<pat::TriggerObjectStandAlone const*> hltObjects[panda::nElectronHLTObjects];
-  if (useTrigger_) {
-    auto& triggerObjects(getProduct_(_inEvent, triggerObjectsToken_));
-    for (auto& obj : triggerObjects) {
-      for (unsigned iF(0); iF != panda::nElectronHLTObjects; ++iF) {
-        if (obj.hasFilterLabel(hltFilters_[iF]))
-          hltObjects[iF].push_back(&obj);
-      }
-    }
-  }
+  auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
+      EcalRecHitCollection const* hits(0);
+      if (id.subdetId() == EcalBarrel)
+        hits = &ebHits;
+      else
+        hits = &eeHits;
+
+      auto&& hitItr(hits->find(id));
+      if (hitItr == hits->end())
+        return 0;
+
+      return &*hitItr;
+    });
 
   auto& outElectrons(_outEvent.electrons);
 
@@ -162,6 +169,17 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       outElectron.hcaliso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
     }
 
+    auto&& seedRef(sc.seed());
+    if (seedRef.isNonnull()) {
+      auto& seed(*seedRef);
+      
+      auto* seedHit(findHit(seed.seed()));
+      if (seedHit)
+        outElectron.eseed = seedHit->energy();
+      else
+        outElectron.eseed = 0.;
+    }
+
     unsigned iPh(0);
     for (auto& photon : photons) {
       if (photon.superCluster() == scRef) {
@@ -172,22 +190,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       }
     }
 
-    if (useTrigger_) {
-      for (unsigned iF(0); iF != panda::nElectronHLTObjects; ++iF) {
-        for (auto* obj : hltObjects[iF]) {
-          if (reco::deltaR(inElectron, *obj) < 0.3) {
-            outElectron.matchHLT[iF] = true;
-            break;
-          }
-        }
-      }
-    }
-
-    if (!_inEvent.isRealData()) {
-      outElectron.tauDecay = false;
-      outElectron.hadDecay = false;
-    }
-
     ptrList.push_back(inElectrons.ptrAt(iEl));
   }
 
@@ -195,29 +197,91 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto originalIndices(outElectrons.sort(panda::ptGreater));
 
   // make reco <-> panda mapping
-  auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::PElectron>());
-  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::PElectron>());
+  auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>());
+  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
+  auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
   
   for (unsigned iP(0); iP != outElectrons.size(); ++iP) {
     auto& outElectron(outElectrons[iP]);
     unsigned idx(originalIndices[iP]);
     eleEleMap.add(ptrList[idx], outElectron);
     scEleMap.add(edm::refToPtr(ptrList[idx]->superCluster()), outElectron);
+
+    if (!isRealData_) {
+      auto& inElectron(*ptrList[idx]);
+
+      if (dynamic_cast<pat::Electron const*>(&inElectron)) {
+        auto& patElectron(static_cast<pat::Electron const&>(inElectron));
+        auto ref(patElectron.genParticleRef());
+        if (ref.isNonnull())
+          genEleMap.add(edm::refToPtr(ref), outElectron);
+      }
+    }
   }
 }
 
 void
 ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
-  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::PElectron>());
+  auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
 
-  auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::PSuperCluster>().fwdMap);
+  auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
 
   for (auto& link : scEleMap.bwdMap) { // panda -> edm
     auto& outElectron(*link.first);
     auto& scPtr(link.second);
 
     outElectron.superCluster = scMap.at(scPtr);
+  }
+
+  if (!isRealData_) {
+    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
+
+    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+
+    for (auto& link : genEleMap.bwdMap) {
+      auto& outElectron(*link.first);
+      auto& genPtr(link.second);
+
+      outElectron.matchedGen = genMap.at(genPtr);
+    }
+  }
+
+  if (useTrigger_) {
+    auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
+
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::nElectronTriggerObjects];
+
+    // loop over the trigger filters we are interested in
+    for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
+      // loop over all trigger objects (and their associated filter names)
+      for (auto& objAndNames : objMap) { // (TO ptr, VString)
+        VString const& names(*objAndNames.second);
+        // loop over the associated filter names
+        for (auto& name : names) {
+          if (triggerObjects_[iT].find(name) != triggerObjects_[iT].end()) {
+            triggerObjects[iT].push_back(&*objAndNames.first);
+            break;
+          }
+        }
+      }
+    }
+
+    auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>().fwdMap);
+
+    for (auto& link : eleEleMap) { // edm -> panda
+      auto& inElectron(*link.first);
+      auto& outElectron(*link.second);
+
+      for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
+        for (auto* obj : triggerObjects[iT]) {
+          if (reco::deltaR(inElectron, *obj) < 0.3) {
+            outElectron.triggerMatch[iT] = true;
+            break;
+          }
+        }
+      }
+    }
   }
 }
 

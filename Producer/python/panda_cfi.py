@@ -9,13 +9,24 @@ panda = cms.EDAnalyzer('PandaProducer',
     printLevel = cms.untracked.uint32(0),
     fillers = cms.untracked.PSet(
         common = cms.untracked.PSet(
-            triggerObjects = cms.untracked.string('selectedPatTrigger')
+            triggerObjects = cms.untracked.string('selectedPatTrigger'),
+            genEventInfo = cms.untracked.string('generator'),
+            lheEvent = cms.untracked.string('externalLHEProducer'),
+            lheRun = cms.untracked.string('externalLHEProducer'),
+            finalStateParticles = cms.untracked.string('packedGenParticles'),
+            genParticles = cms.untracked.string('prunedGenParticles'),
+            pfCandidates = cms.untracked.string('packedPFCandidates'),
+            ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
+            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits')
         ),
         chsAK4Jets = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Jets'),
             jets = cms.untracked.string('slimmedJets'),
-            genJets = cms.untracked.string('ak4GenJetsNoNu'),
+            genJets = cms.untracked.string('slimmedGenJets'),
+            csv = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
+            puid = cms.untracked.string('pileupJetId:fullDiscriminant'),
+            qgl = cms.untracked.string('QGTagger:qgLikelihood'),
             R = cms.untracked.double(0.4),
             minPt = cms.untracked.double(15.),
             maxEta = cms.untracked.double(4.7)
@@ -24,7 +35,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Jets'),
             jets = cms.untracked.string('selectedPatJetsPuppi'),
-            genJets = cms.untracked.string('ak4GenJetsNoNu'),
+            genJets = cms.untracked.string('slimmedGenJets'),
+            csv = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
             R = cms.untracked.double(0.4),
             minPt = cms.untracked.double(15.),
             maxEta = cms.untracked.double(4.7)
@@ -38,6 +50,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             subjets = cms.untracked.string('patSubjetsAK8PFchs'),
             njettiness = cms.untracked.string('NjettinessAK8PFchs'),
             sdKinematics = cms.untracked.string('sdKinematicsAK8PFchs'),
+            subjetBtag = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
+            subjetQGL = cms.untracked.string('subQGTagAK8PFchs:qgLikelihood'),
             computeSubstructure = cms.untracked.bool(True),
             fillConstituents = cms.untracked.bool(False),
             minPt = cms.untracked.double(15.),
@@ -52,6 +66,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             subjets = cms.untracked.string('patSubjetsAK8PFPuppi'),
             njettiness = cms.untracked.string('NjettinessAK8PFPuppi'),
             sdKinematics = cms.untracked.string('sdKinematicsAK8PFPuppi'),
+            subjetBtag = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
+            subjetQGL = cms.untracked.string('subQGTagAK8PFPuppi:qgLikelihood'),
             computeSubstructure = cms.untracked.bool(True),
             fillConstituents = cms.untracked.bool(False),
             minPt = cms.untracked.double(15.),
@@ -66,6 +82,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             subjets = cms.untracked.string('patSubjetsCA15PFchs'),
             njettiness = cms.untracked.string('NjettinessCA15PFchs'),
             sdKinematics = cms.untracked.string('sdKinematicsCA15PFchs'),
+            subjetBtag = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
+            subjetQGL = cms.untracked.string('subQGTagCA15PFchs:qgLikelihood'),
             computeSubstructure = cms.untracked.bool(True),
             fillConstituents = cms.untracked.bool(False),
             minPt = cms.untracked.double(15.),
@@ -80,6 +98,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             subjets = cms.untracked.string('patSubjetsCA15PFPuppi'),
             njettiness = cms.untracked.string('NjettinessCA15PFPuppi'),
             sdKinematics = cms.untracked.string('sdKinematicsCA15PFPuppi'),
+            subjetBtag = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
+            subjetQGL = cms.untracked.string('subQGTagCA15PFPuppi:qgLikelihood'),
             computeSubstructure = cms.untracked.bool(True),
             fillConstituents = cms.untracked.bool(False),
             minPt = cms.untracked.double(15.),
@@ -96,19 +116,19 @@ panda = cms.EDAnalyzer('PandaProducer',
             combIsoEA = cms.untracked.FileInPath(egmidconf.electronCombIsoEA),
             ecalIsoEA = cms.untracked.FileInPath(egmidconf.electronEcalIsoEA),
             hcalIsoEA = cms.untracked.FileInPath(egmidconf.electronHcalIsoEA),
-            hltFilters = cms.untracked.vstring(
-                'dummy',
-                'dummy',
-                'hltEG120HEFilter',
-                'hltEG135HEFilter',
-                'hltEG165HE10Filter',
-                'hltEG175HEFilter',
-                'hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter'
+            triggerObjects = cms.untracked.PSet(
+                El23Loose = cms.untracked.vstring('hltEle23WPLooseGsfTrackIsoFilter'),
+                El27Loose = cms.untracked.vstring('hltEle27noerWPLooseGsfTrackIsoFilter'),
+                El120Ph = cms.untracked.vstring('hltEG120HEFilter'),
+                El135Ph = cms.untracked.vstring('hltEG135HEFilter'),
+                El165HE10Ph = cms.untracked.vstring('hltEG165HE10Filter'),
+                El175Ph = cms.untracked.vstring('hltEG175HEFilter'),
+                El22EBR9IsoPh = cms.untracked.vstring('hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                El36EBR9IsoPh = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                El50EBR9IsoPh = cms.untracked.vstring('hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                El75EBR9IsoPh = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                El90EBR9IsoPh = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                El120EBR9IsoPh = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
             ),
             minPt = cms.untracked.double(-1.),
             maxEta = cms.untracked.double(10.)
@@ -117,11 +137,11 @@ panda = cms.EDAnalyzer('PandaProducer',
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Muons'),
             muons = cms.untracked.string('slimmedMuons'),
-            hltFilters = cms.untracked.vstring(
-                'hltL3crIsoL1sMu18L1f0L2f10QL3f20QL3trkIsoFiltered0p09',
-                'hltL3fL1sMu18L1f0Tkf20QL3trkIsoFiltered0p09',
-                'hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09',
-                'hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p09'
+            triggerObjects = cms.untracked.PSet(
+                Mu20 = cms.untracked.vstring('hltL3crIsoL1sMu18L1f0L2f10QL3f20QL3trkIsoFiltered0p09'),
+                MuTrk20 = cms.untracked.vstring('hltL3fL1sMu18L1f0Tkf20QL3trkIsoFiltered0p09'),
+                Mu24 = cms.untracked.vstring('hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09'),
+                Mu27 = cms.untracked.vstring('hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p09')
             ),
             minPt = cms.untracked.double(-1.),
             maxEta = cms.untracked.double(10.)
@@ -156,40 +176,38 @@ panda = cms.EDAnalyzer('PandaProducer',
                 EB = cms.untracked.string('0.0053 * x'),
                 EE = cms.untracked.string('0.0034 * x')
             ),
-            ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
-            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits'),
-            l1Filters = cms.untracked.vstring(
-                'hltL1sSingleEG34IorSingleEG40',
-                'hltL1sSingleEG40IorSingleJet200',
-                'hltL1sSingleEG34IorSingleEG40IorSingleJet200',
-                'hltL1sSingleEG24',
-                'hltL1sSingleEG30',
-                'hltL1sSingleEG40'
-            ),
-            hltFilters = cms.untracked.vstring(
-                'hltEG120HEFilter',
-                'hltEG135HEFilter',
-                'hltEG165HE10Filter',
-                'hltEG175HEFilter',
-                'hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter',
-                'hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter'
+            triggerObjects = cms.untracked.PSet(
+                SEG34IorSEG40 = cms.untracked.vstring('hltL1sSingleEG34IorSingleEG40'),
+                SEG40IorSJet200 = cms.untracked.vstring('hltL1sSingleEG40IorSingleJet200'),
+                SEG34IorSEG40IorSJet200 = cms.untracked.vstring('hltL1sSingleEG34IorSingleEG40IorSingleJet200'),
+                SEG24 = cms.untracked.vstring('hltL1sSingleEG24'),
+                SEG30 = cms.untracked.vstring('hltL1sSingleEG30'),
+                SEG40 = cms.untracked.vstring('hltL1sSingleEG40'),
+                Ph120 = cms.untracked.vstring('hltEG120HEFilter'),
+                Ph135 = cms.untracked.vstring('hltEG135HEFilter'),
+                Ph165HE10 = cms.untracked.vstring('hltEG165HE10Filter'),
+                Ph175 = cms.untracked.vstring('hltEG175HEFilter'),
+                Ph22EBR9Iso = cms.untracked.vstring('hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                Ph36EBR9Iso = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                Ph50EBR9Iso = cms.untracked.vstring('hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                Ph75EBR9Iso = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                Ph90EBR9Iso = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+                Ph120EBR9Iso = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
             )
         ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('PFCands'),
-            candidates = cms.untracked.string('packedPFCandidates'),
             puppi = cms.untracked.string('puppi'),
             puppiNoLep = cms.untracked.string('puppiForMET')
+        ),
+        partons = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('Partons')
         ),
         genParticles = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('GenParticles'),
-            genParticles = cms.untracked.string('prunedGenParticles'),
             pdgIds = cms.untracked.vstring('6', '11', '13', '15', '21-25', '1000000-'),
             minPt = cms.untracked.double(-1.)
         ),
@@ -216,7 +234,13 @@ panda = cms.EDAnalyzer('PandaProducer',
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Met'),
             met = cms.untracked.string('slimmedMETs'),
-            noHFMet = cms.untracked.string('slimmedMETsNoHF')
+            noHFMet = cms.untracked.string('slimmedMETsNoHF'),
+            fillOthers = cms.untracked.bool(True)
+        ),
+        puppiMet = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('Met'),
+            met = cms.untracked.string('slimmedMETsPuppi')
         ),
         rho = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
@@ -238,10 +262,13 @@ panda = cms.EDAnalyzer('PandaProducer',
         ),
         weights = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
-            filler = cms.untracked.string('Weights'),
-            genEventInfo = cms.untracked.string('generator'),
-            lheEvent = cms.untracked.string('externalLHEProducer'),
-            lheRun = cms.untracked.string('externalLHEProducer')
+            filler = cms.untracked.string('Weights')
+        ),
+        recoil = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('Recoil'),
+            categories = cms.untracked.string('MonoXFilter:categories'),
+            max = cms.untracked.string('MonoXFilter:max')
         )
     )
 )

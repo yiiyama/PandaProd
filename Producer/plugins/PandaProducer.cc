@@ -7,6 +7,7 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/Common/interface/Handle.h"
+#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 
 #include "PandaTree/Objects/interface/Event.h"
 #include "PandaTree/Objects/interface/Run.h"
@@ -27,6 +28,8 @@ public:
   ~PandaProducer();
 
 private:
+  typedef edm::View<pat::TriggerObjectStandAlone> TriggerObjectView;
+
   void analyze(edm::Event const&, edm::EventSetup const&) override;
   void beginRun(edm::Run const&, edm::EventSetup const&) override;
   void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -38,6 +41,8 @@ private:
 
   VString selectEvents_;
   edm::EDGetTokenT<edm::TriggerResults> skimResultsToken_;
+  edm::EDGetTokenT<edm::TriggerResults> hltResultsToken_;
+  edm::EDGetTokenT<TriggerObjectView> triggerObjectsToken_;
 
   TFile* outputFile_{0};
   TTree* eventTree_{0};
@@ -46,12 +51,16 @@ private:
   panda::Event outEvent_;
   panda::Run outRun_;
 
+  bool useTrigger_;
+  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
+  std::vector<VString> triggerObjectNames_;
   unsigned printLevel_;
 };
 
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   selectEvents_(_cfg.getUntrackedParameter<VString>("SelectEvents")),
   skimResultsToken_(consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"))), // no process name -> pick up the trigger results from the current process
+  useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger", true)),
   printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0))
 {
   auto&& coll(consumesCollector());
@@ -79,6 +88,11 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
       edm::LogError("PandaProducer") << "Configuration error in " << fillerName;
       throw;
     }
+  }
+
+  if (useTrigger_) {
+    hltResultsToken_ = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults", "", "HLT"));
+    triggerObjectsToken_ = consumes<TriggerObjectView>(edm::InputTag(fillersCfg.getUntrackedParameterSet("common").getUntrackedParameter<std::string>("triggerObjects")));
   }
 }
 
@@ -133,9 +147,38 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   for (auto& mm : objectMaps_)
     mm.second.clearMaps();
 
+  if (useTrigger_) {
+    // Unpack trigger object names
+    edm::Handle<edm::TriggerResults> triggerResultsHandle;
+    _event.getByToken(hltResultsToken_, triggerResultsHandle);
+    auto& triggerNames(_event.triggerNames(*triggerResultsHandle));
+
+    edm::Handle<TriggerObjectView> triggerObjectsHandle;
+    _event.getByToken(triggerObjectsToken_, triggerObjectsHandle);
+    auto& triggerObjects(*triggerObjectsHandle);
+
+    auto& objMap(objectMaps_["global"].get<pat::TriggerObjectStandAlone, VString>());
+    triggerObjectNames_.assign(triggerObjects.size(), VString());
+
+    unsigned iObj(0);
+    for (auto& obj : triggerObjects) {
+      // need to create a copy to perform the non-const action of unpacking
+      pat::TriggerObjectStandAlone copy(obj);
+      copy.unpackPathNames(triggerNames);
+      
+      for (auto& label : obj.filterLabels())
+        triggerObjectNames_[iObj].push_back(label);
+
+      // link the pat trigger object to the list of labels
+      objMap.add(triggerObjects.ptrAt(iObj), triggerObjectNames_[iObj]);
+      ++iObj;
+    }
+  }
+
   outEvent_.runNumber = _event.id().run();
   outEvent_.lumiNumber = _event.luminosityBlock();
   outEvent_.eventNumber = _event.id().event();
+  outEvent_.isData = _event.isRealData();
 
   for (auto* filler : fillers_) {
     if (!filler->enabled())
@@ -234,12 +277,8 @@ PandaProducer::beginJob()
   outEvent_.book(*eventTree_, eventBranches);
   outRun_.book(*runTree_, runBranches);
 
-  for (auto* filler : fillers_) {
-    if (!filler->enabled())
-      continue;
-
+  for (auto* filler : fillers_)
     filler->addOutput(*outputFile_);
-  }
 
   eventCounter_ = new TH1D("eventcounter", "", 2, 0., 2.);
   eventCounter_->GetXaxis()->SetBinLabel(1, "all");
@@ -249,6 +288,7 @@ PandaProducer::beginJob()
 void 
 PandaProducer::endJob()
 {
+  // writes out all outputs that are still hanging in the directory
   outputFile_->cd();
   outputFile_->Write();
   delete outputFile_;

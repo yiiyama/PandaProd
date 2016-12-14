@@ -43,6 +43,8 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
     fillP4(outTau, inTau);
 
+    outTau.q = inTau.charge();
+
     if (dynamic_cast<pat::Tau const*>(&inTau)) {
       auto& patTau(static_cast<pat::Tau const&>(inTau));
       outTau.decayMode = patTau.tauID("decayModeFinding") > 0.5;
@@ -64,7 +66,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
   // export panda <-> reco mapping
 
-  auto& objectMap(objectMap_->get<reco::BaseTau, panda::PTau>());
+  auto& objectMap(objectMap_->get<reco::BaseTau, panda::Tau>());
 
   for (unsigned iP(0); iP != outTaus.size(); ++iP) {
     auto& outTau(outTaus[iP]);

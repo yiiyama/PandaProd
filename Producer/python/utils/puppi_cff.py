@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
 # Copied from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+# branch ahinzmann:METRecipe_8020_Spring16
 from CommonTools.PileupAlgos.Puppi_cff import puppi
 puppi.candName = 'packedPFCandidates'
 puppi.vertexName = 'offlineSlimmedPrimaryVertices'

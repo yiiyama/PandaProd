@@ -5,7 +5,6 @@
 
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
 class MuonsFiller : public FillerBase {
@@ -16,16 +15,15 @@ class MuonsFiller : public FillerBase {
   void addOutput(TFile&) override;
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void setRefs(ObjectMapStore const&) override;
 
  protected:
   typedef edm::View<reco::Muon> MuonView;
 
   NamedToken<MuonView> muonsToken_;
   NamedToken<reco::VertexCollection> verticesToken_;
-  NamedToken<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
 
-  bool useTrigger_;
-  VString hltFilters_;
+  std::set<std::string> triggerObjects_[panda::nElectronTriggerObjects];
   double minPt_{-1.};
   double maxEta_{10.};
 };

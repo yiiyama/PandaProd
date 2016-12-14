@@ -3,8 +3,7 @@ import FWCore.ParameterSet.Config as cms
 from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
 from RecoJets.JetProducers.ak4GenJets_cfi import ak4GenJets
 import RecoJets.JetProducers.nJettinessAdder_cfi as nJettinessAdder_cfi
-from RecoBTag.Configuration.RecoBTag_cff import *
-from RecoJets.JetProducers.QGTagger_cfi import *
+from RecoJets.JetProducers.QGTagger_cfi import QGTagger
 import PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi as jetProducer_cfi
 import PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi as jetSelector_cfi
 import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
@@ -45,7 +44,7 @@ def initFatJets(process, isData, labels):
 
     if not isData and not hasattr(process, 'packedGenParticlesForJetsNoNu'):
         genParticlesNoNu = addattr('packedGenParticlesForJetsNoNu',
-            packedGenParticlesForJetsNoNu = cms.EDFilter("CandPtrSelector",
+            cms.EDFilter("CandPtrSelector",
                 src = cms.InputTag(finalStateGenParticles),
                 cut = cms.string("abs(pdgId) != 12 && abs(pdgId) != 14 && abs(pdgId) != 16")
             )
@@ -187,7 +186,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
   
     ### subjet qg-tagging ###
 
-    addattr('subQGTag',
+    subQGTag = addattr('subQGTag',
         QGTagger.clone(
             srcJets = subjets,
             jetsLabel = cms.string('QGL_AK4PFchs')
@@ -296,6 +295,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
             addJetFlavourInfo = False
         )
     )
+    addattr.last.userData.userFloats.src.append(cms.InputTag(subQGTag.getModuleLabel(), 'qgLikelihood'))
 
     ## MERGE SUBJETS BACK ##
     jetMerger = addattr('jetMerger',

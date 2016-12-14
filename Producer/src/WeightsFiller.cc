@@ -12,80 +12,106 @@ WeightsFiller::WeightsFiller(std::string const& _name, edm::ParameterSet const& 
   FillerBase(_name, _cfg)
 {
   if (!isRealData_) {
-    getToken_(genInfoToken_, _cfg, _coll, "genEventInfo");
-    getToken_(lheEventToken_, _cfg, _coll, "lheEvent");
-    getTokenRun_(lheRunToken_, _cfg, _coll, "lheRun");
+    getToken_(genInfoToken_, _cfg, _coll, "common", "genEventInfo");
+    getToken_(lheEventToken_, _cfg, _coll, "common", "lheEvent");
+    getTokenRun_(lheRunToken_, _cfg, _coll, "common", "lheRun");
   }
 }
 
 void
 WeightsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  // reweightDW booked dynamically at the first event
-  _eventBranches.push_back("!reweightDW");
+  if (isRealData_)
+    _eventBranches.push_back("!genReweight");
+
+  // Turned off temporarily
+  _eventBranches.push_back("!genReweight.genParam");
 }
 
 void
 WeightsFiller::addOutput(TFile& _outputFile)
 {
-  outputFile_ = &_outputFile;
-  _outputFile.cd();
-   hSumW_ = new TH1D("hSumW", "SumW", 1, 0., 1.);
+  TDirectory::TContext context(&_outputFile);
+
+  if (isRealData_)
+    hSumW_ = new TH1D("hSumW", "SumW", 1, 0., 1.);
+  else
+    hSumW_ = new TH1D("hSumW", "SumW", 8, 0., 8.);
+
   hSumW_->GetXaxis()->SetBinLabel(1, "Nominal");
+  if (!isRealData_) {
+    char const* labels[] = {
+      "r1f2",
+      "r1f5",
+      "r2f1",
+      "r2f2",
+      "r5f1",
+      "r5f5",
+      "pdf"
+    };
+
+    for (unsigned iL(0); iL != sizeof(labels) / sizeof(char const*); ++iL)
+      hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
+
+    groupTree_ = new TTree("weightGroups", "weightGroups");
+    gcombine_ = new TString;
+    gtype_ = new TString;
+    groupTree_->Branch("combine", "TString", &gcombine_);
+    groupTree_->Branch("type", "TString", &gtype_);
+
+    weightTree_ = new TTree("weights", "weights");
+    wtitle_ = new TString;
+    weightTree_->Branch("id", &wid_, "id/i");
+    weightTree_->Branch("title", "TString", &wtitle_);
+    weightTree_->Branch("group", &gid_, "group/i");
+  }
 }
 
 void
-WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
+WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
-  if (_inEvent.isRealData())
+  if (_inEvent.isRealData()) {
     _outEvent.weight = 1.;
-  else {
-    auto& genInfo(getProduct_(_inEvent, genInfoToken_));
-    _outEvent.weight = genInfo.weight();
+    return;
+  }
 
-    auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
-    if (lheEvent) {
-      if (weightIndices_.size() == 0) {
-        // first event
-        if (lheEvent->weights().size() > sizeof(_outEvent.reweightDW) / sizeof(float))
-          throw std::runtime_error("Too many reweight factors in input");
+  auto& genInfo(getProduct_(_inEvent, genInfoToken_));
+  _outEvent.weight = genInfo.weight();
 
-        initIndices_(*lheEvent);
-        auto* events(static_cast<TTree*>(outputFile_->Get("events")));
-        panda::utils::book(*events, "", "reweightDW", TString::Format("[%d]", int(lheEvent->weights().size())), 'F', _outEvent.reweightDW, {"*"});
-      }
+  auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
+  if (lheEvent) {
+    double weights[7]{};
+    getLHEWeights_(*lheEvent, weights);
 
-      std::fill_n(_outEvent.reweightDW, sizeof(_outEvent.reweightDW) / sizeof(float), 0.);
-
-      for (auto& wgt : lheEvent->weights()) {
-        unsigned idx(weightIndices_.at(wgt.id));
-        _outEvent.reweightDW[idx] = wgt.wgt / lheEvent->originalXWGTUP() - 1.;
-      }
-    }
+    _outEvent.genReweight.r1f2DW = weights[0] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.r1f5DW = weights[1] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.r2f1DW = weights[2] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.r2f2DW = weights[3] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.r5f1DW = weights[4] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.r5f5DW = weights[5] / lheEvent->originalXWGTUP() - 1.;
+    _outEvent.genReweight.pdfDW = weights[6] / lheEvent->originalXWGTUP() - 1.;
   }
 }
 
 void
 WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
 {
-  if (_inEvent.isRealData())
+  if (_inEvent.isRealData()) {
     hSumW_->Fill(0.5);
-  else {
-    auto& genInfo(getProduct_(_inEvent, genInfoToken_));
-    hSumW_->Fill(0.5, genInfo.weight());
+    return;
+  }
 
-    auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
-    if (lheEvent) {
-      if (weightIndices_.size() == 0) {
-        // first event
-        initIndices_(*lheEvent);
-      }
+  auto& genInfo(getProduct_(_inEvent, genInfoToken_));
+  hSumW_->Fill(0.5, genInfo.weight());
 
-      for (auto& wgt : lheEvent->weights()) {
-        unsigned idx(weightIndices_.at(wgt.id));
-        hSumW_->Fill(idx + 1.5, wgt.wgt);
-      }
-    }
+  auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
+  if (lheEvent) {
+    double weights[7];
+    getLHEWeights_(*lheEvent, weights);
+
+    // PDF variation will always be greater than nominal by construction
+    for (unsigned iW(0); iW != 7; ++iW)
+      hSumW_->Fill(iW + 1.5, weights[iW]);
   }
 }
 
@@ -93,31 +119,22 @@ void
 WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup const&)
 {
   // Set weight names
+  // Update this function too if changing the set of weights to save
 
   // LHERunInfoProduct (and GenRunInfoProduct FWIW) have mergeProduct method which forbids them
   // from being fetched in beginRun
 
-  // Return if no reweight factors are set
-  if (weightIndices_.size() == 0)
+  if (isRealData_)
     return;
 
   auto* lheRun(getProductSafe_(_inRun, lheRunToken_));
   if (!lheRun)
     return;
 
-  std::map<TString, unsigned> weightGroups;
-  std::map<TString, TString> weightTitles;
+  std::map<unsigned, unsigned> weightGroups;
+  std::map<unsigned, TString> weightTitles;
 
-  TTree* groupTree(0);
-  TString* gcombine(new TString);
-  TString* gtype(new TString);
-  {
-    TDirectory::TContext context(outputFile_);
-    groupTree = new TTree("weightGroups", "weightGroups");
-    groupTree->Branch("combine", "TString", &gcombine);
-    groupTree->Branch("type", "TString", &gtype);
-  }
-
+  // Parse the LHE run header and find the initrwgt block
   for (auto&& hItr(lheRun->headers_begin()); hItr != lheRun->headers_end(); ++hItr) {
     auto& lheHdr(*hItr);
 
@@ -173,7 +190,9 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
         if (!wid)
           continue;
 
-        TString id(wid->GetValue());
+        unsigned id(TString(wid->GetValue()).Atoi());
+        if (!(id >= 1 && id <= 9) || (id >= 1001 && id <= 1009) || (id >= 11 && id <= 110) || (id >= 2001 && id < 2100))
+          continue;
 
         weightGroups[id] = iG;
 
@@ -194,17 +213,19 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
           
       auto* combine(static_cast<TXMLAttr*>(attributes.FindObject("combine")));
       if (combine)
-        *gcombine = combine->GetValue();
+        *gcombine_ = combine->GetValue();
       else
-        *gcombine = "";
+        *gcombine_ = "";
 
       auto* type(static_cast<TXMLAttr*>(attributes.FindObject("type")));
       if (type)
-        *gtype = type->GetValue();
+        *gtype_ = type->GetValue();
       else
-        *gtype = "";
+        *gtype_ = "";
 
-      groupTree->Fill();
+      groupTree_->Fill();
+
+      ++iG;
     }
     while ((wgNode = wgNode->GetNextNode()));
 
@@ -212,48 +233,62 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     break;
   }
 
-  TDirectory::TContext context(outputFile_);
-
-  groupTree->Write();
-  delete groupTree;
-  delete gcombine;
-  delete gtype;
-
-  std::vector<TString> orderedIds(weightIndices_.size());
-  for (auto& ind : weightIndices_)
-    orderedIds[ind.second] = ind.first;
-
-  auto* weightTree(new TTree("weights", "weights"));
-  auto* wid(new TString);
-  auto* wtitle(new TString);
-  unsigned short gid(0);
-  weightTree->Branch("id", "TString", &wid);
-  weightTree->Branch("title", "TString", &wtitle);
-  weightTree->Branch("group", &gid, "group/s");
-
-  for (TString& id : orderedIds) {
-    *wid = id;
-    *wtitle = weightTitles.at(id);
-    gid = weightGroups.at(id);
-    weightTree->Fill();
+  for (auto& idtitle : weightTitles) {
+    wid_ = idtitle.first;
+    *wtitle_ = idtitle.second;
+    gid_ = weightGroups.at(wid_);
+    weightTree_->Fill();
   }
-
-  weightTree->Write();
-  delete weightTree;
-  delete wid;
-  delete wtitle;
 }
 
 void
-WeightsFiller::initIndices_(LHEEventProduct const& _lheEvent)
+WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[7])
 {
- 
-  hSumW_->SetBins(_lheEvent.weights().size() + 1, 0., _lheEvent.weights().size() + 1.);
+  // Update this function if changing the set of weights to be save
+
+  double sumd2(0.);
 
   for (auto& wgt : _lheEvent.weights()) {
-    unsigned idx(weightIndices_.size());
-    weightIndices_[wgt.id] = idx;
+    unsigned id(0);
+    try {
+      id =std::stoi(wgt.id);
+    }
+    catch (std::invalid_argument& ex) {
+      // id string not in pattern we are looking for
+      continue;
+    }
+
+    if ((id >= 1 && id <= 9) || (id >= 1001 && id <= 1009)) {
+      switch (id % 1000) {
+      case 2:
+        _weights[0] = wgt.wgt;
+        break;
+      case 3:
+        _weights[1] = wgt.wgt;
+        break;
+      case 4:
+        _weights[2] = wgt.wgt;
+        break;
+      case 5:
+        _weights[3] = wgt.wgt;
+        break;
+      case 7:
+        _weights[4] = wgt.wgt;
+        break;
+      case 9:
+        _weights[5] = wgt.wgt;
+        break;
+      default:
+        break;
+      }
+    }
+    else if ((id >= 11 && id <= 110) || (id >= 2001 && id < 2100)) {
+      double d(wgt.wgt - _lheEvent.originalXWGTUP());
+      sumd2 += d * d;
+    }
   }
+
+  _weights[6] = std::sqrt(sumd2 / 99.) + _lheEvent.originalXWGTUP();
 }
 
 DEFINE_TREEFILLER(WeightsFiller);

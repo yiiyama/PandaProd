@@ -9,7 +9,7 @@ FillerBase::FillerBase(std::string const& _fillerName, edm::ParameterSet const& 
 }
 
 void
-fillP4(panda::PParticle& _out, reco::Candidate const& _in)
+fillP4(panda::Particle& _out, reco::Candidate const& _in)
 {
   _out.pt = _in.pt();
   _out.eta = _in.eta();
@@ -17,7 +17,7 @@ fillP4(panda::PParticle& _out, reco::Candidate const& _in)
 }
 
 void
-fillP4(panda::PParticleM& _out, reco::Candidate const& _in)
+fillP4(panda::ParticleM& _out, reco::Candidate const& _in)
 {
   _out.pt = _in.pt();
   _out.eta = _in.eta();
@@ -47,10 +47,10 @@ FillerFactoryStore::singleton()
 //! sort comparison by pt
 /*!
   This function takes ContainerElements as arguments to conform with ContainerBase::Comparison
-  but assumes that both arguments are static_castable to PParticle.
+  but assumes that both arguments are static_castable to Particle.
 */
 namespace panda {
   ContainerBase::Comparison ptGreater([](ContainerElement const& p1, ContainerElement const& p2)->bool {
-    return static_cast<PParticle const&>(p1).pt > static_cast<PParticle const&>(p2).pt;
+    return static_cast<Particle const&>(p1).pt > static_cast<Particle const&>(p2).pt;
   });
 }

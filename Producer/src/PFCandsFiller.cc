@@ -6,7 +6,7 @@
 PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg)
 {
-  getToken_(candidatesToken_, _cfg, _coll, "candidates");
+  getToken_(candidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(puppiMapToken_, _cfg, _coll, "puppiMap", false);
   getToken_(puppiNoLepMapToken_, _cfg, _coll, "puppiNoLepMap", false);
 }
@@ -62,7 +62,7 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto originalIndices(outCands.sort(panda::ptGreater));
 
   // make reco <-> panda mapping
-  auto& objectMap(objectMap_->get<reco::Candidate, panda::PPFCand>());
+  auto& objectMap(objectMap_->get<reco::Candidate, panda::PFCand>());
   
   for (unsigned iP(0); iP != outCands.size(); ++iP) {
     auto& outCand(outCands[iP]);

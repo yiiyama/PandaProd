@@ -1,0 +1,8 @@
+<use name="PandaUtilities/Common"/>
+<use name="RecoJets/JetAlgorithms"/>
+<use name="root"/>
+<use name="fastjet"/>
+<use name="fastjet-contrib"/>
+<export>
+  <lib name="1"/>
+</export>

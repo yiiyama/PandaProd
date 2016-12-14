@@ -6,7 +6,7 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
   FillerBase(_name, _cfg),
   minPt_(getParameter_<double>(_cfg, "minPt", -1.))
 {
-  getToken_(genParticlesToken_, _cfg, _coll, "genParticles");
+  getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
 
   auto vPdgIds(getParameter_<VString>(_cfg, "pdgIds"));
   for (auto& idstr : vPdgIds) {
@@ -68,6 +68,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     fillP4(outParticle, inCand);
 
     outParticle.pdgid = inCand.pdgId();
+    outParticle.statusFlags = inCand.statusFlags().flags_.to_ulong();
 
     ptrList.push_back(inParticles.ptrAt(iP));
   }
@@ -76,7 +77,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   auto originalIndices(outParticles.sort(panda::ptGreater));
 
   // make reco <-> panda mapping
-  auto& objectMap(objectMap_->get<reco::GenParticle, panda::PGenParticle>());
+  auto& objectMap(objectMap_->get<reco::GenParticle, panda::GenParticle>());
   
   for (unsigned iP(0); iP != outParticles.size(); ++iP) {
     auto& outParticle(outParticles[iP]);
@@ -88,7 +89,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
 void
 GenParticlesFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
-  auto& map(objectMap_->get<reco::GenParticle, panda::PGenParticle>());
+  auto& map(objectMap_->get<reco::GenParticle, panda::GenParticle>());
 
   for (auto& link : map.bwdMap) { // panda -> edm
     auto& outChild(*link.first);

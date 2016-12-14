@@ -1,0 +1,50 @@
+#!/bin/bash
+
+if ! [ $CMSSW_BASE ]
+then
+  echo "Do cmsenv first"
+  exit 1
+fi
+
+if ! [ -d $CMSSW_BASE/src/.git ]
+then
+  echo "Do git cms-init first"
+  exit 1
+fi
+
+CD=$(pwd)
+cd $CMSSW_BASE/src
+
+REMOTE=$1
+BRANCH=$2
+
+MASTER=$(git branch | awk 'NR==1 {print $1}')
+
+if ! git remote | grep -q $REMOTE
+then
+  git remote add $REMOTE https://github.com/$REMOTE/cmssw.git
+fi
+
+git fetch $REMOTE
+
+if git branch | grep -q $BRANCH
+then
+  git checkout $BRANCH
+else
+  git checkout -t $REMOTE/$BRANCH
+fi
+
+FIRST_AFTER_BRANCH=$(git rev-list --first-parent $BRANCH ^$MASTER | tail -n 1)
+LAST_BEFORE_BRANCH=$(git rev-list --first-parent --max-count 2 $FIRST_AFTER_BRANCH | tail -n 1)
+echo ""
+echo "$REMOTE/$BRANCH branched off from master ($MASTER) at"
+git show $LAST_BEFORE_BRANCH
+
+echo "Commits since branch-off:"
+git rev-list $LAST_BEFORE_BRANCH..HEAD
+echo ""
+
+echo "Files changed:"
+git diff --name-only $LAST_BEFORE_BRANCH..HEAD
+
+cd $CD

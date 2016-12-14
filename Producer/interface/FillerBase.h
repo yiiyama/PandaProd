@@ -17,6 +17,7 @@
 #include "tbb/concurrent_unordered_map.h"
 
 typedef std::vector<std::string> VString;
+typedef std::vector<std::vector<std::string>> VVString;
 
 //! Base class for tree fillers
 /*!
@@ -211,8 +212,8 @@ FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _t
   return handle.product();
 }
 
-void fillP4(panda::PParticle&, reco::Candidate const&);
-void fillP4(panda::PParticleM&, reco::Candidate const&);
+void fillP4(panda::Particle&, reco::Candidate const&);
+void fillP4(panda::ParticleM&, reco::Candidate const&);
 
 //--------------------------------------------------------------------------------------------------
 // FillerFactory: a trick to register individual fillers as "plugin modules"

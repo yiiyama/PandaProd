@@ -4,6 +4,7 @@
 #include "FillerBase.h"
 
 #include "DataFormats/Common/interface/View.h"
+#include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
 
@@ -16,6 +17,7 @@ class JetsFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void setRefs(ObjectMapStore const&) override;
 
  protected:
   virtual void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) {}
@@ -30,10 +32,14 @@ class JetsFiller : public FillerBase {
   };
 
   typedef edm::View<reco::Jet> JetView;
+  typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
   NamedToken<reco::GenJetCollection> genJetsToken_;
+  NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;
+  std::string csvTag_;
+  std::string puidTag_;
 
   JetCorrectionUncertainty* jecUncertainty_{0};
 

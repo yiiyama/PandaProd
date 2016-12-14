@@ -1,3 +1,9 @@
+/*!
+  WeightsFiller
+  Fill event weights. Assumes weights with id 1-9 (LO) or 1001-1009 (NLO) are mu_R and mu_F variations mu_R = (1, 2, 0.5) x mu_F = (1, 2, 0.5)
+  and those with id 11-110 (LO) or 2001-2100 (NLO) are NNPDF MC variations (only RMS interesting).
+*/
+
 #ifndef PandaProd_Producer_WeightsFiller_h
 #define PandaProd_Producer_WeightsFiller_h
 
@@ -22,18 +28,21 @@ class WeightsFiller : public FillerBase {
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 
  protected:
-  void initIndices_(LHEEventProduct const&);
+  void getLHEWeights_(LHEEventProduct const&, double [7]);
 
   NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<LHEEventProduct> lheEventToken_;
   NamedToken<LHERunInfoProduct> lheRunToken_;
-
-  //! Weight ID to index mapping
-  std::map<TString, unsigned> weightIndices_{};
-
+  
+  // these objects will be deleted automatically when the output file closes
   TH1D* hSumW_{0};
-
-  TFile* outputFile_{0};
+  TTree* groupTree_{0};
+  TString* gcombine_{0};
+  TString* gtype_{0};
+  TTree* weightTree_{0};
+  unsigned wid_{0};
+  TString* wtitle_{0};
+  unsigned gid_{0};
 };
 
 #endif

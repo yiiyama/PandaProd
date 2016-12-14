@@ -7,8 +7,8 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/EgammaReco/interface/SuperClusterFwd.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 
@@ -33,6 +33,8 @@ class ElectronsFiller : public FillerBase {
 
   NamedToken<GsfElectronView> electronsToken_;
   NamedToken<PhotonView> photonsToken_;
+  NamedToken<EcalRecHitCollection> ebHitsToken_;
+  NamedToken<EcalRecHitCollection> eeHitsToken_;
   NamedToken<BoolMap> vetoIdToken_;
   NamedToken<BoolMap> looseIdToken_;
   NamedToken<BoolMap> mediumIdToken_;
@@ -45,7 +47,6 @@ class ElectronsFiller : public FillerBase {
   NamedToken<FloatMap> hcalIsoToken_;
   NamedToken<double> rhoToken_;
   NamedToken<double> rhoCentralCaloToken_;
-  NamedToken<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
 
   EffectiveAreas combIsoEA_;
   EffectiveAreas ecalIsoEA_;
@@ -54,7 +55,7 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phNHIsoEA_;
   EffectiveAreas phPhIsoEA_;
 
-  VString hltFilters_;
+  std::set<std::string> triggerObjects_[panda::nElectronTriggerObjects];
   double minPt_{-1.};
   double maxEta_{10.};
 };

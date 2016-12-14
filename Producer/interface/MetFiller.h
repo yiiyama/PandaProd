@@ -16,11 +16,20 @@ class MetFiller : public FillerBase {
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:
+  enum OutputType {
+    kPF,
+    kPuppi
+  };
+
   typedef edm::View<reco::MET> METView;
 
   NamedToken<METView> metToken_;
   NamedToken<METView> noHFMetToken_;
   NamedToken<reco::CandidateView> candidatesToken_;
+
+  OutputType outputType_{kPF};
+
+  bool fillOthers_{false};
 };
 
 #endif

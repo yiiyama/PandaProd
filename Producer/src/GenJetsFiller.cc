@@ -42,7 +42,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto originalIndices(outJets.sort(panda::ptGreater));
 
   // make reco <-> panda mapping
-  auto& objectMap(objectMap_->get<reco::GenJet, panda::PGenJet>());
+  auto& objectMap(objectMap_->get<reco::GenJet, panda::GenJet>());
   
   for (unsigned iP(0); iP != outJets.size(); ++iP) {
     auto& outJet(outJets[iP]);

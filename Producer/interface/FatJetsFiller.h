@@ -4,9 +4,8 @@
 #include "JetsFiller.h"
 
 #include "DataFormats/BTauReco/interface/JetTag.h"
-#include "DataFormats/Common/interface/ValueMap.h"
-#include "PandaUtilities/Substructure/interface/HEPTopTaggerWrapperV2.h"
-#include "PandaUtilities/Substructure/interface/EnergyCorrelations.h"
+#include "PandaProd/Utilities/interface/HEPTopTaggerWrapperV2.h"
+#include "PandaProd/Utilities/interface/EnergyCorrelations.h"
 
 // fastjet
 #include "fastjet/PseudoJet.hh"
@@ -25,18 +24,15 @@ class FatJetsFiller : public JetsFiller {
   ~FatJetsFiller();
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
-  void setRefs(ObjectMapStore const&) override;
 
  protected:
   void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
-  typedef edm::ValueMap<float> FloatMap;
-
   NamedToken<JetView> subjetsToken_;
-  NamedToken<reco::JetTagCollection> btagsToken_;
-  NamedToken<FloatMap> qglToken_;
   std::string njettinessTag_;
   std::string sdKinematicsTag_;
+  std::string subjetBtagTag_;
+  std::string subjetQGLTag_;
 
   fastjet::GhostedAreaSpec activeArea_;
   fastjet::AreaDefinition areaDef_;

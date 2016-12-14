@@ -23,7 +23,7 @@ SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, e
 
   auto& outSuperClusters(_outEvent.superClusters);
 
-  auto& objectMap(objectMap_->get<reco::SuperCluster, panda::PSuperCluster>());
+  auto& objectMap(objectMap_->get<reco::SuperCluster, panda::SuperCluster>());
 
   unsigned iSC(-1);
   for (auto& inSC : inSuperClusters) {

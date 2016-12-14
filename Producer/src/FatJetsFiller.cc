@@ -8,13 +8,13 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   JetsFiller(_name, _cfg, _coll),
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
   sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
+  subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
+  subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_),
   computeSubstructure_(getParameter_<bool>(_cfg, "computeSubstructure", false))
 {
   getToken_(subjetsToken_, _cfg, _coll, "subjets", false);
-  getToken_(btagsToken_, _cfg, _coll, "btags", false);
-  getToken_(qglToken_, _cfg, _coll, "qgl", false);
 
   if (computeSubstructure_) {
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
@@ -76,14 +76,6 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 {
   auto& inSubjets(getProduct_(_inEvent, subjetsToken_));
 
-  reco::JetTagCollection const* inBtags(0);
-  if (!btagsToken_.second.isUninitialized())
-    inBtags = &getProduct_(_inEvent, btagsToken_);
-
-  FloatMap const* inQGL(0);
-  if (!qglToken_.second.isUninitialized())
-    inQGL = &getProduct_(_inEvent, qglToken_);
-
   double betas[] = {0.5, 1., 2., 4.};
 
   std::string substrLabel;
@@ -100,10 +92,12 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
   typedef std::vector<fastjet::PseudoJet> VPseudoJet;
 
-  auto& jetMap(objectMap_->get<reco::Jet, panda::PJet>());
+  auto& jetMap(objectMap_->get<reco::Jet, panda::Jet>());
+
+  unsigned iJ(0);
 
   for (auto& link : jetMap.bwdMap) { // panda -> edm
-    auto& outJet(static_cast<panda::PFatJet&>(*link.first));
+    auto& outJet(static_cast<panda::FatJet&>(*link.first));
 
     if (dynamic_cast<pat::Jet const*>(link.second.get())) {
       auto& inJet(static_cast<pat::Jet const&>(*link.second));
@@ -125,10 +119,13 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
         auto&& inRef(inSubjets.refAt(iSJ));
 
-        if (inBtags)
-          outSubjet.csv = (*inBtags)[inRef];
-        if (inQGL)
-          outSubjet.qgl = (*inQGL)[inRef];
+        if (dynamic_cast<pat::Jet const*>(&inSubjet)) {
+          auto& patSubjet(dynamic_cast<pat::Jet const&>(inSubjet));
+          if (!subjetBtagTag_.empty())
+            outSubjet.csv = patSubjet.bDiscriminator(subjetBtagTag_);
+          if (!subjetQGLTag_.empty() && patSubjet.hasUserFloat(subjetQGLTag_))
+            outSubjet.qgl = patSubjet.userFloat(subjetQGLTag_);
+        }
 
         outJet.subjets.push_back(outSubjet);
       }
@@ -142,9 +139,10 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
         }
       }
 
-      if (computeSubstructure_) {
+      if (computeSubstructure_ && iJ < 2) {
         // either we want to associate to pf cands OR compute extra info about the first or second jet
         // but do not do any of this if ReduceEvent() is tripped
+        // only filled for first two fat jets
 
         // calculate ECFs, groomed tauN
         VPseudoJet vjet;
@@ -198,28 +196,8 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
       } // if computeSubstructure_
     }
-  }
-}
 
-void
-FatJetsFiller::setRefs(ObjectMapStore const& _objectMaps)
-{
-  if (fillConstituents_) {
-    auto& jetMap(objectMap_->get<reco::Jet, panda::PJet>());
-
-    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PPFCand>().fwdMap);
-
-    for (auto& link : jetMap.fwdMap) { // edm -> panda
-      auto& inJet(*link.first);
-      auto& outJet(static_cast<panda::PFatJet&>(*link.second));
-
-      for (auto&& ptr : inJet.getJetConstituents()) {
-        reco::CandidatePtr p(ptr);
-        while (p->sourceCandidatePtr(0).isNonnull())
-          p = p->sourceCandidatePtr(0);
-        outJet.constituents.push_back(*pfMap.at(p));
-      }
-    }
+    ++iJ;
   }
 }
 

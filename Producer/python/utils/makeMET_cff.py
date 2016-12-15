@@ -242,12 +242,17 @@ def makeMET(process, isData, pfCandidates, jetSource, jetFlavor, postfix = ''):
                     srcShifted = shifted
                 )
             )
-            patPFMetT1Shifted = addattr('patPFMetT1' + part + vname,
+            addattr('patPFMetT1' + part + vname,
                 patMET_cff.patPFMetT1.clone(
                     src = patPFMetT1,
                     srcCorrections = [metCorrShifted]
                 )
             )
+
+    # Dummy JetResUp and JetResDown modules because PATJetSlimmer requires them
+    # Jet smearing should be propagated to MET simply by using ptSmear(|Up|Down) branches at the ntuples level
+    addattr('patPFMetT1JetResUp', getattr(process, 'patPFMetT1JetEnUp' + postfix).clone())
+    addattr('patPFMetT1JetResDown', getattr(process, 'patPFMetT1JetEnDown' + postfix).clone())
     
     addattr('slimmedMETs',
         slimmedMETs.clone(

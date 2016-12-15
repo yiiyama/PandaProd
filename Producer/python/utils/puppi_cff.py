@@ -21,13 +21,16 @@ pfLeptonsPUPPET = cms.EDFilter("CandPtrSelector",
     src = cms.InputTag("packedPFCandidates"),
     cut = cms.string("abs(pdgId) == 13 || abs(pdgId) == 11 || abs(pdgId) == 15")
 )
- 
+
 puppiMerged = cms.EDProducer("CandViewMerger",
     src = cms.VInputTag('puppiNoLep', 'pfLeptonsPUPPET')
 )
 
 from CommonTools.PileupAlgos.PhotonPuppi_cff import puppiPhoton
 puppiForMET = puppiPhoton.clone(
+    candName = 'packedPFCandidates',
+    photonName = 'slimmedPhotons',
+    runOnMiniAOD = True,
     puppiCandName = 'puppiMerged',
     useRefs = False, # need to perform dR matching because of "an issue in refs in PackedCandidates"
     photonId  = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-loose' # match what's used for the actual photon collection

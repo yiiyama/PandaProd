@@ -5,6 +5,7 @@
 
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/TauReco/interface/BaseTau.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
 class TausFiller : public FillerBase {
  public:
@@ -17,8 +18,10 @@ class TausFiller : public FillerBase {
 
  protected:
   typedef edm::View<reco::BaseTau> TauView;
+  typedef edm::View<reco::GenParticle> GenParticleView;
 
   NamedToken<TauView> tausToken_;
+  NamedToken<GenParticleView> genParticlesToken_;
 
   double minPt_;
   double maxEta_;

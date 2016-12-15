@@ -1,6 +1,7 @@
 #include "../interface/TausFiller.h"
 
 #include "DataFormats/PatCandidates/interface/Tau.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
@@ -8,6 +9,8 @@ TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(tausToken_, _cfg, _coll, "taus");
+  if (!isRealData_)
+    getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
 }
 
 void
@@ -66,12 +69,33 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
   // export panda <-> reco mapping
 
+  std::vector<edm::Ptr<reco::GenParticle>> genTaus;
+  if (!isRealData_) {
+    auto& genParticles(getProduct_(_inEvent, genParticlesToken_));
+    unsigned iG(0);
+    for (auto& gen : genParticles) {
+      if (std::abs(gen.pdgId()) == 15 && gen.isLastCopy())
+        genTaus.emplace_back(genParticles.ptrAt(iG));
+      ++iG;
+    }
+  } 
+
   auto& objectMap(objectMap_->get<reco::BaseTau, panda::Tau>());
+  auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
 
   for (unsigned iP(0); iP != outTaus.size(); ++iP) {
     auto& outTau(outTaus[iP]);
     unsigned idx(originalIndices[iP]);
     objectMap.add(ptrList[idx], outTau);
+
+    if (!isRealData_) {
+      for (auto& genPtr : genTaus) {
+        if (reco::deltaR(*genPtr, *ptrList[idx]) < 0.3) {
+          genTauMap.add(genPtr, outTau);
+          break;
+        }
+      }
+    }
   }
 }
 

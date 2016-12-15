@@ -1,0 +1,33 @@
+#!/bin/bash
+
+recursive-mv() {
+  # mv fails if the top directory exists already
+  # go recursively into subdirectories to complete the move
+
+  SRC=$1
+  TARG=$2
+
+  for F in $(ls $SRC)
+  do
+    mv $SRC/$F $TARG/ 2>/dev/null || recursive-mv $SRC/$F $TARG/$F
+  done
+}
+
+CWD=$(pwd)
+
+ACCOUNT=$1
+REF=$2
+shift 2
+PKGS="$@"
+
+TEMP=$(mktemp -d)
+cd $TEMP
+git clone -n -b $REF https://github.com/$ACCOUNT/cmssw.git
+cd cmssw
+
+git checkout HEAD -- $PKGS
+
+recursive-mv $TEMP/cmssw $CMSSW_BASE/src
+
+cd $CWD
+rm -rf $TEMP

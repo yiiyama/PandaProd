@@ -72,15 +72,6 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     outMet.phiUnclUp = patMet->shiftedPhi(pat::MET::UnclusteredEnUp);
     outMet.ptUnclDown = patMet->shiftedPt(pat::MET::UnclusteredEnDown);
     outMet.phiUnclDown = patMet->shiftedPhi(pat::MET::UnclusteredEnDown);
-
-    if (!isRealData_) {
-      outMet.ptSmear = patMet->corPt(pat::MET::Type1Smear);
-      outMet.phiSmear = patMet->corPhi(pat::MET::Type1Smear);
-      outMet.ptSmearUp = patMet->shiftedPt(pat::MET::JetResUpSmear, pat::MET::Type1Smear);
-      outMet.phiSmearUp = patMet->shiftedPhi(pat::MET::JetResUpSmear, pat::MET::Type1Smear);
-      outMet.ptSmearDown = patMet->shiftedPt(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
-      outMet.phiSmearDown = patMet->shiftedPhi(pat::MET::JetResDownSmear, pat::MET::Type1Smear);
-    }
   }
 
   if (fillOthers_) {

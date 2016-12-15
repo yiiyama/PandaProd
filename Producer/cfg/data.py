@@ -13,34 +13,16 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process('NTUPLES')
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
-# If you run over many samples and you save the log, remember to reduce
-# the size of the output by prescaling the report of the event number
-process.MessageLogger.cerr.FwkReport.reportEvery = 5000
-process.MessageLogger.categories.append('PandaProducer')
-process.MessageLogger.cerr.PandaProducer = cms.untracked.PSet(limit = cms.untracked.int32(10000))
-
-#process.load('Configuration.StandardSequences.Services_cff')
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 ############
 ## SOURCE ##
 ############
 
 ### INPUT FILES
-if len(options.inputFiles) == 0:
-    if options.isData:
-       inputFiles = [
-           'file:/tmp/6CA25B7B-CD46-E611-BDEC-02163E01354A.root'
-       ]
-    else:
-       inputFiles = [
-           'file:/data/t3home000/snarayan/test/tt_8011.root'
-       ]
-else:
-    inputFiles = options.inputFiles
-
 process.source = cms.Source('PoolSource',
     skipEvents = cms.untracked.uint32(0),
-    fileNames = cms.untracked.vstring(inputFiles)
+    fileNames = cms.untracked.vstring(options.inputFiles)
 )
 
 ### NUMBER OF EVENTS
@@ -48,6 +30,7 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEv
 
 ### LUMI MASK
 if options.lumilist != '':
+    import FWCore.PythonUtilities.LumiList as LumiList
     process.source.lumisToProcess = LumiList.LumiList(filename = options.lumilist).getVLuminosityBlockRange()
 
 ##############
@@ -58,7 +41,6 @@ process.load('Configuration.Geometry.GeometryIdeal_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 
-#mc https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_Run2_MC_Producti
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
 if options.globaltag == '':
     if options.isData:
@@ -87,6 +69,12 @@ process.MonoXFilter.taggingMode = True
 # Loads photonIDValueMapProducer, egmPhotonIDs, and egmGsfElectronIDs
 
 import PandaProd.Producer.utils.egmidconf as egmidconf
+egmidconf.electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Spring15/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_25ns.txt'
+egmidconf.electronEcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_ecalPFClusterIso.txt'
+egmidconf.electronHcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+egmidconf.electronId = 'egmGsfElectronIDs:cutBasedElectronID-Spring15-25ns-V1-standalone-'
+egmidconf.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-'
+egmidconf.photonEA = 'RecoEgamma/PhotonIdentification/data/Spring15/effAreaPhotons_cone03_'
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDPhotonIdProducer, switchOnVIDElectronIdProducer, DataFormat
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
@@ -100,97 +88,13 @@ egmIdSequence = cms.Sequence(
     process.egmGsfElectronIDs
 )
 
-egmidconf.electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Spring15/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_25ns.txt'
-egmidconf.electronEcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_ecalPFClusterIso.txt'
-egmidconf.electronHcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_hcalPFClusterIso.txt'
-egmidconf.electronId = 'egmGsfElectronIDs:cutBasedElectronID-Spring15-25ns-V1-standalone-'
-egmidconf.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-'
-egmidconf.photonEA = 'RecoEgamma/PhotonIdentification/data/Spring15/effAreaPhotons_cone03_'
-
 ### PUPPI
-
-# Imports puppiSequence
 process.load('PandaProd.Producer.utils.puppi_cff')
+from PandaProd.Producer.utils.puppi_cff import puppiSequence
 
 ### RECLUSTER PUPPI JET
-# Copied from PhysicsTools.PatAlgos.slimming.miniAOD_tools
-from RecoJets.JetProducers.ak4PFJetsPuppi_cfi import ak4PFJetsPuppi
-process.ak4PFJetsPuppi = ak4PFJetsPuppi.clone(
-    src = cms.InputTag('puppiForMET'),
-    doAreaFastjet = cms.bool(True)
-)
-
-from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
-
-process.puppiJetCorrFactors = patJetCorrFactors.clone(
-    src = cms.InputTag('ak4PFJetsPuppi'),
-    payload = cms.string('AK4PFPuppi'),
-    levels = cms.vstring(*jecLevels),
-    primaryVertices = cms.InputTag('offlineSlimmedPrimaryVertices')
-)
-
-from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
-
-# btag on puppi should also use packedPFCandidates
-puppiInclusiveVertexingSequence = initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
-
-puppiJetsBTagSequence = setupBTag(
-    process,
-    jetCollection = 'ak4PFJetsPuppi',
-    suffix = 'Puppi',
-    vsuffix = '',
-    muons = 'slimmedMuons',
-    electrons = 'slimmedElectrons',
-    tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
-)
-
-if not options.isData:
-    from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
-
-    process.genJetMatchPuppi = patJetGenJetMatch.clone(
-        src = 'ak4PFJetsPuppi',
-        maxDeltaR = 0.4,
-        matched = 'slimmedGenJets'
-    )
-
-from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
-
-process.patJetsPuppi = patJets.clone(
-    jetSource = cms.InputTag('ak4PFJetsPuppi'),
-    addJetCorrFactors = True,
-    jetCorrFactorsSource = [cms.InputTag('puppiJetCorrFactors')],
-    addBTagInfo = True,
-    discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTagsPuppi')],
-    addAssociatedTracks = False,
-    addJetCharge = False,
-    addGenPartonMatch = False,
-    addGenJetMatch = (not options.isData),
-    genJetMatch = 'genJetMatchPuppi',
-    getJetMCFlavour = False,
-    addJetFlavourInfo = False
-)
-
-from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
-
-process.selectedPatJetsPuppi = selectedPatJets.clone(
-    src = 'patJetsPuppi',
-    cut = 'pt > 15'
-)
-
-puppiJetSequence = cms.Sequence(
-    process.ak4PFJetsPuppi +
-    process.puppiJetCorrFactors +
-    puppiInclusiveVertexingSequence +
-    puppiJetsBTagSequence
-)
-
-if not options.isData:
-    puppiJetSequence += process.genJetMatchPuppi
-
-puppiJetSequence += cms.Sequence(
-    process.patJetsPuppi +
-    process.selectedPatJetsPuppi
-)
+from PandaProd.Producer.utils.makeJets_cff import makeJets
+puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppiForMET', 'Puppi')
 
 ### JET RE-CORRECTION, TAGGING, AND SLIMMING
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
@@ -221,7 +125,7 @@ jetRecorrectionSequence = cms.Sequence(
     process.QGTagger
 )
 
-### MET RE-CORRECTION
+### MET
 from PandaProd.Producer.utils.makeMET_cff import initMET, makeMET
 
 initMetSequence = initMET(process, options.isData)
@@ -229,7 +133,7 @@ initMetSequence = initMET(process, options.isData)
 # extracts the raw pfMET from input MINIAOD and repack new corrections
 pfMetSequence = makeMET(process, options.isData, 'packedPFCandidates', 'slimmedJets', 'AK4PFchs')
 # compute a brand-new pfMET from puppi candidates and pack with corrections
-puppiMetSequence = makeMET(process, options.isData, 'puppiForMET', 'selectedPatJetsPuppi', 'AK4PFPuppi', 'Puppi')
+puppiMetSequence = makeMET(process, options.isData, 'puppiForMET', 'selectedJetsPuppi', 'AK4PFPuppi', 'Puppi')
 
 metSequence = cms.Sequence(
     initMetSequence +
@@ -294,7 +198,7 @@ metFilterSequence = cms.Sequence(
 process.reco = cms.Path(
     process.MonoXFilter +
     egmIdSequence +
-    process.puppiSequence +
+    puppiSequence +
     puppiJetSequence +
     jetRecorrectionSequence +
     metSequence +

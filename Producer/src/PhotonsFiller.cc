@@ -305,18 +305,20 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& scPtr(link.second);
 
     outPhoton.superCluster = scMap.at(scPtr);
+  }
 
-    if (!isRealData_) {
-      auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
+  if (!isRealData_) {
+    auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
 
-      auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
 
-      for (auto& link : genPhoMap.bwdMap) {
-        auto& outPhoton(*link.first);
-        auto& genPtr(link.second);
+    for (auto& link : genPhoMap.bwdMap) {
+      auto& genPtr(link.second);
+      if (genMap.find(genPtr) == genMap.end())
+        continue;
 
-        outPhoton.matchedGen = genMap.at(genPtr);
-      }
+      auto& outPhoton(*link.first);
+      outPhoton.matchedGen = genMap.at(genPtr);
     }
   }
 

@@ -32,10 +32,11 @@ class JetsFiller : public FillerBase {
   };
 
   typedef edm::View<reco::Jet> JetView;
+  typedef edm::View<reco::GenJet> GenJetView;
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
-  NamedToken<reco::GenJetCollection> genJetsToken_;
+  NamedToken<GenJetView> genJetsToken_;
   NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;
   std::string csvTag_;

@@ -7,6 +7,7 @@ from RecoJets.JetProducers.QGTagger_cfi import QGTagger
 import PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi as jetProducer_cfi
 import PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi as jetSelector_cfi
 import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
+from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
 
 from PandaProd.Producer.utils.addattr import AddAttr
 from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
@@ -96,7 +97,7 @@ def initFatJets(process, isData, labels):
     )
 
     # Initialize btag inputs
-    initBTag(process, '', pfSource, pvSource)
+    sequence += initBTag(process, '', pfSource, pvSource)
 
     return sequence
 
@@ -108,6 +109,8 @@ def makeFatJets(process, isData, label, ptMin = 180.):
     matches = re.match('(AK|CA)([0-9]+)PF(.+)', label)
     if not matches:
         raise RuntimeError('Unknown algo label ' + label)
+
+    algo = matches.group(1) + matches.group(2)
 
     # set up radius and algoName from the input label
     radius = float(matches.group(2)) * 0.1
@@ -229,6 +232,15 @@ def makeFatJets(process, isData, label, ptMin = 180.):
     else:
         addJetCorr = False
 
+    if not isData:
+        genJetMatch = addattr('genJetMatch',
+            patJetGenJetMatch.clone(
+                src = pfJets,
+                maxDeltaR = radius,
+                matched = 'genJetsNoNu' + algo
+            )
+        )
+
     patJets = addattr('patJets',
         jetProducer_cfi.patJets.clone(
             jetSource = pfJets,
@@ -237,7 +249,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,
-            genJetMatch = 'genJetsNoNu' + label,
+            addGenJetMatch = (not isData),
             getJetMCFlavour = False,
             addJetFlavourInfo = False
         )
@@ -245,6 +257,8 @@ def makeFatJets(process, isData, label, ptMin = 180.):
     patJetsMod = addattr.last
     if addJetCorr:
         patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
+    if not isData:
+        patJetsMod.genJetMatch = genJetMatch
 
     for tau in ['tau1', 'tau2', 'tau3', 'tau4']:
         patJetsMod.userData.userFloats.src.append(Njettiness.getModuleLabel() + ':' + tau)
@@ -281,6 +295,15 @@ def makeFatJets(process, isData, label, ptMin = 180.):
         )
     )
 
+    if not isData:
+        genSubjetsMatch = addattr('genSubjetMatch',
+            patJetGenJetMatch.clone(
+                src = subjets,
+                maxDeltaR = 0.4,
+                matched = 'genJetsNoNuSoftDrop' + algo + ':SubJets'
+            )
+        )
+
     patSubjets = addattr('patSubjets',
         jetProducer_cfi._patJets.clone(
             jetSource = subjets,
@@ -290,12 +313,15 @@ def makeFatJets(process, isData, label, ptMin = 180.):
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,
-            genJetMatch = 'genJetsNoNuSoftDrop' + label + ':SubJets',
+            addGenJetMatch = (not isData),
             getJetMCFlavour = False,
             addJetFlavourInfo = False
         )
     )
-    addattr.last.userData.userFloats.src.append(cms.InputTag(subQGTag.getModuleLabel(), 'qgLikelihood'))
+    patSubjetsMod = addattr.last
+    patSubjetsMod.userData.userFloats.src.append(cms.InputTag(subQGTag.getModuleLabel(), 'qgLikelihood'))
+    if not isData:
+        patSubjetsMod.genJetMatch = genSubjetsMatch
 
     ## MERGE SUBJETS BACK ##
     jetMerger = addattr('jetMerger',

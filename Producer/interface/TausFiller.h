@@ -13,6 +13,7 @@ class TausFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void setRefs(ObjectMapStore const&) override;
 
  protected:
   typedef edm::View<reco::BaseTau> TauView;

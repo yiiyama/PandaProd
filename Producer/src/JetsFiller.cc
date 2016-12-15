@@ -58,7 +58,7 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
   if (isRealData_)
     _eventBranches.emplace_back("!" + getName() + ".matchedGenJet_");
 
-  if (isRealData_ || outputType_ == kCHSCA15 || outputType_ == kPuppiCA15) {
+  if (isRealData_ || outputType_ == kCHSCA15 || outputType_ == kPuppiAK4 || outputType_ == kPuppiAK8 || outputType_ == kPuppiCA15) {
     char const* genBranches[] = {
       ".ptSmear",
       ".ptSmearUp",
@@ -98,10 +98,11 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
   panda::JetCollection* pOutJets(0);
   std::string jetCorrName;
+  std::string jetResName;
   switch (outputType_) {
   case kCHSAK4:
     pOutJets = &_outEvent.chsAK4Jets;
-    jetCorrName = "AK4PFchs";
+    jetCorrName = jetResName = "AK4PFchs";
     break;
   case kPuppiAK4:
     pOutJets = &_outEvent.puppiAK4Jets;
@@ -109,7 +110,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     break;
   case kCHSAK8:
     pOutJets = &_outEvent.chsAK8Jets;
-    jetCorrName = "AK8PFchs";
+    jetCorrName = jetResName = "AK8PFchs";
     break;
   case kPuppiAK8:
     pOutJets = &_outEvent.puppiAK8Jets;
@@ -130,19 +131,23 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     jecUncertainty_ = new JetCorrectionUncertainty((*jecColl)["Uncertainty"]);
   }
 
+  GenJetView const* genJets(0);
   JME::JetResolution ptRes;
   JME::JetResolutionScaleFactor ptResSF;
-  reco::GenJetCollection const* genJets(0);
   double rho(0.);
   CLHEP::RandGauss* random(0);
   
-  if (!isRealData_ && !jetCorrName.empty()) {
-    ptRes = JME::JetResolution::get(_setup, jetCorrName + "_pt");
-    ptResSF = JME::JetResolutionScaleFactor::get(_setup, jetCorrName);
+  if (!isRealData_) {
     if (!genJetsToken_.second.isUninitialized())
       genJets = &getProduct_(_inEvent, genJetsToken_);
-    rho = getProduct_(_inEvent, rhoToken_);
-    random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
+
+    if (!jetResName.empty()) {
+      ptRes = JME::JetResolution::get(_setup, jetResName + "_pt");
+      ptResSF = JME::JetResolutionScaleFactor::get(_setup, jetResName);
+
+      rho = getProduct_(_inEvent, rhoToken_);
+      random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
+    }
   }
 
   FloatMap const* inQGL(0);
@@ -150,6 +155,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     inQGL = &getProduct_(_inEvent, qglToken_);
 
   std::vector<edm::Ptr<reco::Jet>> ptrList;
+  std::vector<edm::Ptr<reco::GenJet>> matchedGenJets;
 
   unsigned iJet(-1);
   for (auto& inJet : inJets) {
@@ -211,35 +217,46 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         outJet.ptCorrDown = outJet.pt * (1. - jecUncertainty_->getUncertainty(false));
       }
 
-      if (!isRealData_ && !jetCorrName.empty()) {
-        JME::JetParameters resParams({{JME::Binning::JetPt, inJet.pt()}, {JME::Binning::JetEta, inJet.eta()}, {JME::Binning::Rho, rho}});
-        double res(ptRes.getResolution(resParams) * inJet.pt());
+      if (!isRealData_) {
+        reco::GenJet const* matchedGenJet(0);
 
-        JME::JetParameters sfParams({{JME::Binning::JetEta, inJet.eta()}});
-        double sf(ptResSF.getScaleFactor(sfParams));
-        double sfUp(ptResSF.getScaleFactor(sfParams, Variation::UP));
-        double sfDown(ptResSF.getScaleFactor(sfParams, Variation::DOWN));
-
-        bool matched(false);
         if (genJets) {
-          for (auto& genJet : *genJets) {
-            double dpt(inJet.pt() - genJet.pt());
-            if (reco::deltaR(genJet, inJet) < R_ * 0.5 && std::abs(dpt) < res * 3.) {
-              matched = true;
-              outJet.ptSmear = std::max(0., genJet.pt() + sf * dpt);
-              outJet.ptSmearUp = std::max(0., genJet.pt() + sfUp * dpt);
-              outJet.ptSmearDown = std::max(0., genJet.pt() + sfDown * dpt);
+          unsigned iG(0);
+          for (; iG != genJets->size(); ++iG) {
+            auto& genJet(genJets->at(iG));
+            if (reco::deltaR(genJet, inJet) < R_ * 0.5) {
+              matchedGenJet = &genJet;
               break;
             }
           }
+          if (iG != genJets->size())
+            matchedGenJets.emplace_back(genJets->ptrAt(iG));
+          else
+            matchedGenJets.emplace_back();
         }
 
-        if (!matched) {
-          double resShift(std::sqrt(sf * sf - 1.));
-          outJet.ptSmear = (*random)(inJet.pt(), resShift * res);
-          // Smear the jet in the same direction, just with different SF
-          outJet.ptSmearUp = inJet.pt() + (outJet.ptSmear - inJet.pt()) * std::sqrt(sfUp * sfUp - 1.) / resShift;
-          outJet.ptSmearDown = inJet.pt() + (outJet.ptSmear - inJet.pt()) * std::sqrt(sfDown * sfDown - 1.) / resShift;
+        if (!jetResName.empty()) {
+          JME::JetParameters resParams({{JME::Binning::JetPt, inJet.pt()}, {JME::Binning::JetEta, inJet.eta()}, {JME::Binning::Rho, rho}});
+          double res(ptRes.getResolution(resParams) * inJet.pt());
+
+          JME::JetParameters sfParams({{JME::Binning::JetEta, inJet.eta()}});
+          double sf(ptResSF.getScaleFactor(sfParams));
+          double sfUp(ptResSF.getScaleFactor(sfParams, Variation::UP));
+          double sfDown(ptResSF.getScaleFactor(sfParams, Variation::DOWN));
+
+          if (matchedGenJet && std::abs(inJet.pt() - matchedGenJet->pt()) < res * 3.) {
+            double dpt(inJet.pt() - matchedGenJet->pt());
+            outJet.ptSmear = std::max(0., matchedGenJet->pt() + sf * dpt);
+            outJet.ptSmearUp = std::max(0., matchedGenJet->pt() + sfUp * dpt);
+            outJet.ptSmearDown = std::max(0., matchedGenJet->pt() + sfDown * dpt);
+          }
+          else {
+            double resShift(std::sqrt(sf * sf - 1.));
+            outJet.ptSmear = (*random)(inJet.pt(), resShift * res);
+            // Smear the jet in the same direction, just with different SF
+            outJet.ptSmearUp = inJet.pt() + (outJet.ptSmear - inJet.pt()) * std::sqrt(sfUp * sfUp - 1.) / resShift;
+            outJet.ptSmearDown = inJet.pt() + (outJet.ptSmear - inJet.pt()) * std::sqrt(sfDown * sfDown - 1.) / resShift;
+          }
         }
       }
 
@@ -265,11 +282,18 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   // export panda <-> reco mapping
 
   auto& objectMap(objectMap_->get<reco::Jet, panda::Jet>());
+  auto& genJetMap(objectMap_->get<reco::GenJet, panda::Jet>());
 
   for (unsigned iP(0); iP != outJets.size(); ++iP) {
     auto& outJet(outJets[iP]);
     unsigned idx(originalIndices[iP]);
     objectMap.add(ptrList[idx], outJet);
+
+    if (!isRealData_ && matchedGenJets.size() != 0) {
+      auto& genJetPtr(matchedGenJets[idx]);
+      if (genJetPtr.isNonnull())
+        genJetMap.add(genJetPtr, outJet);
+    }
   }
 
   fillDetails_(_outEvent, _inEvent, _setup);
@@ -295,6 +319,21 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
           p = p->sourceCandidatePtr(0);
         outJet.constituents.push_back(*pfMap.at(p));
       }
+    }
+  }
+
+  if (!isRealData_) {
+    auto& genJetMap(objectMap_->get<reco::GenJet, panda::Jet>().fwdMap);
+
+    auto& genMap(_objectMaps.at("genJets").get<reco::GenJet, panda::GenJet>().fwdMap);
+
+    for (auto& link : genJetMap) {
+      auto& genPtr(link.first);
+      if (genMap.find(genPtr) == genMap.end())
+        continue;
+
+      auto& outJet(*link.second);
+      outJet.matchedGenJet = genMap.at(genPtr);
     }
   }
 }

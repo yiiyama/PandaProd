@@ -74,7 +74,7 @@ def makeMET(process, isData, pfCandidates, jetSource, jetFlavor, postfix = ''):
             )
         )
 
-    cleanedJets = addattr('cleanedJets',
+    cleanedJets = addattr('cleanedJetsForMET',
         cms.EDProducer("PATJetCleanerForType1MET",
             src = cms.InputTag(jetSource),
             jetCorrEtaMax = cms.double(9.9),
@@ -89,14 +89,14 @@ def makeMET(process, isData, pfCandidates, jetSource, jetFlavor, postfix = ''):
         )
     )
     
-    selectedJets = addattr('selectedJets',
+    selectedJets = addattr('selectedJetsForMET',
         selectedPatJets.clone(
             src = cleanedJets,
             cut = 'pt > 15 && abs(eta) < 9.9'
         )
     )
     
-    crossCleanedJets = addattr('crossCleanedJets',
+    crossCleanedJets = addattr('crossCleanedJetsForMET',
         cleanPatJets.clone(
             src = selectedJets
         )

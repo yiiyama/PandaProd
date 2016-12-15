@@ -59,8 +59,8 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (absId == 22 && !inCand.isPromptFinalState())
       continue;
 
-    // only keep first or last copy
-    if (!inCand.isLastCopy() && !inCand.statusFlags().isFirstCopy())
+    // only keep the last copy
+    if (!inCand.isLastCopy())
       continue;
 
     auto& outParticle(outParticles.create_back());

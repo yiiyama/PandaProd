@@ -1,0 +1,98 @@
+import FWCore.ParameterSet.Config as cms
+
+from RecoJets.JetProducers.ak4PFJetsPuppi_cfi import ak4PFJetsPuppi
+from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
+from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
+from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
+
+from PandaProd.Producer.utils.addattr import AddAttr
+from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
+from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
+
+pfSource = 'packedPFCandidates'
+pvSource = 'offlineSlimmedPrimaryVertices'
+electrons = 'slimmedElectrons'
+muons = 'slimmedMuons'
+taus = 'slimmedTaus'
+photons = 'slimmedPhotons'
+genJets = 'slimmedGenJets'
+
+def makeJets(process, isData, label, candidates, suffix):
+    """
+    Light-weight version of pat addJetCollection.
+    @labels: e.g. 'AK4PFPuppi'
+    """
+
+    sequence = cms.Sequence()
+
+    addattr = AddAttr(process, sequence, suffix)
+
+    ak4PFJets = addattr('ak4PFJets',
+        ak4PFJetsPuppi.clone(
+            src = candidates,
+            doAreaFastjet = True
+        )
+    )
+
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if isData:
+        jecLevels.append('L2L3Residual')
+
+    jetCorrFactors = addattr('jetCorrFactors',
+        patJetCorrFactors.clone(
+            src = ak4PFJets,
+            payload = label,
+            levels = jecLevels,
+            primaryVertices = pvSource
+        )
+    )
+
+    # btag should always use standard PF collection
+    sequence += initBTag(process, '', pfSource, pvSource)
+
+    sequence += setupBTag(
+        process,
+        jetCollection = ak4PFJets,
+        suffix = suffix,
+        vsuffix = '',
+        muons = muons,
+        electrons = electrons,
+        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
+    )
+
+    if not isData:
+        genJetMatch = addattr('genJetMatch',
+            patJetGenJetMatch.clone(
+                src = ak4PFJets,
+                maxDeltaR = 0.4,
+                matched = genJets
+            )
+        )
+
+    allPatJets = addattr('patJets',
+        patJets.clone(
+            jetSource = ak4PFJets,
+            addJetCorrFactors = True,
+            jetCorrFactorsSource = [jetCorrFactors],
+            addBTagInfo = True,
+            discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix)],
+            addAssociatedTracks = False,
+            addJetCharge = False,
+            addGenPartonMatch = False,
+            addGenJetMatch = (not isData),
+            getJetMCFlavour = False,
+            addJetFlavourInfo = False
+        )
+    )
+
+    if not isData:
+        addattr.last.genJetMatch = genJetMatch
+
+    addattr('selectedJets',
+        selectedPatJets.clone(
+            src = allPatJets,
+            cut = 'pt > 15'
+        )
+    )
+
+    return sequence

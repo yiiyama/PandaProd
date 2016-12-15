@@ -16,7 +16,7 @@ def initBTag(process, suffix, candidates = 'particleFlow', primaryVertex = 'offl
         if (candidates, primaryVertex) != vertexingConfig[suffix]:
             raise RuntimeError('Duplicate vertexing configuration name')
 
-        return
+        return cms.Sequence()
 
     if len(vertexingConfig) == 0:
         # ESProducers and vertexing sequences

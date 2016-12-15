@@ -75,4 +75,23 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   }
 }
 
+void
+TausFiller::setRefs(ObjectMapStore const& _objectMaps)
+{
+  if (!isRealData_) {
+    auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
+
+    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+
+    for (auto& link : genTauMap.bwdMap) {
+      auto& genPtr(link.second);
+      if (genMap.find(genPtr) == genMap.end())
+        continue;
+
+      auto& outTau(*link.first);
+      outTau.matchedGen = genMap.at(genPtr);
+    }
+  }
+}
+
 DEFINE_TREEFILLER(TausFiller);

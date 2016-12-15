@@ -136,9 +136,11 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
 
     for (auto& link : genMuMap.bwdMap) {
-      auto& outMuon(*link.first);
       auto& genPtr(link.second);
+      if (genMap.find(genPtr) == genMap.end())
+        continue;
 
+      auto& outMuon(*link.first);
       outMuon.matchedGen = genMap.at(genPtr);
     }
   }

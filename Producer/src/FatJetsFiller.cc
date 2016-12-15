@@ -55,7 +55,6 @@ void
 FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList& _runBranches) const
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
-  _eventBranches.emplace_back("!" + getName() + ".matchedGenJet_");
 
   if (!computeSubstructure_) {
     char const* substrBranches[] = {

@@ -5,6 +5,8 @@ options.register('globaltag', default = '', mult = VarParsing.multiplicity.singl
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
+options._tags.pop('numEvent%d')
+options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
@@ -225,6 +227,8 @@ if options.isData:
     process.panda.fillers.genJets.enabled = False
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
+
+process.panda.outputFile = options.outputFile
 
 process.ntuples = cms.EndPath(process.panda)
 

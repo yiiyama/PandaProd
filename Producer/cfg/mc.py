@@ -1,13 +1,3 @@
-from FWCore.ParameterSet.VarParsing import VarParsing
-
-options =VarParsing('analysis')
-options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, info = 'Global tag')
-options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, info = 'Good lumi list JSON')
-options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
-options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
-
-options.parseArguments()
-
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('NTUPLES')
@@ -22,16 +12,11 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 ### INPUT FILES
 process.source = cms.Source('PoolSource',
     skipEvents = cms.untracked.uint32(0),
-    fileNames = cms.untracked.vstring(options.inputFiles)
+    fileNames = cms.untracked.vstring('XX-LFN-XX')
 )
 
 ### NUMBER OF EVENTS
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEvents))
-
-### LUMI MASK
-if options.lumilist != '':
-    import FWCore.PythonUtilities.LumiList as LumiList
-    process.source.lumisToProcess = LumiList.LumiList(filename = options.lumilist).getVLuminosityBlockRange()
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 ##############
 ## SERVICES ##
@@ -42,24 +27,13 @@ process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
-if options.globaltag == '':
-    if options.isData:
-        # sept reprocessing
-        process.GlobalTag.globaltag = '80X_dataRun2_2016SeptRepro_v3'
-    else:
-        ## tranche IV v6 ... is this correct?
-        process.GlobalTag.globaltag = '80X_mcRun2_asymptotic_2016_miniAODv2' # for 8011 MC? 
-        # process.GlobalTag.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v6'
-else:
-    process.GlobalTag.globaltag = options.globaltag
+process.GlobalTag.globaltag = '80X_mcRun2_asymptotic_2016_miniAODv2' # for 8011 MC? 
 
 #############################
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
 jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-if options.isData:
-    jecLevels.append('L2L3Residual')
 
 ### MONOX FILTER
 process.load('PandaProd.Filters.MonoXFilter_cfi')
@@ -94,7 +68,7 @@ from PandaProd.Producer.utils.puppi_cff import puppiSequence
 
 ### RECLUSTER PUPPI JET
 from PandaProd.Producer.utils.makeJets_cff import makeJets
-puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppiForMET', 'Puppi')
+puppiJetSequence = makeJets(process, False, 'AK4PFPuppi', 'puppiForMET', 'Puppi')
 
 ### JET RE-CORRECTION, TAGGING, AND SLIMMING
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
@@ -128,12 +102,12 @@ jetRecorrectionSequence = cms.Sequence(
 ### MET
 from PandaProd.Producer.utils.makeMET_cff import initMET, makeMET
 
-initMetSequence = initMET(process, options.isData)
+initMetSequence = initMET(process, False)
 
 # extracts the raw pfMET from input MINIAOD and repack new corrections
-pfMetSequence = makeMET(process, options.isData, 'packedPFCandidates', 'slimmedJets', 'AK4PFchs')
+pfMetSequence = makeMET(process, False, 'packedPFCandidates', 'slimmedJets', 'AK4PFchs')
 # compute a brand-new pfMET from puppi candidates and pack with corrections
-puppiMetSequence = makeMET(process, options.isData, 'puppiForMET', 'selectedJetsPuppi', 'AK4PFPuppi', 'Puppi')
+puppiMetSequence = makeMET(process, False, 'puppiForMET', 'selectedJetsPuppi', 'AK4PFPuppi', 'Puppi')
 
 metSequence = cms.Sequence(
     initMetSequence +
@@ -145,29 +119,29 @@ metSequence = cms.Sequence(
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
+fatJetInitSequence = initFatJets(process, False, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = False,
     label = 'AK8PFchs'
 )
 
 ak8PuppiSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = False,
     label = 'AK8PFPuppi'
 )
 
 ca15CHSSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = False,
     label = 'CA15PFchs'
 )
 
 ca15PuppiSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = False,
     label = 'CA15PFPuppi'
 )
 
@@ -216,15 +190,12 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
 #############
 
 process.load('PandaProd.Producer.panda_cfi')
-process.panda.isRealData = options.isData
-process.panda.useTrigger = options.useTrigger
+process.panda.isRealData = False
+process.panda.useTrigger = False
 #process.panda.SelectEvents = ['reco'] # no skim
-if options.isData:
-    process.panda.fillers.partons.enabled = False
-    process.panda.fillers.genParticles.enabled = False
-    process.panda.fillers.genJets.enabled = False
-if not options.useTrigger:
-    process.panda.fillers.hlt.enabled = False
+process.panda.fillers.hlt.enabled = False
+
+process.panda.outputFile = 'kraken-output-file-tmp_000.root'
 
 process.ntuples = cms.EndPath(process.panda)
 

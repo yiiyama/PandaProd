@@ -51,6 +51,7 @@ private:
   panda::Event outEvent_;
   panda::Run outRun_;
 
+  std::string outputName_;
   bool useTrigger_;
   // [[filter0, filter1, ...], ...] outer index runs over trigger objects
   std::vector<VString> triggerObjectNames_;
@@ -60,6 +61,7 @@ private:
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   selectEvents_(_cfg.getUntrackedParameter<VString>("SelectEvents")),
   skimResultsToken_(consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"))), // no process name -> pick up the trigger results from the current process
+  outputName_(_cfg.getUntrackedParameter<std::string>("outputFile", "panda.root")),
   useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger", true)),
   printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0))
 {
@@ -265,7 +267,7 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
 void 
 PandaProducer::beginJob()
 {
-  outputFile_ = TFile::Open("panda.root", "recreate");
+  outputFile_ = TFile::Open(outputName_.c_str(), "recreate");
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
 

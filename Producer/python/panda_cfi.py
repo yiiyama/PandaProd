@@ -4,6 +4,7 @@ import PandaProd.Producer.utils.egmidconf as egmidconf
 
 panda = cms.EDAnalyzer('PandaProducer',
     isRealData = cms.untracked.bool(False),
+    outputFile = cms.untracked.string('panda.root'),
     useTrigger = cms.untracked.bool(True),
     SelectEvents = cms.untracked.vstring(),
     printLevel = cms.untracked.uint32(0),

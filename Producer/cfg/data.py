@@ -195,7 +195,7 @@ process.panda.useTrigger = True
 #process.panda.SelectEvents = ['reco'] # no skim
 process.panda.fillers.partons.enabled = False
 process.panda.fillers.genParticles.enabled = False
-process.panda.fillers.genJets.enabled = Fals
+process.panda.fillers.genJets.enabled = False
 
 process.panda.outputFile = 'kraken-output-file-tmp_000.root'
 

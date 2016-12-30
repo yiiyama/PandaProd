@@ -84,10 +84,13 @@ switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
 setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring15_25ns_V1_cff', setupVIDPhotonSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Spring15_25ns_V1_cff', setupVIDElectronSelection)
 
+process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
+
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
-    process.egmGsfElectronIDs
+    process.egmGsfElectronIDs +
+    process.worstIsolationProducer
 )
 
 ### PUPPI

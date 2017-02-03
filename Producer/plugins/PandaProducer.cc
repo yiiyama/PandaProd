@@ -223,7 +223,7 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
 {
   outRun_.init();
 
-  outRun_.run = _run.run();
+  outRun_.runNumber = _run.run();
 
   for (auto* filler : fillers_) {
     if (!filler->enabled())

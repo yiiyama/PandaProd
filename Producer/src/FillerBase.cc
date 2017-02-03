@@ -46,11 +46,11 @@ FillerFactoryStore::singleton()
 
 //! sort comparison by pt
 /*!
-  This function takes ContainerElements as arguments to conform with ContainerBase::Comparison
+  This function takes Elements as arguments to conform with ContainerBase::Comparison
   but assumes that both arguments are static_castable to Particle.
 */
 namespace panda {
-  ContainerBase::Comparison ptGreater([](ContainerElement const& p1, ContainerElement const& p2)->bool {
+  ContainerBase::Comparison ptGreater([](Element const& p1, Element const& p2)->bool {
     return static_cast<Particle const&>(p1).pt > static_cast<Particle const&>(p2).pt;
   });
 }

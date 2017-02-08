@@ -39,6 +39,7 @@ class ElectronsFiller : public FillerBase {
   NamedToken<BoolMap> looseIdToken_;
   NamedToken<BoolMap> mediumIdToken_;
   NamedToken<BoolMap> tightIdToken_;
+  NamedToken<BoolMap> hltIdToken_;
   NamedToken<FloatMap> phCHIsoToken_;
   NamedToken<FloatMap> phNHIsoToken_;
   NamedToken<FloatMap> phPhIsoToken_;

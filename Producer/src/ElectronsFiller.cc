@@ -32,6 +32,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
   getToken_(tightIdToken_, _cfg, _coll, "tightId");
+  getToken_(hltIdToken_, _cfg, _coll, "hltId");
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
@@ -83,6 +84,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
   auto& tightId(getProduct_(_inEvent, tightIdToken_));
+  auto& hltId(getProduct_(_inEvent, hltIdToken_));
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
@@ -139,6 +141,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.loose = looseId[inRef];
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];
+    outElectron.hltsafe = hltId[inRef];
 
     outElectron.q = inElectron.charge();
 

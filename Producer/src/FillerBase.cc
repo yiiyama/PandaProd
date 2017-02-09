@@ -11,18 +11,7 @@ FillerBase::FillerBase(std::string const& _fillerName, edm::ParameterSet const& 
 void
 fillP4(panda::Particle& _out, reco::Candidate const& _in)
 {
-  _out.pt = _in.pt();
-  _out.eta = _in.eta();
-  _out.phi = _in.phi();
-}
-
-void
-fillP4(panda::ParticleM& _out, reco::Candidate const& _in)
-{
-  _out.pt = _in.pt();
-  _out.eta = _in.eta();
-  _out.phi = _in.phi();
-  _out.mass = _in.mass();
+  _out.setPtEtaPhiM(_in.pt(), _in.eta(), _in.phi(), _in.mass());
 }
 
 FillerBase*
@@ -42,15 +31,4 @@ FillerFactoryStore::singleton()
 {
   static FillerFactoryStore fillerFactoryStore;
   return &fillerFactoryStore;
-}
-
-//! sort comparison by pt
-/*!
-  This function takes Elements as arguments to conform with ContainerBase::Comparison
-  but assumes that both arguments are static_castable to Particle.
-*/
-namespace panda {
-  ContainerBase::Comparison ptGreater([](Element const& p1, Element const& p2)->bool {
-    return static_cast<Particle const&>(p1).pt > static_cast<Particle const&>(p2).pt;
-  });
 }

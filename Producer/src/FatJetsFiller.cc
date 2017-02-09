@@ -14,9 +14,11 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_),
   computeSubstructure_(getParameter_<bool>(_cfg, "computeSubstructure", false))
 {
-  getToken_(subjetsToken_, _cfg, _coll, "subjets", false);
+  getToken_(subjetsToken_, _cfg, _coll, "subjets");
 
   if (computeSubstructure_) {
+    getToken_(doubleBTagInfoToken_, _cfg, _coll, "doubleBTag");
+
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
     softdrop_ = new fastjet::contrib::SoftDrop(1., 0.15, R_);
     ecfnManager_ = new ECFNManager();
@@ -39,6 +41,8 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
                                         maxCandMass,massRatioWidth,
                                         minM23Cut,minM13Cut,
                                         maxM13Cut,rejectMinR);
+
+    jetBoostedBtaggingMVACalc_.initialize("BDT", getParameter_<edm::FileInPath>(_cfg, "doubleBTagWeights").fullPath());
   }
 }
 
@@ -74,6 +78,9 @@ void
 FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inSubjets(getProduct_(_inEvent, subjetsToken_));
+  reco::BoostedDoubleSVTagInfoCollection const* doubleBTagInfo(0);
+  if (computeSubstructure_)
+    doubleBTagInfo = &getProduct_(_inEvent, doubleBTagInfoToken_);
 
   double betas[] = {0.5, 1., 2., 4.};
 
@@ -191,8 +198,63 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           }
         }
         else
-          throw std::runtime_error("PandaProd::Ntupler::FatJetFiller: Jet could not be clustered");
+          throw std::runtime_error("PandaProd::FatJetsFiller: Jet could not be clustered");
 
+        // now we do the double-b
+        for (auto& dbi : *doubleBTagInfo) {
+          auto& dbJet(*dbi.jet());
+          // we are matching identical jets here
+          if (reco::deltaR(dbJet, inJet) > 0.01 || std::abs(dbJet.pt() - inJet.pt()) / inJet.pt() > 0.01)
+            continue;
+
+          double minSubjetCSV(999.);
+          for (auto&& sjRef : outJet.subjets) {
+            auto& subjet(*sjRef);
+            if (subjet.csv < minSubjetCSV)
+              minSubjetCSV = subjet.csv;
+          }
+          if (minSubjetCSV < -1. || minSubjetCSV > 1.)
+            minSubjetCSV = -1.;
+
+          auto&& vars(dbi.taggingVariables());
+          outJet.double_sub =
+            jetBoostedBtaggingMVACalc_.mvaValue(outJet.m(),
+                                                -1, //j.partonFlavor(); // they're spectator variables
+                                                -1, //j.hadronFlavor(); // 
+                                                outJet.pt(),
+                                                outJet.eta(),
+                                                minSubjetCSV,
+                                                vars.get(reco::btau::z_ratio),
+                                                vars.get(reco::btau::trackSip3dSig_3),
+                                                vars.get(reco::btau::trackSip3dSig_2),
+                                                vars.get(reco::btau::trackSip3dSig_1),
+                                                vars.get(reco::btau::trackSip3dSig_0),
+                                                vars.get(reco::btau::tau2_trackSip3dSig_0),
+                                                vars.get(reco::btau::tau1_trackSip3dSig_0),
+                                                vars.get(reco::btau::tau2_trackSip3dSig_1),
+                                                vars.get(reco::btau::tau1_trackSip3dSig_1),
+                                                vars.get(reco::btau::trackSip2dSigAboveCharm),
+                                                vars.get(reco::btau::trackSip2dSigAboveBottom_0),
+                                                vars.get(reco::btau::trackSip2dSigAboveBottom_1),
+                                                vars.get(reco::btau::tau1_trackEtaRel_0),
+                                                vars.get(reco::btau::tau1_trackEtaRel_1),
+                                                vars.get(reco::btau::tau1_trackEtaRel_2),
+                                                vars.get(reco::btau::tau2_trackEtaRel_0),
+                                                vars.get(reco::btau::tau2_trackEtaRel_1),
+                                                vars.get(reco::btau::tau2_trackEtaRel_2),
+                                                vars.get(reco::btau::tau1_vertexMass),
+                                                vars.get(reco::btau::tau1_vertexEnergyRatio),
+                                                vars.get(reco::btau::tau1_vertexDeltaR),
+                                                vars.get(reco::btau::tau1_flightDistance2dSig),
+                                                vars.get(reco::btau::tau2_vertexMass),
+                                                vars.get(reco::btau::tau2_vertexEnergyRatio),
+                                                vars.get(reco::btau::tau2_flightDistance2dSig),
+                                                vars.get(reco::btau::jetNTracks),
+                                                vars.get(reco::btau::jetNSecondaryVertices),
+                                                false);
+
+          break;
+        }
       } // if computeSubstructure_
     }
 

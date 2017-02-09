@@ -211,10 +211,10 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       if (jecUncertainty_) {
         jecUncertainty_->setJetEta(inJet.eta());
         jecUncertainty_->setJetPt(inJet.pt());
-        outJet.ptCorrUp = outJet.pt * (1. + jecUncertainty_->getUncertainty(true));
+        outJet.ptCorrUp = outJet.pt() * (1. + jecUncertainty_->getUncertainty(true));
         jecUncertainty_->setJetEta(inJet.eta());
         jecUncertainty_->setJetPt(inJet.pt());
-        outJet.ptCorrDown = outJet.pt * (1. - jecUncertainty_->getUncertainty(false));
+        outJet.ptCorrDown = outJet.pt() * (1. - jecUncertainty_->getUncertainty(false));
       }
 
       if (!isRealData_) {
@@ -264,6 +264,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         outJet.csv = patJet.bDiscriminator(csvTag_);
       if (inQGL)
         outJet.qgl = (*inQGL)[inRef];
+      outJet.area = inJet.jetArea();
       outJet.nhf = nhf;
       outJet.chf = chf;
       if (!puidTag_.empty())
@@ -277,7 +278,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   }
 
   // sort the output jets
-  auto originalIndices(outJets.sort(panda::ptGreater));
+  auto originalIndices(outJets.sort(panda::Particle::PtGreater));
 
   // export panda <-> reco mapping
 

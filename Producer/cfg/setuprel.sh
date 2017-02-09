@@ -4,5 +4,5 @@
 
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
-$INSTALL cms-met fromCMSSW_8_0_20_postICHEPfilter RecoMET/METFilters
-$INSTALL ahinzmann METRecipe_8020_Spring16 CommonTools/PileupAlgos PhysicsTools/PatAlgos PhysicsTools/PatUtils RecoMET/METAlgorithms RecoMET/METAlgorithms
+$INSTALL cms-met METRecipe_8020 RecoMET/METFilters CommonTools/PileupAlgos PhysicsTools/PatAlgos PhysicsTools/PatUtils RecoMET/METAlgorithms
+$INSTALL ikrav egm_id_80X_v3_photons PhysicsTools/SelectorUtils RecoEgamma/PhotonIdentification

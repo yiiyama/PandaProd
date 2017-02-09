@@ -3,6 +3,8 @@
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 
+#include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
+
 PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg)
 {
@@ -36,7 +38,16 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     auto& outCand(outCands.create_back());
 
-    fillP4(outCand, inCand);
+    if (inPacked) {
+      // directly fill the packed values to minimize the precision loss
+      PackedPatCandidateExposer exposer(*inPacked);
+      outCand.packedPt = exposer.packedPt();
+      outCand.packedEta = exposer.packedEta();
+      outCand.packedPhi = exposer.packedPhi();
+      outCand.packedM = exposer.packedM();
+    }
+    else
+      fillP4(outCand, inCand);
 
     outCand.q = inCand.charge();
     outCand.pftype = inCand.pdgId();
@@ -59,7 +70,7 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   }
 
   // sort the output electrons
-  auto originalIndices(outCands.sort(panda::ptGreater));
+  auto originalIndices(outCands.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
   auto& objectMap(objectMap_->get<reco::Candidate, panda::PFCand>());

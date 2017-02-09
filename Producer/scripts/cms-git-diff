@@ -18,7 +18,7 @@ cd $CMSSW_BASE/src
 REMOTE=$1
 BRANCH=$2
 
-MASTER=$(git branch | awk 'NR==1 {print $1}')
+MASTER=$(git branch | head -n 1 | sed 's/^[* ] \([^ ]*\)/\1/')
 
 if ! git remote | grep -q $REMOTE
 then
@@ -35,6 +35,12 @@ else
 fi
 
 FIRST_AFTER_BRANCH=$(git rev-list --first-parent $BRANCH ^$MASTER | tail -n 1)
+if ! [ $FIRST_AFTER_BRANCH ]
+then
+  echo "Branch $BRANCH of $REMOTE seems to have been merged to $MASTER already."
+  exit 0
+fi
+
 LAST_BEFORE_BRANCH=$(git rev-list --first-parent --max-count 2 $FIRST_AFTER_BRANCH | tail -n 1)
 echo ""
 echo "$REMOTE/$BRANCH branched off from master ($MASTER) at"

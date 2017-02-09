@@ -1,6 +1,9 @@
 #include "../interface/GenParticlesFiller.h"
 
 #include "DataFormats/Common/interface/RefToPtr.h"
+#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+
+#include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
 
 GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
@@ -63,9 +66,20 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (!inCand.isLastCopy())
       continue;
 
+    auto* inPacked(dynamic_cast<pat::PackedGenParticle const*>(&inCand));
+
     auto& outParticle(outParticles.create_back());
 
-    fillP4(outParticle, inCand);
+    if (inPacked) {
+      // directly fill the packed values to minimize the precision loss
+      PackedGenParticleExposer exposer(*inPacked);
+      outParticle.packedPt = exposer.packedPt();
+      outParticle.packedY = exposer.packedY();
+      outParticle.packedPhi = exposer.packedPhi();
+      outParticle.packedM = exposer.packedM();
+    }
+    else
+      fillP4(outParticle, inCand);
 
     outParticle.pdgid = inCand.pdgId();
     outParticle.statusFlags = inCand.statusFlags().flags_.to_ulong();
@@ -74,7 +88,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   }
 
   // sort the output electrons
-  auto originalIndices(outParticles.sort(panda::ptGreater));
+  auto originalIndices(outParticles.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
   auto& objectMap(objectMap_->get<reco::GenParticle, panda::GenParticle>());

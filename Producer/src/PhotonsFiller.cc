@@ -147,13 +147,13 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     outPhoton.chiso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
     if (chIsoLeakage_[iDet].IsValid())
-      outPhoton.chiso -= chIsoLeakage_[iDet].Eval(outPhoton.pt);
+      outPhoton.chiso -= chIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.nhiso = nhIso[inRef] - nhIsoEA_.getEffectiveArea(scEta) * rho;
     if (nhIsoLeakage_[iDet].IsValid())
-      outPhoton.nhiso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt);
+      outPhoton.nhiso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.phoiso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
     if (phIsoLeakage_[iDet].IsValid())
-      outPhoton.phoiso -= phIsoLeakage_[iDet].Eval(outPhoton.pt);
+      outPhoton.phoiso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.chisoWorst = wchIso[inRef];
     
     outPhoton.loose = looseId[inRef];
@@ -176,17 +176,17 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outPhoton.highpt = outPhoton.hOverE < 0.05 &&
         outPhoton.sieie < 0.0105 &&
         chIso[inRef] < 5. &&
-        phIso[inRef] + 0.0045 * outPhoton.pt - highptEA * rho < 5.25;
+        phIso[inRef] + 0.0045 * outPhoton.pt() - highptEA * rho < 5.25;
     else if (scEta < 2.)
       outPhoton.highpt = outPhoton.hOverE < 0.05 &&
         outPhoton.sieie < 0.028 &&
         chIso[inRef] < 5. &&
-        phIso[inRef] + 0.0045 * outPhoton.pt - highptEA * rho < 4.5;
+        phIso[inRef] + 0.0045 * outPhoton.pt() - highptEA * rho < 4.5;
     else
       outPhoton.highpt = outPhoton.hOverE < 0.05 &&
         outPhoton.sieie < 0.028 &&
         chIso[inRef] < 5. &&
-        phIso[inRef] + 0.003 * outPhoton.pt - highptEA * rho < 4.5;
+        phIso[inRef] + 0.003 * outPhoton.pt() - highptEA * rho < 4.5;
 
     outPhoton.mipEnergy = inPhoton.mipTotEnergy();
 
@@ -266,7 +266,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     ptrList.push_back(inPhotons.ptrAt(iPh));
   }
 
-  auto originalIndices(outPhotons.sort(panda::ptGreater));
+  auto originalIndices(outPhotons.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
   auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>());

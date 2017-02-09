@@ -66,7 +66,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     ptrList.push_back(inTaus.ptrAt(iTau));
   }
 
-  auto originalIndices(outTaus.sort(panda::ptGreater));
+  auto originalIndices(outTaus.sort(panda::Particle::PtGreater));
 
   // export panda <-> reco mapping
 

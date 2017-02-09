@@ -102,7 +102,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     ptrList.push_back(inMuons.ptrAt(iMu));
   }
   
-  auto originalIndices(outMuons.sort(panda::ptGreater));
+  auto originalIndices(outMuons.sort(panda::Particle::PtGreater));
 
   // export panda <-> reco mapping
 

@@ -21,9 +21,9 @@ typedef std::vector<std::vector<std::string>> VVString;
 
 //! Base class for tree fillers
 /*!
-  There is no strict (programmatic) rule on the scope of each Filler. One basic guideline is to
-  define one Filler per object branch (collection etc.) of the Event.
-*/
+ * There is no strict (programmatic) rule on the scope of each Filler. One basic guideline is to
+ * define one Filler per object branch (collection etc.) of the Event.
+ */
 class FillerBase {
  public:
   FillerBase(std::string const& fillerName, edm::ParameterSet const&);
@@ -213,7 +213,6 @@ FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _t
 }
 
 void fillP4(panda::Particle&, reco::Candidate const&);
-void fillP4(panda::ParticleM&, reco::Candidate const&);
 
 //--------------------------------------------------------------------------------------------------
 // FillerFactory: a trick to register individual fillers as "plugin modules"
@@ -249,11 +248,6 @@ class FillerFactoryStore {
  protected:
   tbb::concurrent_unordered_map<std::string, FillerFactory> fillerFactories_;
 };
-
-// Should be moved to a utilities library once format conversion is done
-namespace panda {
-  extern ContainerBase::Comparison ptGreater;
-}
 
 // A macro that instantiates FillerFactoryStore::Registration for the class FILLER
 #define DEFINE_TREEFILLER(FILLER) \

@@ -197,7 +197,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   }
 
   // sort the output electrons
-  auto originalIndices(outElectrons.sort(panda::ptGreater));
+  auto originalIndices(outElectrons.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
   auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>());

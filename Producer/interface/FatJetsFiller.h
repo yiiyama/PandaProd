@@ -4,8 +4,10 @@
 #include "JetsFiller.h"
 
 #include "DataFormats/BTauReco/interface/JetTag.h"
+#include "DataFormats/BTauReco/interface/BoostedDoubleSVTagInfo.h"
 #include "PandaProd/Utilities/interface/HEPTopTaggerWrapperV2.h"
 #include "PandaProd/Utilities/interface/EnergyCorrelations.h"
+#include "PandaProd/Utilities/interface/BoostedBtaggingMVACalculator.h"
 
 // fastjet
 #include "fastjet/PseudoJet.hh"
@@ -29,6 +31,7 @@ class FatJetsFiller : public JetsFiller {
   void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
   NamedToken<JetView> subjetsToken_;
+  NamedToken<reco::BoostedDoubleSVTagInfoCollection> doubleBTagInfoToken_;
   std::string njettinessTag_;
   std::string sdKinematicsTag_;
   std::string subjetBtagTag_;
@@ -41,6 +44,7 @@ class FatJetsFiller : public JetsFiller {
   fastjet::contrib::Njettiness* tau_{0};
   fastjet::HEPTopTaggerV2* htt_{0};
   ECFNManager* ecfnManager_{0};
+  panda::BoostedBtaggingMVACalculator jetBoostedBtaggingMVACalc_{};
 
   bool computeSubstructure_{false};
 };

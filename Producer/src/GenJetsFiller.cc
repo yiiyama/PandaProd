@@ -39,7 +39,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   }
 
   // sort the output electrons
-  auto originalIndices(outJets.sort(panda::ptGreater));
+  auto originalIndices(outJets.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
   auto& objectMap(objectMap_->get<reco::GenJet, panda::GenJet>());

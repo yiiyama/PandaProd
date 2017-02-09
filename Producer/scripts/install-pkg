@@ -4,8 +4,8 @@ recursive-mv() {
   # mv fails if the top directory exists already
   # go recursively into subdirectories to complete the move
 
-  SRC=$1
-  TARG=$2
+  local SRC=$1
+  local TARG=$2
 
   for F in $(ls $SRC)
   do

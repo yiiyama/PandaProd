@@ -87,7 +87,8 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
         filler->setObjectMap(objectMaps_[fillerName]);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Configuration error in " << fillerName;
+      edm::LogError("PandaProducer") << "Configuration error in " << fillerName << ":" << std::endl
+                                     << ex.what();
       throw;
     }
   }
@@ -271,8 +272,8 @@ PandaProducer::beginJob()
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
 
-  panda::utils::BranchList eventBranches;
-  panda::utils::BranchList runBranches;
+  panda::utils::BranchList eventBranches{{"*"}};
+  panda::utils::BranchList runBranches{{"*"}};
   for (auto* filler : fillers_)
     filler->branchNames(eventBranches, runBranches);
 

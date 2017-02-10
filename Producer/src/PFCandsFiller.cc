@@ -45,26 +45,27 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outCand.packedEta = exposer.packedEta();
       outCand.packedPhi = exposer.packedPhi();
       outCand.packedM = exposer.packedM();
+      if (!inPuppiMap)
+        outCand.packedPuppiW = exposer.packedPuppiweight();
+      if (!inPuppiNoLepMap)
+        outCand.packedPuppiWNoLepDiff = exposer.packedPuppiweightNoLepDiff();
     }
     else
       fillP4(outCand, inCand);
 
-    outCand.q = inCand.charge();
-    outCand.pftype = inCand.pdgId();
+    // if puppi collection is given, use its weight
+    if (inPuppiMap && inPuppiNoLepMap)
+      outCand.setPuppiW((*inPuppiMap)[ref], (*inPuppiNoLepMap)[ref]);
 
-    if (inPuppiMap) {
-      // if puppi collection is given, use its weight
-      outCand.puppiW = (*inPuppiMap)[ref];
+    outCand.ptype = panda::PFCand::X;
+    unsigned ptype(0);
+    while (ptype != panda::PFCand::nPTypes) {
+      if (panda::PFCand::pdgId_[ptype] == inCand.pdgId()) {
+        outCand.ptype = ptype;
+        break;
+      }
+      ++ptype;
     }
-    else if (inPacked) {
-      // just fill what's stored in packed candidate
-      outCand.puppiW = inPacked->puppiWeight();
-    }
-
-    if (inPuppiNoLepMap)
-      outCand.puppiWNoLep = (*inPuppiNoLepMap)[ref];
-    else if (inPacked)
-      outCand.puppiWNoLep = inPacked->puppiWeightNoLep();
 
     ptrList.push_back(inCands.ptrAt(iP));
   }

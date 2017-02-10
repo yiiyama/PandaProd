@@ -12,6 +12,8 @@ class PackedPatCandidateExposer : public pat::PackedCandidate {
   uint16_t packedEta() const { return packedEta_; }
   uint16_t packedPhi() const { return packedPhi_; }
   uint16_t packedM() const { return packedM_; }
+  int16_t packedPuppiweight() const { return packedPuppiweight_; }
+  int16_t packedPuppiweightNoLepDiff() const { return packedPuppiweightNoLepDiff_; }
 };
 
 //! Expose packed values which have no public accessor but are protected members

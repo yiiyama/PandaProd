@@ -26,6 +26,8 @@ puppiMerged = cms.EDProducer("CandViewMerger",
     src = cms.VInputTag('puppiNoLep', 'pfLeptonsPUPPET')
 )
 
+import PandaProd.Producer.utils.egmidconf as egmidconf
+
 from CommonTools.PileupAlgos.PhotonPuppi_cff import puppiPhoton
 puppiForMET = puppiPhoton.clone(
     candName = 'packedPFCandidates',
@@ -33,7 +35,7 @@ puppiForMET = puppiPhoton.clone(
     runOnMiniAOD = True,
     puppiCandName = 'puppiMerged',
     useRefs = False, # need to perform dR matching because of "an issue in refs in PackedCandidates"
-    photonId  = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-loose' # match what's used for the actual photon collection
+    photonId  = egmidconf.photonLooseId
 )
 
 puppiSequence = cms.Sequence(

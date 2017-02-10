@@ -11,9 +11,9 @@ vertexingConfig = {} # {suffix: (candidates, primaryVertex)}
 # Can call for each candidates & PV collection pair to construct secondary vertices from.
 # Seems like CMS only uses particleFlow & offlinePrimaryVertices (or their MINIAOD equivalents) pair regardless of what types of jets they are b-tagging.
 # So in the end we only call this function once.
-def initBTag(process, suffix, candidates = 'particleFlow', primaryVertex = 'offlinePrimaryVertices'):
-    if suffix in vertexingConfig:
-        if (candidates, primaryVertex) != vertexingConfig[suffix]:
+def initBTag(process, vsuffix, candidates = 'particleFlow', primaryVertex = 'offlinePrimaryVertices'):
+    if vsuffix in vertexingConfig:
+        if (candidates, primaryVertex) != vertexingConfig[vsuffix]:
             raise RuntimeError('Duplicate vertexing configuration name')
 
         return cms.Sequence()
@@ -26,11 +26,11 @@ def initBTag(process, suffix, candidates = 'particleFlow', primaryVertex = 'offl
         process.load('RecoBTag.Combined.combinedMVA_EventSetup_cff')
         process.load('RecoBTag.SoftLepton.softLepton_EventSetup_cff')
 
-    vertexingConfig[suffix] = (candidates, primaryVertex)
+    vertexingConfig[vsuffix] = (candidates, primaryVertex)
 
     sequence = cms.Sequence()
 
-    addattr = AddAttr(process, sequence, suffix)
+    addattr = AddAttr(process, sequence, vsuffix)
 
     vertexFinder = addattr('inclusiveCandidateVertexFinder',
         vertexing.inclusiveCandidateVertexFinder.clone(
@@ -82,7 +82,7 @@ def initBTag(process, suffix, candidates = 'particleFlow', primaryVertex = 'offl
 
     secondaryVerticesCvsL = addattr('inclusiveCandidateSecondaryVerticesCvsL',
         vertexing.inclusiveCandidateSecondaryVerticesCvsL.clone(
-            secondaryVertices = 'candidateVertexArbitratorCvsL' + suffix
+            secondaryVertices = 'candidateVertexArbitratorCvsL' + vsuffix
         )
     )
 
@@ -278,30 +278,10 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
 def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos = []):
     if algo == 'ak8':
         deltaR = 0.8
-        maxSVDeltaRToJet = 0.7
-        weightsFile = 'BoostedDoubleSV_AK8_BDT_v3.weights.xml.gz'
     elif algo == 'ca15':
         deltaR = 1.5
-        maxSVDeltaRToJet = 1.3
-        weightsFile = 'BoostedDoubleSV_CA15_BDT_v3.weights.xml.gz'
     else:
         raise RuntimeError('Unknown algo ' + algo)
-
-    boostedDoubleSecondaryVertexComputer = cms.ESProducer("CandidateBoostedDoubleSecondaryVertexESProducer",
-        trackSelectionBlock,
-        beta = cms.double(1.0),
-        useCondDB = cms.bool(False),
-        weightFile = cms.FileInPath('RecoBTag/SecondaryVertex/data/' + weightsFile),
-        useGBRForest = cms.bool(True),
-        useAdaBoost = cms.bool(False),
-        trackPairV0Filter = cms.PSet(k0sMassWindow = cms.double(0.03))
-    )
-
-    boostedDoubleSecondaryVertexComputer.maxSVDeltaRToJet = cms.double(maxSVDeltaRToJet)
-    boostedDoubleSecondaryVertexComputer.trackSelection.jetDeltaRMax = cms.double(deltaR)
-    boostedDoubleSecondaryVertexComputer.R0 = cms.double(deltaR)
-
-    setattr(process, 'boostedDoubleSecondaryVertexComputer' + suffix, boostedDoubleSecondaryVertexComputer)
 
     ipTagInfosName = ipTagInfosNameBase + suffix
     try:
@@ -316,23 +296,32 @@ def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos
     try:
         inclusiveSecondaryVertexFinderTagInfos = getattr(process, ivfTagInfosName)
     except AttributeError:
-        # deltaR for 0.4 jet is 0.3, but for fat jets is same as the jet radius
-        inclusiveSecondaryVertexFinderTagInfos = makeIvfTagInfos(ipTagInfosName, vsuffix, deltaR = deltaR)
-        inclusiveSecondaryVertexFinderTagInfos.trackSelection.jetDeltaRMax = deltaR
-        inclusiveSecondaryVertexFinderTagInfos.vertexCuts.maxDeltaRToJetAxis = deltaR
+        # original comment: deltaR for 0.4 jet is 0.3, but for fat jets is same as the jet radius
+        # but now we are using 0.3?? Are we sure??
+        inclusiveSecondaryVertexFinderTagInfos = makeIvfTagInfos(ipTagInfosName, vsuffix)#, deltaR = deltaR) # are we sure?
+#        inclusiveSecondaryVertexFinderTagInfos.trackSelection.jetDeltaRMax = deltaR
+#        inclusiveSecondaryVertexFinderTagInfos.vertexCuts.maxDeltaRToJetAxis = deltaR
         setattr(process, ivfTagInfosName, inclusiveSecondaryVertexFinderTagInfos)
 
-    boostedDoubleSecondaryVertexBJetTags = cms.EDProducer("JetTagProducer",
-        jetTagComputer = cms.string('boostedDoubleSecondaryVertexComputer' + suffix),
-        tagInfos = cms.VInputTag(cms.InputTag(ipTagInfosName), cms.InputTag(ivfTagInfosName))
-    )
+    boostedDoubleSVTagInfosName = 'pfBoostedDoubleSVTagInfos' + suffix
+    try:
+        boostedDoubleSVTagInfos = getattr(process, boostedDoubleSVTagInfosName)
+    except AttributeError:
+        if algo == 'ak8':
+            boostedDoubleSVTagInfos = btag.pfBoostedDoubleSVAK8TagInfos.clone(
+                svTagInfos = ivfTagInfosName
+            )
+        else:
+            boostedDoubleSVTagInfos = btag.pfBoostedDoubleSVCA15TagInfos.clone(
+                svTagInfos = ivfTagInfosName
+            )
 
-    setattr(process, 'pfBoostedDoubleSecondaryVertexBJetTags' + suffix, boostedDoubleSecondaryVertexBJetTags)
+        setattr(process, boostedDoubleSVTagInfosName, boostedDoubleSVTagInfos)
 
     sequence = cms.Sequence(
         impactParameterTagInfos +
         inclusiveSecondaryVertexFinderTagInfos +
-        boostedDoubleSecondaryVertexBJetTags
+        boostedDoubleSVTagInfos
     )
 
     return sequence

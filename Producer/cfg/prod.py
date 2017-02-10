@@ -70,19 +70,12 @@ process.MonoXFilter.taggingMode = True
 ### EGAMMA ID
 # Loads photonIDValueMapProducer, egmPhotonIDs, and egmGsfElectronIDs
 
-import PandaProd.Producer.utils.egmidconf as egmidconf
-egmidconf.electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Spring15/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_25ns.txt'
-egmidconf.electronEcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_ecalPFClusterIso.txt'
-egmidconf.electronHcalIsoEA = 'PandaProd/Producer/data/effAreaElectrons_HLT_hcalPFClusterIso.txt'
-egmidconf.electronId = 'egmGsfElectronIDs:cutBasedElectronID-Spring15-25ns-V1-standalone-'
-egmidconf.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring15-25ns-V1-standalone-'
-egmidconf.photonEA = 'RecoEgamma/PhotonIdentification/data/Spring15/effAreaPhotons_cone03_'
-
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDPhotonIdProducer, switchOnVIDElectronIdProducer, DataFormat
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring15_25ns_V1_cff', setupVIDPhotonSelection)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Spring15_25ns_V1_cff', setupVIDElectronSelection)
+setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
+setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
+setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
 
 process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 
@@ -176,12 +169,23 @@ ca15PuppiSequence = makeFatJets(
     label = 'CA15PFPuppi'
 )
 
+from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
+initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
+ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
+ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')
+ca15CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFchs', 'CA15PFchs', '', 'ca15')
+ca15PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFPuppi', 'CA15PFPuppi', '', 'ca15')
+
 fatJetSequence = cms.Sequence(
     fatJetInitSequence +
     ak8CHSSequence +
     ak8PuppiSequence +
     ca15CHSSequence +
-    ca15PuppiSequence
+    ca15PuppiSequence +
+    ak8CHSDoubleBTagSequence +
+    ak8PuppiDoubleBTagSequence +
+    ca15CHSDoubleBTagSequence +
+    ca15PuppiDoubleBTagSequence
 )
 
 ### MET FILTERS

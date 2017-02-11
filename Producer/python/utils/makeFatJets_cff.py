@@ -101,9 +101,9 @@ def initFatJets(process, isData, labels):
 
     return sequence
 
-def makeFatJets(process, isData, label, ptMin = 180.):
+def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     """
-    @label: AK8PFchs, CA15PFPuppi, etc.
+    @param label: AK8PFchs, CA15PFPuppi, etc.
     """
 
     matches = re.match('(AK|CA)([0-9]+)PF(.+)', label)
@@ -122,9 +122,9 @@ def makeFatJets(process, isData, label, ptMin = 180.):
     pu = matches.group(3)
 
     if pu == 'chs':
-        pfCandidates = 'pfCHS'
+        jecLabel = 'AK8PFchs' # regardless of jet algo
     elif pu == 'Puppi':
-        pfCandidates = 'puppi'
+        jecLabel = 'AK8PFPuppi' # regardless of jet algo
     else:
         raise RuntimeError('Unknown PU mitigation ' + pu)
 
@@ -143,7 +143,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
         ak4PFJets.clone(
             jetAlgorithm = cms.string(algoName),
             rParam = cms.double(radius),
-            src = cms.InputTag(pfCandidates),
+            src = cms.InputTag(candidates),
             jetPtMin = cms.double(ptMin)
         )
     )
@@ -152,7 +152,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
         ak4PFJets.clone(
             jetAlgorithm = cms.string(algoName),
             rParam = cms.double(radius),
-            src = cms.InputTag(pfCandidates),
+            src = cms.InputTag(candidates),
             jetPtMin = cms.double(ptMin),
             useSoftDrop = cms.bool(True),
             R0 = cms.double(radius),
@@ -213,24 +213,18 @@ def makeFatJets(process, isData, label, ptMin = 180.):
   
     ## MAIN JET ##
 
-    if label.startswith('AK8'):
-        # or any other jet where JECs are provided
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if isData:
+        jecLevels.append('L2L3Residual')
 
-        jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-        if isData:
-            jecLevels.append('L2L3Residual')
-    
-        jetCorrFactors = addattr('jetCorrFactors',
-            jetUpdater_cff.patJetCorrFactors.clone(
-                src = pfJets,
-                payload = label,
-                levels = jecLevels,
-                primaryVertices = pvSource
-            )
+    jetCorrFactors = addattr('jetCorrFactors',
+        jetUpdater_cff.patJetCorrFactors.clone(
+            src = pfJets,
+            payload = jecLabel,
+            levels = jecLevels,
+            primaryVertices = pvSource
         )
-        addJetCorr = True
-    else:
-        addJetCorr = False
+    )
 
     if not isData:
         genJetMatch = addattr('genJetMatch',
@@ -244,7 +238,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
     patJets = addattr('patJets',
         jetProducer_cfi.patJets.clone(
             jetSource = pfJets,
-            addJetCorrFactors = addJetCorr,
+            addJetCorrFactors = True,
             addBTagInfo = False,
             addAssociatedTracks = False,
             addJetCharge = False,
@@ -255,8 +249,7 @@ def makeFatJets(process, isData, label, ptMin = 180.):
         )
     )
     patJetsMod = addattr.last
-    if addJetCorr:
-        patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
+    patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
     if not isData:
         patJetsMod.genJetMatch = genJetMatch
 

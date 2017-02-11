@@ -68,16 +68,6 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
       _eventBranches.emplace_back("!" + getName() + b);
   }
 
-  if (outputType_ == kCHSCA15 || outputType_ == kPuppiCA15) {
-    char const* genBranches[] = {
-      ".ptCorrUp",
-      ".ptCorrDown",
-      ".rawPt"
-    };
-    for (char const* b : genBranches)
-      _eventBranches.emplace_back("!" + getName() + b);
-  }
-
   if (puidTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".puid");
 
@@ -205,8 +195,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
       fillP4(outJet, inJet);
 
-      if (outputType_ != kCHSCA15 && outputType_ != kPuppiCA15)
-        outJet.rawPt = patJet.pt() * patJet.jecFactor("Uncorrected");
+      outJet.rawPt = patJet.pt() * patJet.jecFactor("Uncorrected");
 
       if (jecUncertainty_) {
         jecUncertainty_->setJetEta(inJet.eta());

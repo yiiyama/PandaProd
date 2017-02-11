@@ -7,16 +7,12 @@ MetFiltersFiller::MetFiltersFiller(std::string const& _name, edm::ParameterSet c
   FillerBase(_name, _cfg)
 {
   getToken_(filterResultsToken_, _cfg, _coll, "generalFilters");
-  getToken_(badTrackToken_, _cfg, _coll, "badTrack");
-  getToken_(badMuonTrackToken_, _cfg, _coll, "badMuonTrack");
 }
 
 void
 MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inFilterResults(getProduct_(_inEvent, filterResultsToken_));
-  auto& inBadTrack(getProduct_(_inEvent, badTrackToken_));
-  auto& inBadMuonTrack(getProduct_(_inEvent, badMuonTrackToken_));
 
   auto& outMetFilters(_outEvent.metFilters);
 
@@ -35,9 +31,6 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
     else if (name == "Flag_globalTightHalo2016Filter")
       outMetFilters.globalHalo16 = !inFilterResults.accept(iF);
   }
-
-  outMetFilters.badTrack = !inBadTrack;
-  outMetFilters.badMuonTrack = !inBadMuonTrack;
 }
 
 DEFINE_TREEFILLER(MetFiltersFiller);

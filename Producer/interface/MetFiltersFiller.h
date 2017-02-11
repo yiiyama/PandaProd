@@ -14,8 +14,6 @@ class MetFiltersFiller : public FillerBase {
 
  protected:
   NamedToken<edm::TriggerResults> filterResultsToken_;
-  NamedToken<bool> badTrackToken_;
-  NamedToken<bool> badMuonTrackToken_;
 };
 
 #endif

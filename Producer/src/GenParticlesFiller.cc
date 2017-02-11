@@ -51,6 +51,13 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   unsigned iP(-1);
   for (auto& inCand : inParticles) {
     ++iP;
+
+    auto&& flags(inCand.statusFlags());
+
+    // only keep the first or last copy
+    if (!flags.isLastCopy() && !flags.isFirstCopy())
+      continue;
+
     if (inCand.pt() < minPt_)
       continue;
 
@@ -62,27 +69,12 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (absId == 22 && !inCand.isPromptFinalState())
       continue;
 
-    // only keep the last copy
-    if (!inCand.isLastCopy())
-      continue;
-
-    auto* inPacked(dynamic_cast<pat::PackedGenParticle const*>(&inCand));
-
     auto& outParticle(outParticles.create_back());
 
-    if (inPacked) {
-      // directly fill the packed values to minimize the precision loss
-      PackedGenParticleExposer exposer(*inPacked);
-      outParticle.packedPt = exposer.packedPt();
-      outParticle.packedY = exposer.packedY();
-      outParticle.packedPhi = exposer.packedPhi();
-      outParticle.packedM = exposer.packedM();
-    }
-    else
-      fillP4(outParticle, inCand);
+    fillP4(outParticle, inCand);
 
     outParticle.pdgid = inCand.pdgId();
-    outParticle.statusFlags = inCand.statusFlags().flags_.to_ulong();
+    outParticle.statusFlags = flags.flags_.to_ulong();
 
     ptrList.push_back(inParticles.ptrAt(iP));
   }

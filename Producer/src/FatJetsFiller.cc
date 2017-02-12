@@ -84,16 +84,6 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
   double betas[] = {0.5, 1., 2., 4.};
 
-  std::string substrLabel;
-  if (getName() == "chsAK8Jets")
-    substrLabel = "AK8PFchs";
-  else if (getName() == "chsCA15Jets")
-    substrLabel = "CA15PFchs";
-  else if (getName() == "puppiAK8Jets")
-    substrLabel = "AK8PFPuppi";
-  else if (getName() == "puppiCA15Jets")
-    substrLabel = "CA15PFPuppi";
-
   auto& outSubjets(_outEvent.subjets);
 
   typedef std::vector<fastjet::PseudoJet> VPseudoJet;

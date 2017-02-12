@@ -28,7 +28,8 @@ class JetsFiller : public FillerBase {
     kCHSAK8,
     kPuppiAK8,
     kCHSCA15,
-    kPuppiCA15
+    kPuppiCA15,
+    nOutputTypes
   };
 
   typedef edm::View<reco::Jet> JetView;
@@ -39,12 +40,14 @@ class JetsFiller : public FillerBase {
   NamedToken<GenJetView> genJetsToken_;
   NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;
+  std::string jecName_;
+  std::string jerName_;
   std::string csvTag_;
   std::string puidTag_;
 
   JetCorrectionUncertainty* jecUncertainty_{0};
 
-  OutputType outputType_{kCHSAK4};
+  OutputType outputType_{nOutputTypes};
 
   //! jet radius
   double R_{0.4};

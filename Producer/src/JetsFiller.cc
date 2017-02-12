@@ -19,6 +19,8 @@
 
 JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
+  jecName_(getParameter_<std::string>(_cfg, "jec", "")),
+  jerName_(getParameter_<std::string>(_cfg, "jer", "")),
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
   R_(getParameter_<double>(_cfg, "R", 0.4)),
@@ -58,7 +60,7 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
   if (isRealData_)
     _eventBranches.emplace_back("!" + getName() + ".matchedGenJet_");
 
-  if (isRealData_ || outputType_ == kCHSCA15 || outputType_ == kPuppiAK4 || outputType_ == kPuppiAK8 || outputType_ == kPuppiCA15) {
+  if (isRealData_ || jerName_.empty()) {
     char const* genBranches[] = {
       ".ptSmear",
       ".ptSmearUp",
@@ -87,24 +89,18 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   auto& inJets(getProduct_(_inEvent, jetsToken_));
 
   panda::JetCollection* pOutJets(0);
-  std::string jetCorrName;
-  std::string jetResName;
   switch (outputType_) {
   case kCHSAK4:
     pOutJets = &_outEvent.chsAK4Jets;
-    jetCorrName = jetResName = "AK4PFchs";
     break;
   case kPuppiAK4:
     pOutJets = &_outEvent.puppiAK4Jets;
-    jetCorrName = "AK4PFPuppi";
     break;
   case kCHSAK8:
     pOutJets = &_outEvent.chsAK8Jets;
-    jetCorrName = jetResName = "AK8PFchs";
     break;
   case kPuppiAK8:
     pOutJets = &_outEvent.puppiAK8Jets;
-    jetCorrName = "AK8PFPuppi";
     break;
   case kCHSCA15:
     pOutJets = &_outEvent.chsCA15Jets;
@@ -112,12 +108,14 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   case kPuppiCA15:
     pOutJets = &_outEvent.puppiCA15Jets;
     break;
+  default:
+    return;
   }
   panda::JetCollection& outJets(*pOutJets);
 
-  if (!jecUncertainty_ && !jetCorrName.empty()) {
+  if (!jecUncertainty_ && !jecName_.empty()) {
     edm::ESHandle<JetCorrectorParametersCollection> jecColl;
-    _setup.get<JetCorrectionsRecord>().get(jetCorrName, jecColl);
+    _setup.get<JetCorrectionsRecord>().get(jecName_, jecColl);
     jecUncertainty_ = new JetCorrectionUncertainty((*jecColl)["Uncertainty"]);
   }
 
@@ -131,9 +129,9 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     if (!genJetsToken_.second.isUninitialized())
       genJets = &getProduct_(_inEvent, genJetsToken_);
 
-    if (!jetResName.empty()) {
-      ptRes = JME::JetResolution::get(_setup, jetResName + "_pt");
-      ptResSF = JME::JetResolutionScaleFactor::get(_setup, jetResName);
+    if (!jerName_.empty()) {
+      ptRes = JME::JetResolution::get(_setup, jerName_ + "_pt");
+      ptResSF = JME::JetResolutionScaleFactor::get(_setup, jerName_);
 
       rho = getProduct_(_inEvent, rhoToken_);
       random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
@@ -224,7 +222,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
             matchedGenJets.emplace_back();
         }
 
-        if (!jetResName.empty()) {
+        if (!jerName_.empty()) {
           JME::JetParameters resParams({{JME::Binning::JetPt, inJet.pt()}, {JME::Binning::JetEta, inJet.eta()}, {JME::Binning::Rho, rho}});
           double res(ptRes.getResolution(resParams) * inJet.pt());
 

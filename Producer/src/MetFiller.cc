@@ -6,7 +6,7 @@ MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
   FillerBase(_name, _cfg),
   fillOthers_(getParameter_<bool>(_cfg, "fillOthers", false))
 {
-  if (_name == "t1Met")
+  if (_name == "met")
     outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.met; };
   else if (_name == "puppiMet")
     outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.puppiMet; };

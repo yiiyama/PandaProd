@@ -273,7 +273,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         metFilters = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('MetFilters'),
-            generalFilters = cms.untracked.string('TriggerResults::RECO')
+            filterProcesses = cms.untracked.vstring('', 'PAT', 'RECO')
         ),
         hlt = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

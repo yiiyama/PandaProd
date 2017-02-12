@@ -14,7 +14,7 @@ class MetFiltersFiller : public FillerBase {
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:
-  NamedToken<edm::TriggerResults> filterResultsToken_;
+  std::vector<NamedToken<edm::TriggerResults>> filterResultsTokens_;
 };
 
 #endif

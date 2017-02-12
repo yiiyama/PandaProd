@@ -12,15 +12,11 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-jetMetReco = True
-mainMET = 'slimmedMETs'
-addUncleanedMETs = False
+jetMETReco = True
 if options.conf == '03Feb2017':
-    jetMetReco = False
+    jetMETReco = False
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
-    mainMET = 'slimmedMETsMuEGClean'
-    addUncleanedMETs = True
 elif options.conf == '23Sep2016':
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
@@ -102,17 +98,35 @@ process.MonoXFilter.taggingMode = True
 
 ### PUPPI
 
+# 80X does not contain the latest & greatest PuppiPhoton; need to rerun
 from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+# Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+# *UGLY* also runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2 internally
+# which loads photonIDValueMapProducer and egmPhotonIDs
 makePuppiesFromMiniAOD(process, createScheduledSequence = True)
-# *UGLY* makePuppiesFromMiniAOD runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2
+
+# Just renaming
+puppiForMETSequence = process.puppiMETSequence
+
+### PUPPI MET
+
+from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
+# Creates process.fullPatMetSequencePuppi
+runMetCorAndUncFromMiniAOD(
+    process,
+    isData = options.isData,
+    metType = 'Puppi',
+    pfCandColl = 'puppiForMET',
+    recoMetFromPFCs = True,
+    jetFlavor = 'AK4PFPuppi',
+    postfix = 'Puppi'
+)
 
 ### EGAMMA ID
-# Loads photonIDValueMapProducer, egmPhotonIDs, and egmGsfElectronIDs
 
-from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDPhotonIdProducer, switchOnVIDElectronIdProducer, DataFormat
-#switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
+from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, switchOnVIDElectronIdProducer, DataFormat
+# Loads egmGsfElectronIDs
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-#setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
 
@@ -189,17 +203,20 @@ fatJetSequence = cms.Sequence(
 process.reco = cms.Path(
     process.MonoXFilter +
     egmIdSequence +
-    process.puppiMETSequence +
+    puppiForMETSequence +
+    process.fullPatMetSequencePuppi +
     process.QGTagger +
     fatJetSequence
 )
 
-if jetMetReco:
+if jetMETReco:
     ### RECLUSTER PUPPI JET
 
     from PandaProd.Producer.utils.makeJets_cff import makeJets
 
     puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Puppi')
+
+    process.reco += puppiJetSequence
     
     ### JET RE-CORRECTION
 
@@ -227,26 +244,41 @@ if jetMetReco:
         process.slimmedJets
     )
 
+    process.reco.insert(process.reco.index(process.QGTagger), jetRecorrectionSequence)
+
     ### MET
-    
-    from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
-    # process.fullPatMetSequence
-    runMetCorAndUncFromMiniAOD(process, isData = options.isData)
-    # process.fullPatMetSequencePuppi
+
+    # Collection naming aligned with 03Feb2017 reminiaod
+
+    # Creates process.fullPatMetSequenceUncorrected which includes slimmedMETsUncorrected
     runMetCorAndUncFromMiniAOD(
         process,
         isData = options.isData,
-        metType = 'Puppi',
-        pfCandColl = 'puppiForMET',
-        recoMetFromPFCs = True,
-        jetFlavor = 'AK4PFPuppi',
-        postfix = 'Puppi'
+        postfix = 'Uncorrected'
     )
 
-    process.reco += puppiJetSequence
-    process.reco.insert(process.reco.index(process.QGTagger), jetRecorrectionSequence)
-    process.reco += process.fullPatMetSequence
-    process.reco += process.fullPatMetSequencePuppi
+    # Make MET also with bad muon removal
+    from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
+
+    # Creates cleanMuonsPFCandidates
+    muonrecoMitigation(
+        process,
+        pfCandCollection = 'packedPFCandidates',
+        runOnMiniAOD = True
+    )
+
+    # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
+    # Postfix MuEGClean is just for convenience - there is no EG cleaning actually applied
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        pfCandColl = 'cleanMuonsPFCandidates',
+        recoMetFromPFCs = True,
+        postfix = 'MuEGClean'
+    )
+
+    process.reco += process.fullPatMetSequenceUncorrected
+    process.reco += process.fullPatMetSequenceMuEGClean
 
 #############
 ## NTULPES ##
@@ -263,13 +295,13 @@ if options.isData:
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-process.panda.fillers.met.met = mainMET
-if addUncleanedMETs:
+process.panda.fillers.met.met = 'slimmedMETsMuEGClean'
+process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
+    met = 'slimmedMETsUncorrected'
+)
+if not jetMETReco:
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
         met = 'slimmedMETs'
-    )
-    process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
-        met = 'slimmedMETsUncorrected'
     )
 
 process.panda.outputFile = options.outputFile

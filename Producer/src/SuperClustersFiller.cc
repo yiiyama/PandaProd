@@ -15,6 +15,12 @@ SuperClustersFiller::SuperClustersFiller(std::string const& _name, edm::Paramete
 }
 
 void
+SuperClustersFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  _eventBranches.emplace_back("superClusters");
+}
+
+void
 SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inSuperClusters(getProduct_(_inEvent, superClustersToken_));

@@ -10,8 +10,7 @@ GenJetsFiller::GenJetsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 GenJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (!enabled())
-    _eventBranches.emplace_back("!" + getName());
+  _eventBranches.emplace_back("genJets");
 }
 
 void

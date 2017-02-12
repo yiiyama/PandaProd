@@ -272,10 +272,12 @@ PandaProducer::beginJob()
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
 
-  panda::utils::BranchList eventBranches{{"*"}};
-  panda::utils::BranchList runBranches{{"*"}};
-  for (auto* filler : fillers_)
-    filler->branchNames(eventBranches, runBranches);
+  panda::utils::BranchList eventBranches;
+  panda::utils::BranchList runBranches;
+  for (auto* filler : fillers_) {
+    if (filler->enabled())
+      filler->branchNames(eventBranches, runBranches);
+  }
 
   outEvent_.book(*eventTree_, eventBranches);
   outRun_.book(*runTree_, runBranches);

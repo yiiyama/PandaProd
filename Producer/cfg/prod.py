@@ -1,14 +1,46 @@
+import os
 from FWCore.ParameterSet.VarParsing import VarParsing
 
 options =VarParsing('analysis')
-options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, info = 'Global tag')
-options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, info = 'Good lumi list JSON')
+options.register('conf', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: 03Feb2017, 23Sep2016, Spring16, Summer16')
+options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
+options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
 options._tags.pop('numEvent%d')
 options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
+
+jetMetReco = True
+mainMET = 'slimmedMETs'
+addUncleanedMETs = False
+if options.conf == '03Feb2017':
+    jetMetReco = False
+    options.isData = True
+    options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
+    mainMET = 'slimmedMETsMuEGClean'
+    addUncleanedMETs = True
+elif options.conf == '23Sep2016':
+    options.isData = True
+    options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
+elif options.conf == 'Spring16':
+    options.isData = False
+    options.globaltag = '80X_mcRun2_asymptotic_2016_v3'
+elif options.conf == 'Summer16':
+    options.isData = False
+    options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
+
+if options.conf == '03Feb2017' or options.conf == '23Sep2016':
+    jsonDir = '/cvmfs/cvmfs.cmsaf.mit.edu/hidsk0001/cmsprod/cms/json'
+    lumilist = 'Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
+
+    if os.path.isdir(jsonDir):
+        options.lumilist = jsonDir + '/' + lumilist
+    elif os.path.exists(lumilist):
+        options.lumilist = lumilist
+    else:
+        print 'No good lumi mask applied'
 
 import FWCore.ParameterSet.Config as cms
 
@@ -28,7 +60,9 @@ process.source = cms.Source('PoolSource',
 )
 
 ### NUMBER OF EVENTS
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEvents))
+process.maxEvents = cms.untracked.PSet(
+    input = cms.untracked.int32(options.maxEvents)
+)
 
 ### LUMI MASK
 if options.lumilist != '':
@@ -46,7 +80,6 @@ process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
 if options.globaltag == '':
     if options.isData:
-        # sept reprocessing
         process.GlobalTag.globaltag = '80X_dataRun2_2016SeptRepro_v7'
     else:
         process.GlobalTag.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
@@ -62,22 +95,24 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
-jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-if options.isData:
-    jecLevels.append('L2L3Residual')
-
 ### MONOX FILTER
+
 process.load('PandaProd.Filters.MonoXFilter_cfi')
 process.MonoXFilter.taggingMode = True
+
+### PUPPI
+
+from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+makePuppiesFromMiniAOD(process, createScheduledSequence = True)
+# *UGLY* makePuppiesFromMiniAOD runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2
 
 ### EGAMMA ID
 # Loads photonIDValueMapProducer, egmPhotonIDs, and egmGsfElectronIDs
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDPhotonIdProducer, switchOnVIDElectronIdProducer, DataFormat
-switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
+#switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring15_25ns_V1_cff', setupVIDPhotonSelection)
-setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
+#setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
 
@@ -90,39 +125,10 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
-### PUPPI
-
-process.load('PandaProd.Producer.utils.puppi_cff')
-from PandaProd.Producer.utils.puppi_cff import puppiSequence
-
 ### QG TAGGING
 
-from RecoJets.JetProducers.QGTagger_cfi import QGTagger
-
-process.QGTagger = QGTagger.clone(
-    srcJets = 'slimmedJets',
-    jetsLabel = cms.string('QGL_AK4PFchs')
-)
-
-jetTaggingSequence = cms.Sequence(
-    process.QGTagger
-)
-
-### MET
-
-from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
-# process.fullPatMetSequence
-runMetCorAndUncFromMiniAOD(process, isData = options.isData)
-# process.fullPatMetSequencePuppi
-runMetCorAndUncFromMiniAOD(
-    process,
-    isData = options.isData,
-    metType = 'Puppi',
-    pfCandColl = 'puppiForMET',
-    recoMetFromPFCs = True,
-    jetFlavor = 'AK4PFPuppi',
-    postfix = 'Puppi'
-)
+process.load('RecoJets.JetProducers.QGTagger_cfi')
+process.QGTagger.srcJets = 'slimmedJets'
 
 ### FAT JETS
 
@@ -183,12 +189,64 @@ fatJetSequence = cms.Sequence(
 process.reco = cms.Path(
     process.MonoXFilter +
     egmIdSequence +
-    puppiSequence +
-    jetTaggingSequence +
-#    process.fullPatMetSequence +
-#    process.fullPatMetSequencePuppi +
+    process.puppiMETSequence +
+    process.QGTagger +
     fatJetSequence
 )
+
+if jetMetReco:
+    ### RECLUSTER PUPPI JET
+
+    from PandaProd.Producer.utils.makeJets_cff import makeJets
+
+    puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Puppi')
+    
+    ### JET RE-CORRECTION
+
+    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
+
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if options.isData:
+        jecLevels.append('L2L3Residual')
+    
+    process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
+        src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+        levels = cms.vstring(*jecLevels),
+    )
+
+    process.slimmedJets = updatedPatJets.clone(
+        jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+        addJetCorrFactors = cms.bool(True),
+        jetCorrFactorsSource = cms.VInputTag(cms.InputTag("updatedPatJetCorrFactors")),
+        addBTagInfo = cms.bool(False),
+        addDiscriminators = cms.bool(False)
+    )
+
+    jetRecorrectionSequence = cms.Sequence(
+        process.updatedPatJetCorrFactors +
+        process.slimmedJets
+    )
+
+    ### MET
+    
+    from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
+    # process.fullPatMetSequence
+    runMetCorAndUncFromMiniAOD(process, isData = options.isData)
+    # process.fullPatMetSequencePuppi
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        metType = 'Puppi',
+        pfCandColl = 'puppiForMET',
+        recoMetFromPFCs = True,
+        jetFlavor = 'AK4PFPuppi',
+        postfix = 'Puppi'
+    )
+
+    process.reco += puppiJetSequence
+    process.reco.insert(process.reco.index(process.QGTagger), jetRecorrectionSequence)
+    process.reco += process.fullPatMetSequence
+    process.reco += process.fullPatMetSequencePuppi
 
 #############
 ## NTULPES ##
@@ -204,6 +262,15 @@ if options.isData:
     process.panda.fillers.genJets.enabled = False
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
+
+process.panda.fillers.met.met = mainMET
+if addUncleanedMETs:
+    process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
+        met = 'slimmedMETs'
+    )
+    process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
+        met = 'slimmedMETsUncorrected'
+    )
 
 process.panda.outputFile = options.outputFile
 

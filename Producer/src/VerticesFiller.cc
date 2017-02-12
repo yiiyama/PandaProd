@@ -14,8 +14,9 @@ VerticesFiller::VerticesFiller(std::string const& _name, edm::ParameterSet const
 void
 VerticesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_)
-    _eventBranches.push_back("!npvTrue");
+  _eventBranches.emplace_back("npv");
+  if (!isRealData_)
+    _eventBranches.emplace_back("npvTrue");
 }
 
 void

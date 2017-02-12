@@ -62,15 +62,12 @@ ElectronsFiller::addOutput(TFile& _outputFile)
 void
 ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_) {
-    char const* genBranches[] = {
-      ".matchedGen_"
-    };
-    for (char const* b : genBranches)
-      _eventBranches.emplace_back("!" + getName() + b);
-  }
+  _eventBranches.emplace_back("electrons");
+
+  if (isRealData_)
+    _eventBranches.emplace_back("!electrons.matchedGen_");
   if (!useTrigger_)
-    _eventBranches.emplace_back("!" + getName() + ".triggerMatch");
+    _eventBranches.emplace_back("!electrons.triggerMatch");
 }
 
 void

@@ -28,8 +28,7 @@ HLTFiller::addOutput(TFile& _outputFile)
 void
 HLTFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (!enabled())
-    _eventBranches.emplace_back("!triggers");
+  _eventBranches.emplace_back("triggers");
 }
 
 void

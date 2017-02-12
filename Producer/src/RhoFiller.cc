@@ -8,6 +8,12 @@ RhoFiller::RhoFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
 }
 
 void
+RhoFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  _eventBranches += {"rho", "rhoCentralCalo"};
+}
+
+void
 RhoFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   _outEvent.rho = getProduct_(_inEvent, rhoToken_);

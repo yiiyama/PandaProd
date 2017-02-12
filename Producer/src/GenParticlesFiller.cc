@@ -35,8 +35,7 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
 void
 GenParticlesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (!enabled())
-    _eventBranches.emplace_back("!" + getName());
+  _eventBranches.emplace_back("genParticles");
 }
 
 void

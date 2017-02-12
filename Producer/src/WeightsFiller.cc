@@ -21,11 +21,12 @@ WeightsFiller::WeightsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 WeightsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_)
-    _eventBranches.push_back("!genReweight");
-
-  // Turned off temporarily
-  _eventBranches.push_back("!genReweight.genParam");
+  _eventBranches.emplace_back("weight");
+  if (!isRealData_) {
+    _eventBranches.emplace_back("genReweight");
+    // Turned off temporarily
+    // _eventBranches.push_back("!genReweight.genParam");
+  }
 }
 
 void

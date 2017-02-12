@@ -8,6 +8,8 @@
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
 
+#include <functional>
+
 class JetCorrectionUncertainty;
 
 class JetsFiller : public FillerBase {
@@ -21,16 +23,6 @@ class JetsFiller : public FillerBase {
 
  protected:
   virtual void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) {}
-
-  enum OutputType {
-    kCHSAK4,
-    kPuppiAK4,
-    kCHSAK8,
-    kPuppiAK8,
-    kCHSCA15,
-    kPuppiCA15,
-    nOutputTypes
-  };
 
   typedef edm::View<reco::Jet> JetView;
   typedef edm::View<reco::GenJet> GenJetView;
@@ -47,7 +39,9 @@ class JetsFiller : public FillerBase {
 
   JetCorrectionUncertainty* jecUncertainty_{0};
 
-  OutputType outputType_{nOutputTypes};
+  typedef std::function<panda::JetCollection&(panda::Event&)> OutputSelector;
+
+  OutputSelector outputSelector_{};
 
   //! jet radius
   double R_{0.4};

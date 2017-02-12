@@ -10,6 +10,12 @@ MetFiltersFiller::MetFiltersFiller(std::string const& _name, edm::ParameterSet c
 }
 
 void
+MetFiltersFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  _eventBranches.emplace_back("metFilters");
+}
+
+void
 MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inFilterResults(getProduct_(_inEvent, filterResultsToken_));

@@ -29,17 +29,19 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false))
 {
   if (_name == "chsAK4Jets")
-    outputType_ = kCHSAK4;
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsAK4Jets; };
   else if (_name == "puppiAK4Jets")
-    outputType_ = kPuppiAK4;
-  if (_name == "chsAK8Jets")
-    outputType_ = kCHSAK8;
-  if (_name == "puppiAK8Jets")
-    outputType_ = kPuppiAK8;
-  if (_name == "chsCA15Jets")
-    outputType_ = kCHSCA15;
-  if (_name == "puppiCA15Jets")
-    outputType_ = kPuppiCA15;
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.puppiAK4Jets; };
+  else if (_name == "chsAK8Jets")
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsAK8Jets; };
+  else if (_name == "puppiAK8Jets")
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.puppiAK8Jets; };
+  else if (_name == "chsCA15Jets")
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsCA15Jets; };
+  else if (_name == "puppiCA15Jets")
+    outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.puppiCA15Jets; };
+  else
+    throw edm::Exception(edm::errors::Configuration, "Unknown JetCollection output");    
 
   getToken_(jetsToken_, _cfg, _coll, "jets");
   getToken_(qglToken_, _cfg, _coll, "qgl", false);
@@ -57,6 +59,8 @@ JetsFiller::~JetsFiller()
 void
 JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
+  _eventBranches.emplace_back(getName());
+
   if (isRealData_)
     _eventBranches.emplace_back("!" + getName() + ".matchedGenJet_");
 
@@ -88,30 +92,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 {
   auto& inJets(getProduct_(_inEvent, jetsToken_));
 
-  panda::JetCollection* pOutJets(0);
-  switch (outputType_) {
-  case kCHSAK4:
-    pOutJets = &_outEvent.chsAK4Jets;
-    break;
-  case kPuppiAK4:
-    pOutJets = &_outEvent.puppiAK4Jets;
-    break;
-  case kCHSAK8:
-    pOutJets = &_outEvent.chsAK8Jets;
-    break;
-  case kPuppiAK8:
-    pOutJets = &_outEvent.puppiAK8Jets;
-    break;
-  case kCHSCA15:
-    pOutJets = &_outEvent.chsCA15Jets;
-    break;
-  case kPuppiCA15:
-    pOutJets = &_outEvent.puppiCA15Jets;
-    break;
-  default:
-    return;
-  }
-  panda::JetCollection& outJets(*pOutJets);
+  panda::JetCollection& outJets(outputSelector_(_outEvent));
 
   if (!jecUncertainty_ && !jecName_.empty()) {
     edm::ESHandle<JetCorrectorParametersCollection> jecColl;

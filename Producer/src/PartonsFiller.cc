@@ -9,8 +9,7 @@ PartonsFiller::PartonsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 PartonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_)
-    _eventBranches.push_back("!partons");
+  _eventBranches.push_back("partons");
 }
 
 void

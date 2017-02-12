@@ -1,11 +1,12 @@
 import FWCore.ParameterSet.Config as cms
 
 # Copied from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-# branch ahinzmann:METRecipe_8020_Spring16
+
 from CommonTools.PileupAlgos.Puppi_cff import puppi
 puppi.candName = 'packedPFCandidates'
 puppi.vertexName = 'offlineSlimmedPrimaryVertices'
-puppi.useExistingWeights = False # I still don't trust miniaod...
+#puppi.useExistingWeights = False # I still don't trust miniaod...
+puppi.useExistingWeights = True
 puppi.clonePackedCands = True # if !useExistingWeights, need to set this flag to make PuppiProducer create packed candidates
 
 pfNoLepPUPPI = cms.EDFilter("CandPtrSelector",
@@ -14,7 +15,8 @@ pfNoLepPUPPI = cms.EDFilter("CandPtrSelector",
 )
 puppiNoLep = puppi.clone(
     candName = 'pfNoLepPUPPI',
-    useWeightsNoLep = True
+    useWeightsNoLep = True,
+    useExistingWeights = False
 )
 
 pfLeptonsPUPPET = cms.EDFilter("CandPtrSelector",
@@ -38,7 +40,7 @@ puppiForMET = puppiPhoton.clone(
     photonId  = egmidconf.photonLooseId
 )
 
-puppiSequence = cms.Sequence(
+puppiMETSequence = cms.Sequence(
     puppi +
     pfNoLepPUPPI +
     pfLeptonsPUPPET +

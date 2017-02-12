@@ -53,17 +53,12 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_) {
-    char const* genBranches[] = {
-      ".geniso",
-      ".matchedGen_"
-    };
-    for (char const* b : genBranches)
-      _eventBranches.emplace_back("!" + getName() + b);
-  }
+  _eventBranches.emplace_back("photons");
 
+  if (isRealData_)
+    _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
   if (!useTrigger_)
-    _eventBranches.emplace_back("!" + getName() + ".triggerMatch");
+    _eventBranches.emplace_back("!photons.triggerMatch");
 }
 
 void

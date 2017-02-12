@@ -16,13 +16,10 @@ TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
 void
 TausFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_) {
-    char const* genBranches[] = {
-      ".matchedGen_"
-    };
-    for (char const* b : genBranches)
-      _eventBranches.push_back("!" + getName() + b);
-  }
+  _eventBranches.emplace_back("taus");
+
+  if (isRealData_)
+    _eventBranches.emplace_back("!taus.matchedGen_");
 }
 
 void

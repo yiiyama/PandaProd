@@ -7,6 +7,8 @@
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/METReco/interface/MET.h"
 
+#include <functional>
+
 class MetFiller : public FillerBase {
  public:
   MetFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
@@ -16,18 +18,17 @@ class MetFiller : public FillerBase {
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
 
  protected:
-  enum OutputType {
-    kPF,
-    kPuppi
-  };
-
   typedef edm::View<reco::MET> METView;
 
   NamedToken<METView> metToken_;
   NamedToken<METView> noHFMetToken_;
+  NamedToken<METView> metMuOnlyFixToken_; // Temporary muon-only fix met in 03Feb2017 re-miniaod
+  NamedToken<METView> metNoFixToken_; // Temporary no fix met in 03Feb2017 re-miniaod
   NamedToken<reco::CandidateView> candidatesToken_;
 
-  OutputType outputType_{kPF};
+  typedef std::function<panda::RecoMet&(panda::Event&)> OutputSelector;
+
+  OutputSelector outputSelector_{};
 
   bool fillOthers_{false};
 };

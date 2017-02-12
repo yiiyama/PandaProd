@@ -8,6 +8,12 @@ RecoilFiller::RecoilFiller(std::string const& _name, edm::ParameterSet const& _c
 }
 
 void
+RecoilFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  _eventBranches.emplace_back("recoil");
+}
+
+void
 RecoilFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
   _outEvent.recoil.categories = getProduct_(_inEvent, categoriesToken_);

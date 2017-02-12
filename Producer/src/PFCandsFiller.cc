@@ -14,6 +14,12 @@ PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& 
 }
 
 void
+PFCandsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+{
+  _eventBranches.emplace_back("pfCandidates");
+}
+
+void
 PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
   auto& inCands(getProduct_(_inEvent, candidatesToken_));

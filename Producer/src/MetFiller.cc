@@ -7,9 +7,15 @@ MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
   fillOthers_(getParameter_<bool>(_cfg, "fillOthers", false))
 {
   if (_name == "t1Met")
-    outputType_ = kPF;
+    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.met; };
   else if (_name == "puppiMet")
-    outputType_ = kPuppi;
+    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.puppiMet; };
+  else if (_name == "metMuOnlyFix")
+    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.metMuOnlyFix; };
+  else if (_name == "metNoFix")
+    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.metNoFix; };
+  else
+    throw edm::Exception(edm::errors::Configuration, "Unknown MET output");
 
   getToken_(metToken_, _cfg, _coll, "met");
   if (fillOthers_) {
@@ -21,10 +27,12 @@ MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
 void
 MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  if (isRealData_) {
-    if (fillOthers_)
-      _eventBranches.emplace_back("!genMet");
+  _eventBranches.emplace_back(getName());
 
+  if (fillOthers_)
+    _eventBranches += {"rawMet", "caloMet", "noMuMet", "noHFMet", "trkMet", "neutralMet", "photonMet", "hfMet"};
+
+  if (isRealData_) {
     char const* skipped[] = {
       ".ptSmear",
       ".ptSmearUp",
@@ -37,6 +45,8 @@ MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::B
     for (char const* b : skipped)
       _eventBranches.emplace_back("!" + getName() + b);
   }
+  else if (fillOthers_)
+    _eventBranches.emplace_back("genMet");
 }
 
 void
@@ -44,16 +54,7 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
 {
   auto& inMet(getProduct_(_inEvent, metToken_).at(0));
 
-  panda::RecoMet* pOutMet(0);
-  switch (outputType_) {
-  case kPF:
-    pOutMet = &_outEvent.met;
-    break;
-  case kPuppi:
-    pOutMet = &_outEvent.puppiMet;
-    break;
-  }
-  panda::RecoMet& outMet(*pOutMet);
+  panda::RecoMet& outMet(outputSelector_(_outEvent));
 
   outMet.pt = inMet.pt();
   outMet.phi = inMet.phi();

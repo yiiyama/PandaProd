@@ -4,6 +4,7 @@ from RecoJets.JetProducers.ak4PFJetsPuppi_cfi import ak4PFJetsPuppi
 from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
 from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
+from PhysicsTools.PatAlgos.slimming.slimmedJets_cfi import slimmedJets
 
 from PandaProd.Producer.utils.addattr import AddAttr
 from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
@@ -88,10 +89,17 @@ def makeJets(process, isData, label, candidates, suffix):
     if not isData:
         addattr.last.genJetMatch = genJetMatch
 
-    addattr('selectedJets',
+    selectedJets = addattr('selectedJets',
         selectedPatJets.clone(
             src = allPatJets,
             cut = 'pt > 15'
+        )
+    )
+
+    addattr('slimmedJets',
+        slimmedJets.clone(
+            src = selectedJets,
+            rekeyDaughters = '0'
         )
     )
 

@@ -295,6 +295,7 @@ else:
         runOnMiniAOD = True
     )
 
+    # And of course this is against the convention (MET filters are true if event is *good*) but that's what the REMINIAOD developers chose.
     process.Flag_badMuons = cms.Path(process.badGlobalMuonTaggerMAOD)
     process.Flag_duplicateMuons = cms.Path(process.cloneGlobalMuonTaggerMAOD)
     process.schedule += [process.Flag_badMuons, process.Flag_duplicateMuons]
@@ -388,6 +389,8 @@ if muEGFixed:
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
         met = 'slimmedMETs'
     )
+    process.panda.fillers.metFilters.dupECALClusters = cms.untracked.string('particleFlowEGammaGSFixed:dupECALClusters')
+    process.panda.fillers.metFilters.unfixedECALHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB:hitsNotReplaced')
 
 process.panda.outputFile = options.outputFile
 

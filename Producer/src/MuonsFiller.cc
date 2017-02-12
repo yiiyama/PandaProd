@@ -81,6 +81,16 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
       outMuon.loose = patMuon.isLooseMuon();
       outMuon.medium = patMuon.isMediumMuon();
+      // Following the "short-term instruction for Moriond 2017" given in https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideMuonIdRun2#MediumID2016_to_be_used_with_Run
+      // Valid only for runs B-F
+      outMuon.mediumBtoF = outMuon.loose && inMuon.innerTrack()->validFraction() > 0.49 &&
+        ((inMuon.isGlobalMuon() &&
+          inMuon.globalTrack()->normalizedChi2() < 3. &&
+          inMuon.combinedQuality().chi2LocalPosition < 12. &&
+          inMuon.combinedQuality().trkKink < 20. &&
+          muon::segmentCompatibility(inMuon) > 0.303) ||
+         muon::segmentCompatibility(inMuon) > 0.451);
+          
       if (vertices.size() == 0)
         outMuon.tight = false;
       else

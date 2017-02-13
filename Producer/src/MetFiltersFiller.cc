@@ -31,26 +31,28 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
   auto& outMetFilters(_outEvent.metFilters);
 
   for (auto& token : filterResultsTokens_) {
-    auto& inFilterResults(getProduct_(_inEvent, token));
+    auto* inFilterResults(getProductSafe_(_inEvent, token));
+    if (!inFilterResults)
+      continue;
 
-    auto&& filterNames(_inEvent.triggerNames(inFilterResults));
+    auto&& filterNames(_inEvent.triggerNames(*inFilterResults));
     for (unsigned iF(0); iF != filterNames.size(); ++iF) {
       auto& name(filterNames.triggerName(iF));
     
       if (name == "Flag_HBHENoiseFilter")
-        outMetFilters.hbhe = !inFilterResults.accept(iF);
+        outMetFilters.hbhe = !inFilterResults->accept(iF);
       else if (name == "Flag_HBHENoiseIsoFilter")
-        outMetFilters.hbheIso = !inFilterResults.accept(iF);
+        outMetFilters.hbheIso = !inFilterResults->accept(iF);
       else if (name == "Flag_EcalDeadCellTriggerPrimitiveFilter")
-        outMetFilters.ecalDeadCell = !inFilterResults.accept(iF);
+        outMetFilters.ecalDeadCell = !inFilterResults->accept(iF);
       else if (name == "Flag_eeBadScFilter")
-        outMetFilters.badsc = !inFilterResults.accept(iF);
+        outMetFilters.badsc = !inFilterResults->accept(iF);
       else if (name == "Flag_globalTightHalo2016Filter")
-        outMetFilters.globalHalo16 = !inFilterResults.accept(iF);
+        outMetFilters.globalHalo16 = !inFilterResults->accept(iF);
       else if (name == "Flag_badMuons") // reverse convention
-        outMetFilters.badMuons = inFilterResults.accept(iF);
+        outMetFilters.badMuons = inFilterResults->accept(iF);
       else if (name == "Flag_duplicateMuons") // reverse convention
-        outMetFilters.duplicateMuons = inFilterResults.accept(iF);
+        outMetFilters.duplicateMuons = inFilterResults->accept(iF);
     }
   }
 

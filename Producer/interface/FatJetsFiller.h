@@ -32,6 +32,7 @@ class FatJetsFiller : public JetsFiller {
 
   NamedToken<JetView> subjetsToken_;
   NamedToken<reco::BoostedDoubleSVTagInfoCollection> doubleBTagInfoToken_;
+  NamedToken<int> categoriesToken_;
   std::string njettinessTag_;
   std::string sdKinematicsTag_;
   std::string subjetBtagTag_;
@@ -46,7 +47,13 @@ class FatJetsFiller : public JetsFiller {
   ECFNManager* ecfnManager_{0};
   panda::BoostedBtaggingMVACalculator jetBoostedBtaggingMVACalc_{};
 
-  bool computeSubstructure_{false};
+  enum SubstructureComputeMode {
+    kAlways,
+    kLargeRecoil,
+    kNever
+  };
+
+  SubstructureComputeMode computeSubstructure_{kNever};
 };
 
 #endif

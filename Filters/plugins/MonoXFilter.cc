@@ -23,6 +23,7 @@
 #include "DataFormats/METReco/interface/PFMETCollection.h"
 
 //#include "PandaUtilities/Common/interface/Common.h"
+#include "PandaTree/Objects/interface/Constants.h"
 
 //
 // class declaration
@@ -134,7 +135,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   for (auto &met : mets) {
     // if MET is big enough keep the event
     if (met.pt()>minU) {
-      categories |= 1;
+      categories |= (1 << panda::rMET);
       if (met.pt() > maxRecoil)
         maxRecoil = met.pt();
     }
@@ -145,7 +146,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (not isGoodMuon(*muon)) continue;
         double recoil((met+muon->p4()).pt());
         if (recoil>minU) {
-          categories |= 2;
+          categories |= (1 << panda::rMonoMu);
           if (recoil > maxRecoil)
             maxRecoil = recoil;
           break;
@@ -155,7 +156,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (not isGoodElectron(*ele)) continue;
         double recoil((met+ele->p4()).pt());
         if (recoil>minU) {
-          categories |= 4;
+          categories |= (1 << panda::rMonoE);
           if (recoil > maxRecoil)
             maxRecoil = recoil;
           break;
@@ -171,7 +172,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
           if (not isGoodMuon(mu_handle->at(jmuon))) continue;
           double recoil((met+mu_handle->at(imuon).p4()+mu_handle->at(jmuon).p4()).pt());
           if (recoil>minU) {
-            categories |= 8;
+            categories |= (1 << panda::rDiMu);
             if (recoil > maxRecoil)
               maxRecoil = recoil;
             break;
@@ -186,7 +187,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
           if (not isGoodElectron(el_handle->at(jele))) continue;
           double recoil((met+el_handle->at(iele).p4()+el_handle->at(jele).p4()).pt());
           if (recoil>minU) {
-            categories |= 16;
+            categories |= (1 << panda::rDiE);
             if (recoil > maxRecoil)
               maxRecoil = recoil;
             break;
@@ -202,7 +203,7 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (not isGoodPhoton(ph_handle->at(ipho))) continue;
         double recoil((met+ph_handle->at(ipho).p4()).pt());
         if (recoil>minU) {
-          categories |= 32;
+          categories |= (1 << panda::rGamma);
           if (recoil > maxRecoil)
             maxRecoil = recoil;
           break;

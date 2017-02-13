@@ -16,8 +16,17 @@ RecoilFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils
 void
 RecoilFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
-  _outEvent.recoil.categories = getProduct_(_inEvent, categoriesToken_);
-  _outEvent.recoil.max = getProduct_(_inEvent, maxToken_);
+  int categories(getProduct_(_inEvent, categoriesToken_));
+  auto& recoil(_outEvent.recoil);
+
+  recoil.met = ((categories >> panda::rMET) & 1) != 0;
+  recoil.monoMu = ((categories >> panda::rMonoMu) & 1) != 0;
+  recoil.monoE = ((categories >> panda::rMonoE) & 1) != 0;
+  recoil.diMu = ((categories >> panda::rDiMu) & 1) != 0;
+  recoil.diE = ((categories >> panda::rDiE) & 1) != 0;
+  recoil.gamma = ((categories >> panda::rGamma) & 1) != 0;
+
+  recoil.max = getProduct_(_inEvent, maxToken_);
 }
 
 DEFINE_TREEFILLER(RecoilFiller);

@@ -11,12 +11,22 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
   subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
   activeArea_(7., 1, 0.01),
-  areaDef_(fastjet::active_area_explicit_ghosts, activeArea_),
-  computeSubstructure_(getParameter_<bool>(_cfg, "computeSubstructure", false))
+  areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
   getToken_(subjetsToken_, _cfg, _coll, "subjets");
 
-  if (computeSubstructure_) {
+  auto&& computeMode(getParameter_<std::string>(_cfg, "computeSubstructure", ""));
+  if (computeMode == "always")
+    computeSubstructure_ = kAlways;
+  else if (computeMode == "recoil")
+    computeSubstructure_ = kLargeRecoil;
+  else
+    computeSubstructure_ = kNever;
+
+  if (computeSubstructure_ == kLargeRecoil)
+    getToken_(categoriesToken_, _cfg, _coll, "recoil");
+
+  if (computeSubstructure_ != kNever) {
     getToken_(doubleBTagInfoToken_, _cfg, _coll, "doubleBTag");
 
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
@@ -60,7 +70,7 @@ FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
 
-  if (!computeSubstructure_) {
+  if (computeSubstructure_ == kNever) {
     char const* substrBranches[] = {
       ".tau1SD",
       ".tau2SD",
@@ -77,9 +87,12 @@ FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 void
 FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
+  bool doSubstructure(computeSubstructure_ == kAlways ||
+                      (computeSubstructure_ == kLargeRecoil && getProduct_(_inEvent, categoriesToken_) != 0));
+
   auto& inSubjets(getProduct_(_inEvent, subjetsToken_));
   reco::BoostedDoubleSVTagInfoCollection const* doubleBTagInfo(0);
-  if (computeSubstructure_)
+  if (doSubstructure)
     doubleBTagInfo = &getProduct_(_inEvent, doubleBTagInfoToken_);
 
   double betas[] = {0.5, 1., 2., 4.};
@@ -135,7 +148,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
         }
       }
 
-      if (computeSubstructure_ && iJ < 2) {
+      if (doSubstructure && iJ < 2) {
         // either we want to associate to pf cands OR compute extra info about the first or second jet
         // but do not do any of this if ReduceEvent() is tripped
         // only filled for first two fat jets

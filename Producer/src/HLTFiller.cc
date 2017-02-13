@@ -11,7 +11,6 @@ HLTFiller::HLTFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
 
 HLTFiller::~HLTFiller()
 {
-  delete paths_;
 }
 
 void
@@ -19,10 +18,6 @@ HLTFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
   hltTree_ = new TTree("hlt", "HLT");
-  menu_ = new TString;
-  paths_ = new std::vector<TString>;
-  hltTree_->Branch("menu", "TString", &menu_);
-  hltTree_->Branch("paths", "std::vector<TString>", &paths_, 32000, 0);
 }
 
 void
@@ -34,6 +29,12 @@ HLTFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::B
 void
 HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventSetup const& _setup)
 {
+  if (!hltTree_->GetBranch("menu")) {
+    _outRun.hlt.create();
+    hltTree_->Branch("menu", "TString", &_outRun.hlt.menu);
+    hltTree_->Branch("paths", "std::vector<TString>", &_outRun.hlt.paths, 32000, 0);
+  }
+
   bool configChanged(false);
   if (!hltConfig_.init(_inRun, _setup, "HLT", configChanged)) {
     throw edm::Exception(edm::errors::Configuration, "HLTFiller")
@@ -43,14 +44,14 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
   TString menu(hltConfig_.tableName());
 
   if (!configChanged) {
-    if (menu == *menu_)
+    if (menu == *_outRun.hlt.menu)
       return;
     else
       throw edm::Exception(edm::errors::Configuration, "HLTFiller")
         << "HLTConfigProvider claims nothing is changed, but the menu name did.";
   }
 
-  *menu_ = menu;
+  *_outRun.hlt.menu = menu;
   auto menuItr(menuMap_.find(menu));
 
   if (menuItr != menuMap_.end()) {
@@ -62,9 +63,9 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
   _outRun.hltMenu = menuMap_.size();
   menuMap_.emplace(menu, _outRun.hltMenu);
 
-  paths_->clear();
+  _outRun.hlt.paths->clear();
   for (unsigned iP(0); iP != hltConfig_.size(); ++iP)
-    paths_->push_back(hltConfig_.triggerName(iP));
+    _outRun.hlt.paths->push_back(hltConfig_.triggerName(iP));
 
   hltTree_->Fill();
 }

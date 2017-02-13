@@ -10,7 +10,6 @@
 #include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 
 #include "PandaTree/Objects/interface/Event.h"
-#include "PandaTree/Objects/interface/Run.h"
 
 #include "../interface/FillerBase.h"
 #include "../interface/ObjectMap.h"
@@ -49,7 +48,6 @@ private:
   TTree* runTree_{0};
   TH1D* eventCounter_{0};
   panda::Event outEvent_;
-  panda::Run outRun_;
 
   std::string outputName_;
   bool useTrigger_;
@@ -147,6 +145,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
   // Now fill the event
   outEvent_.init();
+
   for (auto& mm : objectMaps_)
     mm.second.clearMaps();
 
@@ -222,9 +221,9 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 void
 PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
 {
-  outRun_.init();
+  outEvent_.run.init();
 
-  outRun_.runNumber = _run.run();
+  outEvent_.run.runNumber = _run.run();
 
   for (auto* filler : fillers_) {
     if (!filler->enabled())
@@ -234,7 +233,7 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fillBeginRun()" << std::endl;
 
-      filler->fillBeginRun(outRun_, _run, _setup);
+      filler->fillBeginRun(outEvent_.run, _run, _setup);
     }
     catch (std::exception& ex) {
       edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fillBeginRun()";
@@ -254,7 +253,7 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
       if (printLevel_ > 1)
         std::cerr << "Calling " << filler->getName() << "->fillEndRun()" << std::endl;
 
-      filler->fillEndRun(outRun_, _run, _setup);
+      filler->fillEndRun(outEvent_.run, _run, _setup);
     }
     catch (std::exception& ex) {
       edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fillEndRun()";
@@ -280,7 +279,7 @@ PandaProducer::beginJob()
   }
 
   outEvent_.book(*eventTree_, eventBranches);
-  outRun_.book(*runTree_, runBranches);
+  outEvent_.run.book(*runTree_, runBranches);
 
   for (auto* filler : fillers_)
     filler->addOutput(*outputFile_);

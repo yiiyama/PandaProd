@@ -8,6 +8,7 @@ options.register('connect', default = '', mult = VarParsing.multiplicity.singlet
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
+options.register('printLevel', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Debug level of the ntuplizer')
 options._tags.pop('numEvent%d')
 options._tagOrder.remove('numEvent%d')
 
@@ -400,6 +401,10 @@ if muEGFixed:
     process.panda.fillers.metFilters.unfixedECALHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB:hitsNotReplaced')
 
 process.panda.outputFile = options.outputFile
+process.panda.printLevel = options.printLevel
+
+process.panda.fillers.weights.enabled = False
+process.panda.fillers.hlt.enabled = True
 
 process.ntuples = cms.EndPath(process.panda)
 

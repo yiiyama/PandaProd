@@ -23,8 +23,6 @@ class HLTFiller : public FillerBase {
   std::map<TString, unsigned> menuMap_{};
 
   TTree* hltTree_{0};
-  TString* menu_{0};
-  std::vector<TString>* paths_{0};
 };
 
 #endif

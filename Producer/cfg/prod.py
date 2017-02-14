@@ -1,4 +1,3 @@
-import os
 from FWCore.ParameterSet.VarParsing import VarParsing
 
 options =VarParsing('analysis')
@@ -9,6 +8,7 @@ options.register('lumilist', default = '', mult = VarParsing.multiplicity.single
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
 options.register('printLevel', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Debug level of the ntuplizer')
+options.register('skipEvents', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Skip first events')
 options._tags.pop('numEvent%d')
 options._tagOrder.remove('numEvent%d')
 
@@ -34,6 +34,8 @@ elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
 if options.config == '03Feb2017' or options.config == '23Sep2016':
+    import os
+
     jsonDir = '/cvmfs/cvmfs.cmsaf.mit.edu/hidsk0001/cmsprod/cms/json'
     lumilist = 'Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
 
@@ -50,7 +52,9 @@ process = cms.Process('NTUPLES')
 process.schedule = cms.Schedule()
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
-process.MessageLogger.cerr.FwkReport.reportEvery = 1000
+process.MessageLogger.categories.append('PandaProducer')
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.MessageLogger.cerr.PandaProducer = cms.untracked.PSet(limit = cms.untracked.int32(1000000))
 
 ############
 ## SOURCE ##
@@ -58,9 +62,8 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 ### INPUT FILES
 process.source = cms.Source('PoolSource',
-    skipEvents = cms.untracked.uint32(0),
-    fileNames = cms.untracked.vstring(options.inputFiles),
-#    inputCommands = cms.untracked.vstring('keep *_*_*_*', 'drop *_slimmedJetsPuppi_*_*', 'drop *_slimmedMETsPuppi_*_*')
+    skipEvents = cms.untracked.uint32(options.skipEvents),
+    fileNames = cms.untracked.vstring(options.inputFiles)
 )
 
 ### NUMBER OF EVENTS
@@ -402,9 +405,6 @@ if muEGFixed:
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel
-
-process.panda.fillers.weights.enabled = False
-process.panda.fillers.hlt.enabled = True
 
 process.ntuples = cms.EndPath(process.panda)
 

@@ -16,6 +16,7 @@ options.parseArguments()
 
 jetMETReco = True
 muEGFixed = False
+egmSmearingType = 'Moriond2017_JEC'
 if options.config == '03Feb2017':
     jetMETReco = False
     muEGFixed = True
@@ -103,10 +104,54 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
     initialSeed = cms.untracked.uint32(1234567),
     engineName = cms.untracked.string('TRandom3')
 )
+process.RandomNumberGeneratorService.slimmedElectrons = cms.PSet(
+    initialSeed = cms.untracked.uint32(89101112),
+    engineName = cms.untracked.string('TRandom3')
+)
+process.RandomNumberGeneratorService.slimmedPhotons = cms.PSet(
+    initialSeed = cms.untracked.uint32(13141516),
+    engineName = cms.untracked.string('TRandom3')
+)
 
 #############################
 ## RECO SEQUENCE AND SKIMS ##
 #############################
+
+import PandaProd.Producer.utils.egmidconf as egmidconf
+
+### EGAMMA CORRECTIONS
+
+from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as correctedElectrons
+from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as correctedPhotons
+from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
+regressionWeights(process)
+process.correctedElectrons = correctedElectrons
+process.correctedPhotons = correctedPhotons
+
+process.selectedElectrons = cms.EDFilter('PATElectronSelector',
+    src = cms.InputTag('correctedElectrons'),
+    cut = cms.string('pt > 5 && abs(eta) < 2.5')
+)
+
+from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
+process.slimmedElectrons = calibratedPatElectrons.clone(
+    electrons = 'selectedElectrons',
+    isMC = (not options.isData),
+    correctionFile = egmidconf.electronSmearingData[egmSmearingType]
+)
+process.slimmedPhotons = calibratedPatPhotons.clone(
+    photons = 'correctedPhotons',
+    isMC = (not options.isData),
+    correctionFile = egmidconf.photonSmearingData[egmSmearingType]
+)   
+
+egmCorrectionSequence = cms.Sequence(
+    process.correctedElectrons +
+    process.correctedPhotons +
+    process.selectedElectrons +
+    process.slimmedElectrons +
+    process.slimmedPhotons
+)
 
 ### PUPPI
 
@@ -152,6 +197,9 @@ from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
 setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
+
+# original has @skipCurrentProcess
+process.photonIDValueMapProducer.srcMiniAOD = 'slimmedPhotons'
 
 process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 
@@ -229,6 +277,7 @@ process.MonoXFilter.taggingMode = True
 ### RECO PATH
 
 process.reco = cms.Path(
+    egmCorrectionSequence +
     egmIdSequence +
     puppiSequence +
     puppiJetSequence +

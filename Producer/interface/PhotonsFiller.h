@@ -31,6 +31,8 @@ class PhotonsFiller : public FillerBase {
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<PhotonView> photonsToken_;
+  NamedToken<PhotonView> rawPhotonsToken_;
+  NamedToken<PhotonView> regressionPhotonsToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
   NamedToken<BoolMap> looseIdToken_;

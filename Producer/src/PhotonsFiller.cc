@@ -21,6 +21,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
+  getToken_(rawPhotonsToken_, _cfg, _coll, "rawPhotons");
+  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
@@ -75,6 +77,8 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
+  auto& inRawPhotons(getProduct_(_inEvent, rawPhotonsToken_));
+  auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
@@ -256,6 +260,20 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
           }
         }
       }      
+    }
+
+    for (auto& raw : inRawPhotons) {
+      if (raw.superCluster() == scRef) {
+        outPhoton.rawPt = raw.pt();
+        break;
+      }
+    }
+
+    for (auto& reg : inRegressionPhotons) {
+      if (reg.superCluster() == scRef) {
+        outPhoton.regPt = reg.pt();
+        break;
+      }
     }
 
     ptrList.push_back(inPhotons.ptrAt(iPh));

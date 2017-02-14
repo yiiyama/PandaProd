@@ -15,3 +15,17 @@ photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-tight'
 photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfChargedHadrons_90percentBased.txt'
 photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased.txt'
 photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfPhotons_90percentBased.txt'
+
+electronSmearingData = {
+    "Prompt2015":"PandaProd/Producer/data/ScalesSmearings/74X_Prompt_2015",
+    "76XReReco" :"PandaProd/Producer/data/ScalesSmearings/76X_16DecRereco_2015_Etunc",
+    "80Xapproval" : "PandaProd/Producer/data/ScalesSmearings/80X_ichepV1_2016_ele",
+    "Moriond2017_JEC" : "PandaProd/Producer/data/ScalesSmearings/Winter_2016_reReco_v1_ele" #only to derive JEC correctionsb
+}
+
+photonSmearingData = {
+    "Prompt2015":"PandaProd/Producer/data/ScalesSmearings/74X_Prompt_2015",
+    "76XReReco" :"PandaProd/Producer/data/ScalesSmearings/76X_16DecRereco_2015_Etunc",
+    "80Xapproval" : "PandaProd/Producer/data/ScalesSmearings/80X_ichepV2_2016_pho",
+    "Moriond2017_JEC" : "PandaProd/Producer/data/ScalesSmearings/Winter_2016_reReco_v1_ele" #only to derive JEC correctionsb
+}

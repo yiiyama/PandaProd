@@ -25,6 +25,8 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
+  getToken_(rawElectronsToken_, _cfg, _coll, "rawElectrons");
+  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons");
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
@@ -74,6 +76,8 @@ void
 ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
+  auto& inRawElectrons(getProduct_(_inEvent, rawElectronsToken_));
+  auto& inRegressionElectrons(getProduct_(_inEvent, regressionElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
@@ -187,6 +191,20 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
         outElectron.chisoPh = phCHIso[photonRef] - phCHIsoEA_.getEffectiveArea(scEta) * rho;
         outElectron.nhisoPh = phNHIso[photonRef] - phNHIsoEA_.getEffectiveArea(scEta) * rho;
         outElectron.phisoPh = phPhIso[photonRef] - phPhIsoEA_.getEffectiveArea(scEta) * rho;
+      }
+    }
+
+    for (auto& raw : inRawElectrons) {
+      if (raw.superCluster() == scRef) {
+        outElectron.rawPt = raw.pt();
+        break;
+      }
+    }
+
+    for (auto& reg : inRegressionElectrons) {
+      if (reg.superCluster() == scRef) {
+        outElectron.regPt = reg.pt();
+        break;
       }
     }
 

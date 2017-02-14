@@ -147,7 +147,7 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
         continue;
 
       auto& outMuon(*link.first);
-      outMuon.matchedGen = genMap.at(genPtr);
+      outMuon.matchedGen.setRef(genMap.at(genPtr));
     }
   }
 

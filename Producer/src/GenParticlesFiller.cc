@@ -78,7 +78,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     ptrList.push_back(inParticles.ptrAt(iP));
   }
 
-  // sort the output electrons
+  // sort the output particles
   auto originalIndices(outParticles.sort(panda::Particle::PtGreater));
 
   // make reco <-> panda mapping
@@ -108,7 +108,7 @@ GenParticlesFiller::setRefs(ObjectMapStore const& _objectMaps)
 
         auto&& pItr(map.fwdMap.find(mPtr));
         if (pItr != map.fwdMap.end()) {
-          outChild.parent = pItr->second;
+          outChild.parent.setRef(pItr->second);
           return true;
         }
 

@@ -153,7 +153,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
             outSubjet.qgl = patSubjet.userFloat(subjetQGLTag_);
         }
 
-        outJet.subjets.push_back(outSubjet);
+        outJet.subjets.addRef(&outSubjet);
       }
 
       // reset the ECFs

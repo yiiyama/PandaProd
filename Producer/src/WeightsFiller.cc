@@ -71,7 +71,7 @@ WeightsFiller::addOutput(TFile& _outputFile)
 void
 WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
-  if (_inEvent.isRealData()) {
+  if (isRealData_) {
     _outEvent.weight = 1.;
     return;
   }
@@ -97,7 +97,7 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 void
 WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
 {
-  if (_inEvent.isRealData()) {
+  if (isRealData_) {
     hSumW_->Fill(0.5);
     return;
   }

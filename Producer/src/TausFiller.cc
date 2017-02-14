@@ -111,7 +111,7 @@ TausFiller::setRefs(ObjectMapStore const& _objectMaps)
         continue;
 
       auto& outTau(*link.first);
-      outTau.matchedGen = genMap.at(genPtr);
+      outTau.matchedGen.setRef(genMap.at(genPtr));
     }
   }
 }

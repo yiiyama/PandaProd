@@ -299,7 +299,7 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& outPhoton(*link.first);
     auto& scPtr(link.second);
 
-    outPhoton.superCluster = scMap.at(scPtr);
+    outPhoton.superCluster.setRef(scMap.at(scPtr));
   }
 
   if (!isRealData_) {
@@ -313,7 +313,7 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
         continue;
 
       auto& outPhoton(*link.first);
-      outPhoton.matchedGen = genMap.at(genPtr);
+      outPhoton.matchedGen.setRef(genMap.at(genPtr));
     }
   }
 

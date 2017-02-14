@@ -231,7 +231,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& outElectron(*link.first);
     auto& scPtr(link.second);
 
-    outElectron.superCluster = scMap.at(scPtr);
+    outElectron.superCluster.setRef(scMap.at(scPtr));
   }
 
   if (!isRealData_) {
@@ -245,7 +245,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
         continue;
 
       auto& outElectron(*link.first);
-      outElectron.matchedGen = genMap.at(genPtr);
+      outElectron.matchedGen.setRef(genMap.at(genPtr));
     }
   }
 

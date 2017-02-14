@@ -286,7 +286,8 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
         reco::CandidatePtr p(ptr);
         while (p->sourceCandidatePtr(0).isNonnull())
           p = p->sourceCandidatePtr(0);
-        outJet.constituents.push_back(*pfMap.at(p));
+
+        outJet.constituents.addRef(pfMap.at(p));
       }
     }
   }
@@ -302,7 +303,7 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
         continue;
 
       auto& outJet(*link.second);
-      outJet.matchedGenJet = genMap.at(genPtr);
+      outJet.matchedGenJet.setRef(genMap.at(genPtr));
     }
   }
 }

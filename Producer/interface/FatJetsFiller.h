@@ -53,6 +53,10 @@ class FatJetsFiller : public JetsFiller {
     kNever
   };
 
+  typedef std::function<panda::MicroJetCollection&(panda::Event&)> OutSubjetSelector;
+
+  OutSubjetSelector outSubjetSelector_{};
+
   SubstructureComputeMode computeSubstructure_{kNever};
 };
 

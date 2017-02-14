@@ -4,6 +4,8 @@
 #include "DataFormats/JetReco/interface/GenJet.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
+#include <functional>
+
 FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   JetsFiller(_name, _cfg, _coll),
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
@@ -13,6 +15,17 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
+  if (_name == "chsAK8Jets")
+    outSubjetSelector_ = [](panda::Event& _event)->panda::MicroJetCollection& { return _event.chsAK8Subjets; };
+  else if (_name == "puppiAK8Jets")
+    outSubjetSelector_ = [](panda::Event& _event)->panda::MicroJetCollection& { return _event.puppiAK8Subjets; };
+  else if (_name == "chsCA15Jets")
+    outSubjetSelector_ = [](panda::Event& _event)->panda::MicroJetCollection& { return _event.chsCA15Subjets; };
+  else if (_name == "puppiCA15Jets")
+    outSubjetSelector_ = [](panda::Event& _event)->panda::MicroJetCollection& { return _event.puppiCA15Subjets; };
+  else
+    throw edm::Exception(edm::errors::Configuration, "Unknown JetCollection output");
+
   getToken_(subjetsToken_, _cfg, _coll, "subjets");
 
   auto&& computeMode(getParameter_<std::string>(_cfg, "computeSubstructure", ""));
@@ -70,6 +83,10 @@ FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
 
+  TString subjetName(getName());
+  subjetName.ReplaceAll("Jets", "Subjets");
+  _eventBranches.emplace_back(subjetName);
+
   if (computeSubstructure_ == kNever) {
     char const* substrBranches[] = {
       ".tau1SD",
@@ -97,7 +114,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
   double betas[] = {0.5, 1., 2., 4.};
 
-  auto& outSubjets(_outEvent.subjets);
+  auto& outSubjets(outSubjetSelector_(_outEvent));
 
   typedef std::vector<fastjet::PseudoJet> VPseudoJet;
 

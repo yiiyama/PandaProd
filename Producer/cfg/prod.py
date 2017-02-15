@@ -94,12 +94,6 @@ if options.globaltag == '':
 else:
     process.GlobalTag.globaltag = options.globaltag
 
-if options.connect:
-    if options.connect == 'mit':
-        options.connect = 'frontier://(proxyurl=http://squid.cmsaf.mit.edu:3128)(proxyurl=http://squid1.cmsaf.mit.edu:3128)(proxyurl=http://squid2.cmsaf.mit.edu:3128)(serverurl=http://cmsfrontier.cern.ch:8000/FrontierProd)/CMS_CONDITIONS'
-
-    process.GlobalTag.connect = options.connect
-
 process.RandomNumberGeneratorService.panda = cms.PSet(
     initialSeed = cms.untracked.uint32(1234567),
     engineName = cms.untracked.string('TRandom3')
@@ -458,3 +452,11 @@ process.panda.printLevel = options.printLevel
 process.ntuples = cms.EndPath(process.panda)
 
 process.schedule += [process.reco, process.ntuples]
+
+if options.connect:
+    if options.connect == 'mit':
+        options.connect = 'frontier://(proxyurl=http://squid.cmsaf.mit.edu:3128)(proxyurl=http://squid1.cmsaf.mit.edu:3128)(proxyurl=http://squid2.cmsaf.mit.edu:3128)(serverurl=http://cmsfrontier.cern.ch:8000/FrontierProd)/CMS_CONDITIONS'
+
+    process.GlobalTag.connect = options.connect
+    for toGet in process.GlobalTag.toGet:
+        toGet.connect = options.connect

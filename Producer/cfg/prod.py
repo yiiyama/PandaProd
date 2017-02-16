@@ -53,13 +53,10 @@ process = cms.Process('NTUPLES')
 process.schedule = cms.Schedule()
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
-process.MessageLogger.categories.append('PandaProducer', 'JetPtMismatchAtLowPt', 'JetPtMismatch', 'NullTransverseMomentum', 'MissingJetConstituent')
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.MessageLogger.cerr.PandaProducer = cms.untracked.PSet(limit = cms.untracked.int32(1000000))
-process.MessageLogger.cerr.JetPtMismatchAtLowPt = cms.untracked.PSet(limit = cms.untracked.int32(10))
-process.MessageLogger.cerr.JetPtMismatch = cms.untracked.PSet(limit = cms.untracked.int32(10))
-process.MessageLogger.cerr.NullTransverseMomentum = cms.untracked.PSet(limit = cms.untracked.int32(10))
-process.MessageLogger.cerr.MissingJetConstituent = cms.untracked.PSet(limit = cms.untracked.int32(10))
+for cat in ['PandaProducer', 'JetPtMismatchAtLowPt', 'JetPtMismatch', 'NullTransverseMomentum', 'MissingJetConstituent']:
+    process.MessageLogger.categories.append(cat)
+    setattr(process.MessageLogger.cerr, cat, cms.untracked.PSet(limit = cms.untracked.int32(10)))
 
 ############
 ## SOURCE ##

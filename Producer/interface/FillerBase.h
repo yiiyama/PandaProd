@@ -205,6 +205,9 @@ template<class Principal, class Product>
 Product const*
 FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _token)
 {
+  if (_token.second.isUninitialized())
+    return 0;
+
   edm::Handle<Product> handle;
   if (!_prn.getByToken(_token.second, handle))
     return 0;

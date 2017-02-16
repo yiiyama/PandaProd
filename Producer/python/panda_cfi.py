@@ -164,7 +164,7 @@ panda = cms.EDAnalyzer('PandaProducer',
                 El90EBR9IsoPh = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 El120EBR9IsoPh = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
             ),
-            minPt = cms.untracked.double(-1.),
+            minPt = cms.untracked.double(5.),
             maxEta = cms.untracked.double(10.)
         ),
         muons = cms.untracked.PSet(
@@ -177,14 +177,14 @@ panda = cms.EDAnalyzer('PandaProducer',
                 Mu24 = cms.untracked.vstring('hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09'),
                 Mu27 = cms.untracked.vstring('hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p09')
             ),
-            minPt = cms.untracked.double(-1.),
+            minPt = cms.untracked.double(5.),
             maxEta = cms.untracked.double(10.)
         ),
         taus = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Taus'),
             taus = cms.untracked.string('slimmedTaus'),
-            minPt = cms.untracked.double(-1.),
+            minPt = cms.untracked.double(15.),
             maxEta = cms.untracked.double(10.)
         ),
         photons = cms.untracked.PSet(
@@ -229,7 +229,8 @@ panda = cms.EDAnalyzer('PandaProducer',
                 Ph75EBR9Iso = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph90EBR9Iso = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph120EBR9Iso = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
-            )
+            ),
+            minPt = cms.untracked.double(10.)
         ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

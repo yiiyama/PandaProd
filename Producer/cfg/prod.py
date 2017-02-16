@@ -473,6 +473,8 @@ process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
     met = 'slimmedMETsUncorrected'
 )
 if muEGFixed:
+    process.panda.fillers.electrons.gsUnfixedElectrons = cms.untracked.string('slimmedElectronsBeforeGSFix')
+    process.panda.fillers.photons.gsUnfixedPhotons = cms.untracked.string('slimmedPhotonsBeforeGSFix')
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
         met = 'slimmedMETs'
     )

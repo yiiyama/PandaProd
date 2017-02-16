@@ -9,6 +9,7 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 
@@ -33,6 +34,8 @@ class PhotonsFiller : public FillerBase {
   NamedToken<PhotonView> photonsToken_;
   NamedToken<PhotonView> rawPhotonsToken_;
   NamedToken<PhotonView> regressionPhotonsToken_;
+  NamedToken<PhotonView> gsUnfixedPhotonsToken_; // temporary for 03Feb2017 Re-MINIAOD
+  NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
   NamedToken<BoolMap> looseIdToken_;

@@ -105,6 +105,8 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
         outMuon.tight = muon::isTightMuon(inMuon, vertices.at(0));
     }
 
+    outMuon.pfPt = inMuon.pfP4().pt();
+
     ptrList.push_back(inMuons.ptrAt(iMu));
   }
   

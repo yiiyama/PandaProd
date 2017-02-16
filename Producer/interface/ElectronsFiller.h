@@ -9,6 +9,7 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/EgammaReco/interface/SuperClusterFwd.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 
@@ -34,7 +35,9 @@ class ElectronsFiller : public FillerBase {
   NamedToken<GsfElectronView> electronsToken_;
   NamedToken<GsfElectronView> rawElectronsToken_;
   NamedToken<GsfElectronView> regressionElectronsToken_;
+  NamedToken<GsfElectronView> gsUnfixedElectronsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<PhotonView> photonsToken_;
+  NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
   NamedToken<BoolMap> vetoIdToken_;

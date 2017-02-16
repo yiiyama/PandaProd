@@ -27,7 +27,9 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(rawElectronsToken_, _cfg, _coll, "rawElectrons");
   getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons");
+  getToken_(gsUnfixedElectronsToken_, _cfg, _coll, "gsUnfixedElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
+  getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
   getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
@@ -78,7 +80,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
   auto& inRawElectrons(getProduct_(_inEvent, rawElectronsToken_));
   auto& inRegressionElectrons(getProduct_(_inEvent, regressionElectronsToken_));
+  auto* gsUnfixedElectrons(getProductSafe_(_inEvent, gsUnfixedElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
+  auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
   auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
@@ -115,6 +119,20 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& outElectrons(_outEvent.electrons);
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
+
+  std::map<uint32_t, reco::GsfElectron const*> gsFixMap;
+  if (gsUnfixedElectrons) {
+    for (auto& ele : *gsUnfixedElectrons) {
+      auto&& scRef(ele.superCluster());
+      if (scRef.isNull())
+        continue;
+      auto&& bcRef(scRef->seed());
+      if (bcRef.isNull())
+        continue;
+
+      gsFixMap[bcRef->seed().rawId()] = &ele;
+    }
+  }
 
   unsigned iEl(-1);
   for (auto& inElectron : inElectrons) {
@@ -194,6 +212,22 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       }
     }
 
+    reco::Candidate const* matchedPF(0);
+    double minDR(0.1);
+    for (auto& pf : pfCandidates) {
+      if (std::abs(pf.pdgId()) != 11)
+        continue;
+
+      double dR(reco::deltaR(pf, inElectron));
+      if (dR < minDR) {
+        minDR = dR;
+        matchedPF = &pf;
+      }
+    }
+
+    if (matchedPF)
+      outElectron.pfPt = matchedPF->pt();
+
     for (auto& raw : inRawElectrons) {
       if (raw.superCluster() == scRef) {
         outElectron.rawPt = raw.pt();
@@ -206,6 +240,12 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
         outElectron.regPt = reg.pt();
         break;
       }
+    }
+
+    if (gsUnfixedElectrons && seedRef.isNonnull()) {
+      auto eItr(gsFixMap.find(seedRef->seed().rawId()));
+      if (eItr != gsFixMap.end())
+        outElectron.originalPt = eItr->second->pt();
     }
 
     ptrList.push_back(inElectrons.ptrAt(iEl));

@@ -23,6 +23,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(photonsToken_, _cfg, _coll, "photons");
   getToken_(rawPhotonsToken_, _cfg, _coll, "rawPhotons");
   getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
+  getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
+  getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
@@ -79,6 +81,8 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
   auto& inRawPhotons(getProduct_(_inEvent, rawPhotonsToken_));
   auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
+  auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
+  auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
@@ -113,6 +117,20 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& outPhotons(_outEvent.photons);
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
+
+  std::map<uint32_t, reco::Photon const*> gsFixMap;
+  if (gsUnfixedPhotons) {
+    for (auto& ph : *gsUnfixedPhotons) {
+      auto&& scRef(ph.superCluster());
+      if (scRef.isNull())
+        continue;
+      auto&& bcRef(scRef->seed());
+      if (bcRef.isNull())
+        continue;
+
+      gsFixMap[bcRef->seed().rawId()] = &ph;
+    }
+  }
 
   unsigned iPh(-1);
   for (auto& inPhoton : inPhotons) {
@@ -259,6 +277,22 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }      
     }
 
+    reco::Candidate const* matchedPF(0);
+    double minDR(0.1);
+    for (auto& pf : pfCandidates) {
+      if (pf.pdgId() != 22)
+        continue;
+
+      double dR(reco::deltaR(pf, inPhoton));
+      if (dR < minDR) {
+        minDR = dR;
+        matchedPF = &pf;
+      }
+    }
+
+    if (matchedPF)
+      outPhoton.pfPt = matchedPF->pt();
+
     for (auto& raw : inRawPhotons) {
       if (raw.superCluster() == scRef) {
         outPhoton.rawPt = raw.pt();
@@ -271,6 +305,12 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         outPhoton.regPt = reg.pt();
         break;
       }
+    }
+
+    if (gsUnfixedPhotons && seedRef.isNonnull()) {
+      auto eItr(gsFixMap.find(seedRef->seed().rawId()));
+      if (eItr != gsFixMap.end())
+        outPhoton.originalPt = eItr->second->pt();
     }
 
     ptrList.push_back(inPhotons.ptrAt(iPh));

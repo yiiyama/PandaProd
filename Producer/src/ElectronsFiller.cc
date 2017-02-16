@@ -144,7 +144,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.tight = tightId[inRef];
     outElectron.hltsafe = hltId[inRef];
 
-    outElectron.q = inElectron.charge();
+    outElectron.charge = inElectron.charge();
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
@@ -153,24 +153,24 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     double scEta(std::abs(sc.eta()));
 
     auto& pfIso(inElectron.pfIsolationVariables());
-    outElectron.chiso = pfIso.sumChargedHadronPt;
-    outElectron.nhiso = pfIso.sumNeutralHadronEt;
-    outElectron.phoiso = pfIso.sumPhotonEt;
-    outElectron.puiso = pfIso.sumPUPt;
+    outElectron.chIso = pfIso.sumChargedHadronPt;
+    outElectron.nhIso = pfIso.sumNeutralHadronEt;
+    outElectron.phoIso = pfIso.sumPhotonEt;
+    outElectron.puIso = pfIso.sumPUPt;
     outElectron.isoPUOffset = combIsoEA_.getEffectiveArea(scEta) * rho;
 
     if (dynamic_cast<pat::Electron const*>(&inElectron)) {
       auto& patElectron(static_cast<pat::Electron const&>(inElectron));
-      outElectron.ecaliso = patElectron.ecalPFClusterIso() - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
-      outElectron.hcaliso = patElectron.hcalPFClusterIso() - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      outElectron.ecalIso = patElectron.ecalPFClusterIso() - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      outElectron.hcalIso = patElectron.hcalPFClusterIso() - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
     }
     else {
       if (!ecalIso)
         throw edm::Exception(edm::errors::Configuration, "ECAL PF cluster iso missing");
-      outElectron.ecaliso = (*ecalIso)[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      outElectron.ecalIso = (*ecalIso)[inRef] - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
       if (!hcalIso)
         throw edm::Exception(edm::errors::Configuration, "HCAL PF cluster iso missing");
-      outElectron.hcaliso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
+      outElectron.hcalIso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
     }
 
     auto&& seedRef(sc.seed());
@@ -188,9 +188,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     for (auto& photon : photons) {
       if (photon.superCluster() == scRef) {
         auto&& photonRef(photons.refAt(iPh));
-        outElectron.chisoPh = phCHIso[photonRef] - phCHIsoEA_.getEffectiveArea(scEta) * rho;
-        outElectron.nhisoPh = phNHIso[photonRef] - phNHIsoEA_.getEffectiveArea(scEta) * rho;
-        outElectron.phisoPh = phPhIso[photonRef] - phPhIsoEA_.getEffectiveArea(scEta) * rho;
+        outElectron.chIsoPh = phCHIso[photonRef] - phCHIsoEA_.getEffectiveArea(scEta) * rho;
+        outElectron.nhIsoPh = phNHIso[photonRef] - phNHIsoEA_.getEffectiveArea(scEta) * rho;
+        outElectron.phIsoPh = phPhIso[photonRef] - phPhIsoEA_.getEffectiveArea(scEta) * rho;
       }
     }
 

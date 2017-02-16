@@ -23,6 +23,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   jerName_(getParameter_<std::string>(_cfg, "jer", "")),
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
+  outGenJets_(getParameter_<std::string>(_cfg, "pandaGenJets", "")),
   R_(getParameter_<double>(_cfg, "R", 0.4)),
   minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
@@ -292,10 +293,10 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     }
   }
 
-  if (!isRealData_) {
+  if (!isRealData_ && !outGenJets_.empty()) {
     auto& genJetMap(objectMap_->get<reco::GenJet, panda::Jet>().fwdMap);
 
-    auto& genMap(_objectMaps.at("genJets").get<reco::GenJet, panda::GenJet>().fwdMap);
+    auto& genMap(_objectMaps.at(outGenJets_).get<reco::GenJet, panda::GenJet>().fwdMap);
 
     for (auto& link : genJetMap) {
       auto& genPtr(link.first);

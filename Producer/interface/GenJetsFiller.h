@@ -4,6 +4,7 @@
 #include "FillerBase.h"
 
 #include "DataFormats/JetReco/interface/GenJet.h"
+#include "SimDataFormats/JetMatching/interface/JetFlavourInfoMatching.h"
 
 class GenJetsFiller : public FillerBase {
  public:
@@ -17,6 +18,11 @@ class GenJetsFiller : public FillerBase {
   typedef edm::View<reco::GenJet> GenJetView;
 
   NamedToken<GenJetView> genJetsToken_;
+  NamedToken<reco::JetFlavourInfoMatchingCollection> flavorToken_;
+
+  typedef std::function<panda::GenJetCollection&(panda::Event&)> OutputSelector;
+
+  OutputSelector outputSelector_{};
 
   double minPt_{15.};
 };

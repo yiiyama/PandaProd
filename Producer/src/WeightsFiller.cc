@@ -25,19 +25,19 @@ WeightsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
   if (!isRealData_) {
     _eventBranches.emplace_back("genReweight");
     // Turned off temporarily
-    // _eventBranches.push_back("!genReweight.genParam");
+    _eventBranches.push_back("!genReweight.genParam");
   }
 }
 
 void
 WeightsFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext context(&_outputFile);
-
   if (isRealData_)
     hSumW_ = new TH1D("hSumW", "SumW", 1, 0., 1.);
   else
     hSumW_ = new TH1D("hSumW", "SumW", 8, 0., 8.);
+
+  hSumW_->SetDirectory(&_outputFile);
 
   hSumW_->GetXaxis()->SetBinLabel(1, "Nominal");
   if (!isRealData_) {
@@ -54,17 +54,19 @@ WeightsFiller::addOutput(TFile& _outputFile)
     for (unsigned iL(0); iL != sizeof(labels) / sizeof(char const*); ++iL)
       hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
 
-    groupTree_ = new TTree("weightGroups", "weightGroups");
-    gcombine_ = new TString;
-    gtype_ = new TString;
-    groupTree_->Branch("combine", "TString", &gcombine_);
-    groupTree_->Branch("type", "TString", &gtype_);
+    // we only store the RMS of the PDF variations - no need to write this information
 
-    weightTree_ = new TTree("weights", "weights");
-    wtitle_ = new TString;
-    weightTree_->Branch("id", &wid_, "id/i");
-    weightTree_->Branch("title", "TString", &wtitle_);
-    weightTree_->Branch("group", &gid_, "group/i");
+    // groupTree_ = new TTree("weightGroups", "weightGroups");
+    // gcombine_ = new TString;
+    // gtype_ = new TString;
+    // groupTree_->Branch("combine", "TString", &gcombine_);
+    // groupTree_->Branch("type", "TString", &gtype_);
+
+    // weightTree_ = new TTree("weights", "weights");
+    // wtitle_ = new TString;
+    // weightTree_->Branch("id", &wid_, "id/i");
+    // weightTree_->Branch("title", "TString", &wtitle_);
+    // weightTree_->Branch("group", &gid_, "group/i");
   }
 }
 
@@ -125,6 +127,9 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
   // LHERunInfoProduct (and GenRunInfoProduct FWIW) have mergeProduct method which forbids them
   // from being fetched in beginRun
 
+  // NOT STORING TAG DATA SINCE WE ONLY STORE ONE RMS OF PDF VARIATIONS
+  return;
+
   if (isRealData_)
     return;
 
@@ -169,11 +174,21 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     auto& document(*parser.GetXMLDocument());
     auto& rootnode(*document.GetRootNode());
 
-    unsigned iG(0);
+    unsigned iG(-1);
 
     // traverse through the XML document and collect all reweight factor names
     auto* wgNode(rootnode.GetChildren());
     do {
+      // ignore non-weightgroup nodes
+      if (std::strcmp(wgNode->GetNodeName(), "weightgroup") != 0)
+        continue;
+
+      ++iG;
+
+      // assume the first block is for scale variation
+      if (iG == 0)
+        continue;
+
       // loop over weightgroup nodes
 
       auto* weightNode(wgNode->GetChildren());
@@ -192,10 +207,8 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
           continue;
 
         unsigned id(TString(wid->GetValue()).Atoi());
-        if (!(id >= 1 && id <= 9) || (id >= 1001 && id <= 1009) || (id >= 11 && id <= 110) || (id >= 2001 && id < 2100))
-          continue;
 
-        weightGroups[id] = iG;
+        weightGroups[id] = iG - 1; // first block is skipped
 
         // weight definition is a content of the child (text) node
         auto* contentNode = weightNode->GetChildren();
@@ -225,8 +238,6 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
         *gtype_ = "";
 
       groupTree_->Fill();
-
-      ++iG;
     }
     while ((wgNode = wgNode->GetNextNode()));
 
@@ -254,7 +265,7 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
     try {
       id =std::stoi(wgt.id);
     }
-    catch (std::invalid_argument& ex) {
+     catch (std::invalid_argument& ex) {
       // id string not in pattern we are looking for
       continue;
     }

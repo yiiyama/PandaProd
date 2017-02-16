@@ -5,20 +5,31 @@ GenJetsFiller::GenJetsFiller(std::string const& _name, edm::ParameterSet const& 
   minPt_(getParameter_<double>(_cfg, "minPt", -1.))
 {
   getToken_(genJetsToken_, _cfg, _coll, "genJets");
+  getToken_(flavorToken_, _cfg, _coll, "flavor");
+
+  if (_name == "ak4GenJets")
+    outputSelector_ = [](panda::Event& _event)->panda::GenJetCollection& { return _event.ak4GenJets; };
+  else if (_name == "ak8GenJets")
+    outputSelector_ = [](panda::Event& _event)->panda::GenJetCollection& { return _event.ak8GenJets; };
+  else if (_name == "ca15GenJets")
+    outputSelector_ = [](panda::Event& _event)->panda::GenJetCollection& { return _event.ca15GenJets; };
+  else
+    throw edm::Exception(edm::errors::Configuration, "Unknown GenJetCollection output");    
 }
 
 void
 GenJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  _eventBranches.emplace_back("genJets");
+  _eventBranches.emplace_back(getName());
 }
 
 void
 GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
   auto& inJets(getProduct_(_inEvent, genJetsToken_));
+  auto& inFlavor(getProduct_(_inEvent, flavorToken_));
 
-  auto& outJets(_outEvent.genJets);
+  auto& outJets(outputSelector_(_outEvent));
 
   std::vector<edm::Ptr<reco::GenJet>> ptrList;
 
@@ -31,10 +42,12 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     auto& outJet(outJets.create_back());
 
     fillP4(outJet, inJet);
+    
+    auto&& ptr(inJets.ptrAt(iJet));
 
-    outJet.pdgid = inJet.pdgId();
+    outJet.pdgid = inFlavor[edm::Ptr<reco::Jet>(ptr)].getHadronFlavour();
 
-    ptrList.push_back(inJets.ptrAt(iJet));
+    ptrList.push_back(ptr);
   }
 
   // sort the output electrons

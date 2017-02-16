@@ -22,10 +22,12 @@ VerticesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::uti
 void
 VerticesFiller::addOutput(TFile& _outputFile)
 {
-  TDirectory::TContext context(&_outputFile);
   hNPVReco_ = new TH1D("hNPVReco", "N_{PV}^{reco}", 100, 0., 100.);
-  if (!isRealData_)
+  hNPVReco_->SetDirectory(&_outputFile);
+  if (!isRealData_) {
     hNPVTrue_ = new TH1D("hNPVTrue", "N_{PV}^{true}", 100, 0., 100.);
+    hNPVTrue_->SetDirectory(&_outputFile);
+  }
 }
 
 void

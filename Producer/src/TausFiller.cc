@@ -43,7 +43,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
     fillP4(outTau, inTau);
 
-    outTau.q = inTau.charge();
+    outTau.charge = inTau.charge();
 
     if (dynamic_cast<pat::Tau const*>(&inTau)) {
       auto& patTau(static_cast<pat::Tau const&>(inTau));

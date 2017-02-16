@@ -6,8 +6,8 @@ MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
   FillerBase(_name, _cfg),
   fillOthers_(getParameter_<bool>(_cfg, "fillOthers", false))
 {
-  if (_name == "met")
-    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.met; };
+  if (_name == "pfMet")
+    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.pfMet; };
   else if (_name == "puppiMet")
     outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.puppiMet; };
   else if (_name == "metMuOnlyFix")
@@ -55,6 +55,9 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
   auto& inMet(getProduct_(_inEvent, metToken_).at(0));
 
   panda::RecoMet& outMet(outputSelector_(_outEvent));
+
+  if (getName() == "met")
+    std::cout << "met " << inMet.pt() << " " << inMet.phi() << std::endl;
 
   outMet.pt = inMet.pt();
   outMet.phi = inMet.phi();

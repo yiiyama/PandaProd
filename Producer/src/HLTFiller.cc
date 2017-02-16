@@ -21,9 +21,10 @@ HLTFiller::addOutput(TFile& _outputFile)
 }
 
 void
-HLTFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
+HLTFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList& _runBranches) const
 {
   _eventBranches.emplace_back("triggers");
+  _runBranches.emplace_back("hltMenu");
 }
 
 void

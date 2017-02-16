@@ -144,16 +144,16 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (isPAT)
       outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
 
-    outPhoton.chiso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
+    outPhoton.chIso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
     if (chIsoLeakage_[iDet].IsValid())
-      outPhoton.chiso -= chIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.nhiso = nhIso[inRef] - nhIsoEA_.getEffectiveArea(scEta) * rho;
+      outPhoton.chIso -= chIsoLeakage_[iDet].Eval(outPhoton.pt());
+    outPhoton.nhIso = nhIso[inRef] - nhIsoEA_.getEffectiveArea(scEta) * rho;
     if (nhIsoLeakage_[iDet].IsValid())
-      outPhoton.nhiso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.phoiso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
+      outPhoton.nhIso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
+    outPhoton.phoIso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
     if (phIsoLeakage_[iDet].IsValid())
-      outPhoton.phoiso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.chisoWorst = wchIso[inRef];
+      outPhoton.phoIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
+    outPhoton.chIsoWorst = wchIso[inRef];
     
     outPhoton.loose = looseId[inRef];
     outPhoton.medium = mediumId[inRef];
@@ -189,7 +189,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     outPhoton.mipEnergy = inPhoton.mipTotEnergy();
 
-    outPhoton.e33 = inPhoton.e3x3();
     outPhoton.r9 = inPhoton.r9();
 
     outPhoton.etaWidth = sc.etaWidth();
@@ -199,18 +198,16 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (seedRef.isNonnull()) {
       auto& seed(*seedRef);
       outPhoton.emax = lazyTools.eMax(seed);
-      outPhoton.e2nd = lazyTools.e2nd(seed);
-      outPhoton.e4 = lazyTools.eTop(seed) + lazyTools.eRight(seed) + lazyTools.eBottom(seed) + lazyTools.eLeft(seed);
+      outPhoton.eleft = lazyTools.eLeft(seed);
+      outPhoton.eright = lazyTools.eRight(seed);
+      outPhoton.etop = lazyTools.eTop(seed);
+      outPhoton.ebottom = lazyTools.eBottom(seed);
       
       auto* seedHit(findHit(seed.seed()));
-      if (seedHit) {
+      if (seedHit)
         outPhoton.time = seedHit->time();
-        outPhoton.eseed = seedHit->energy();
-      }
-      else {
-        outPhoton.time = 0.;
-        outPhoton.eseed = 0.;
-      }
+      else
+        outPhoton.time = -50.;
     }
 
     outPhoton.timeSpan = 0.;    
@@ -225,7 +222,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     }
 
     if (!isRealData_) {
-      // compute geniso
+      // compute genIso
 
       if (isPAT) {
         auto& patPhoton(static_cast<pat::Photon const&>(inPhoton));
@@ -254,7 +251,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
           if (matched) {
             for (auto& fs : *genParticles) {
               if (reco::deltaR(fs, *matched) < 0.3) {
-                outPhoton.geniso += fs.pt();
+                outPhoton.genIso += fs.pt();
               }
             }
           }

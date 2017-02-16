@@ -67,14 +67,14 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
     fillP4(outMuon, inMuon);
 
-    outMuon.q = inMuon.charge();
+    outMuon.charge = inMuon.charge();
 
     auto& pfIso(inMuon.pfIsolationR04());
 
-    outMuon.chiso = pfIso.sumChargedHadronPt;
-    outMuon.nhiso = pfIso.sumNeutralHadronEt;
-    outMuon.phoiso = pfIso.sumPhotonEt;
-    outMuon.puiso = pfIso.sumPUPt;
+    outMuon.chIso = pfIso.sumChargedHadronPt;
+    outMuon.nhIso = pfIso.sumNeutralHadronEt;
+    outMuon.phoIso = pfIso.sumPhotonEt;
+    outMuon.puIso = pfIso.sumPUPt;
 
     if (dynamic_cast<pat::Muon const*>(&inMuon)) {
       auto& patMuon(static_cast<pat::Muon const&>(inMuon));

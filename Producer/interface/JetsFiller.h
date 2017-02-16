@@ -43,6 +43,7 @@ class JetsFiller : public FillerBase {
 
   OutputSelector outputSelector_{};
 
+  std::string outGenJets_{};
   //! jet radius
   double R_{0.4};
   double minPt_{15.};

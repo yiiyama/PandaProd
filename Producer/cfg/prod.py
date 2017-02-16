@@ -263,6 +263,35 @@ fatJetSequence = cms.Sequence(
     ca15PuppiDoubleBTagSequence
 )
 
+### GEN JET FLAVORS
+if not options.isData:
+    process.load('PhysicsTools.JetMCAlgos.HadronAndPartonSelector_cfi')
+    from PhysicsTools.JetMCAlgos.AK4PFJetsMCFlavourInfos_cfi import ak4JetFlavourInfos
+
+    process.selectedHadronsAndPartons.particles = 'prunedGenParticles'
+
+    process.ak4GenJetFlavourInfos = ak4JetFlavourInfos.clone(
+        jets = 'slimmedGenJets'
+    )
+    process.ak8GenJetFlavourInfos = ak4JetFlavourInfos.clone(
+        jets = 'genJetsNoNuAK8',
+        rParam = 0.8
+    )
+    process.ca15GenJetFlavourInfos = ak4JetFlavourInfos.clone(
+        jets = 'genJetsNoNuCA15',
+        jetAlgorithm = 'CambridgeAachen',
+        rParam = 1.5
+    )
+
+    genJetFlavorSequence = cms.Sequence(
+        process.selectedHadronsAndPartons +
+        process.ak4GenJetFlavourInfos +
+        process.ak8GenJetFlavourInfos +
+        process.ca15GenJetFlavourInfos
+    )
+else:
+    genJetFlavorSequence = cms.Sequence()
+
 ### MONOX FILTER
 
 process.load('PandaProd.Filters.MonoXFilter_cfi')
@@ -278,7 +307,8 @@ process.reco = cms.Path(
     process.fullPatMetSequencePuppi +
     process.MonoXFilter +
     process.QGTagger +
-    fatJetSequence
+    fatJetSequence +
+    genJetFlavorSequence
 )
 
 if muEGFixed:
@@ -431,11 +461,13 @@ process.panda.useTrigger = options.useTrigger
 if options.isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
-    process.panda.fillers.genJets.enabled = False
+    process.panda.fillers.ak4GenJets.enabled = False
+    process.panda.fillers.ak8GenJets.enabled = False
+    process.panda.fillers.ca15GenJets.enabled = False
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-process.panda.fillers.met.met = 'slimmedMETsMuEGClean'
+process.panda.fillers.pfMet.met = 'slimmedMETsMuEGClean'
 process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
     met = 'slimmedMETsUncorrected'
 )

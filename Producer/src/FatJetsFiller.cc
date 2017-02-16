@@ -83,6 +83,8 @@ FatJetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 {
   JetsFiller::branchNames(_eventBranches, _runBranches);
 
+  _eventBranches.emplace_back("!" + getName() + ".area");
+
   TString subjetName(getName());
   subjetName.ReplaceAll("Jets", "Subjets");
   _eventBranches.emplace_back(subjetName);

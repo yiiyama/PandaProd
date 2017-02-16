@@ -271,8 +271,8 @@ PandaProducer::beginJob()
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
 
-  panda::utils::BranchList eventBranches;
-  panda::utils::BranchList runBranches;
+  panda::utils::BranchList eventBranches = {"runNumber", "lumiNumber", "eventNumber", "isData"};
+  panda::utils::BranchList runBranches = {"runNumber"};
   for (auto* filler : fillers_) {
     if (filler->enabled())
       filler->branchNames(eventBranches, runBranches);
@@ -285,6 +285,7 @@ PandaProducer::beginJob()
     filler->addOutput(*outputFile_);
 
   eventCounter_ = new TH1D("eventcounter", "", 2, 0., 2.);
+  eventCounter_->SetDirectory(outputFile_);
   eventCounter_->GetXaxis()->SetBinLabel(1, "all");
   eventCounter_->GetXaxis()->SetBinLabel(2, "selected");
 }

@@ -63,6 +63,8 @@ PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
     _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
   if (!useTrigger_)
     _eventBranches.emplace_back("!photons.triggerMatch");
+  if (gsUnfixedPhotonsToken_.second.isUninitialized())
+    _eventBranches.emplace_back("!photons.originalPt");
 }
 
 void

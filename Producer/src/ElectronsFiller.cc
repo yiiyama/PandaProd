@@ -72,6 +72,8 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
     _eventBranches.emplace_back("!electrons.matchedGen_");
   if (!useTrigger_)
     _eventBranches.emplace_back("!electrons.triggerMatch");
+  if (gsUnfixedElectronsToken_.second.isUninitialized())
+    _eventBranches.emplace_back("!electrons.originalPt");
 }
 
 void

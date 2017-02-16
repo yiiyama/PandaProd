@@ -150,9 +150,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.nhIso = nhIso[inRef] - nhIsoEA_.getEffectiveArea(scEta) * rho;
     if (nhIsoLeakage_[iDet].IsValid())
       outPhoton.nhIso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.phoIso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
+    outPhoton.phIso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
     if (phIsoLeakage_[iDet].IsValid())
-      outPhoton.phoIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
+      outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.chIsoWorst = wchIso[inRef];
     
     outPhoton.loose = looseId[inRef];

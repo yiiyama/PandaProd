@@ -73,7 +73,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
     outMuon.chIso = pfIso.sumChargedHadronPt;
     outMuon.nhIso = pfIso.sumNeutralHadronEt;
-    outMuon.phoIso = pfIso.sumPhotonEt;
+    outMuon.phIso = pfIso.sumPhotonEt;
     outMuon.puIso = pfIso.sumPUPt;
 
     if (dynamic_cast<pat::Muon const*>(&inMuon)) {

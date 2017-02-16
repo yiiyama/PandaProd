@@ -155,7 +155,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     auto& pfIso(inElectron.pfIsolationVariables());
     outElectron.chIso = pfIso.sumChargedHadronPt;
     outElectron.nhIso = pfIso.sumNeutralHadronEt;
-    outElectron.phoIso = pfIso.sumPhotonEt;
+    outElectron.phIso = pfIso.sumPhotonEt;
     outElectron.puIso = pfIso.sumPUPt;
     outElectron.isoPUOffset = combIsoEA_.getEffectiveArea(scEta) * rho;
 

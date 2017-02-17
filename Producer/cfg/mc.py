@@ -1,7 +1,7 @@
 from FWCore.ParameterSet.VarParsing import VarParsing
 
 options =VarParsing('analysis')
-options.register('config', default = 'Summer16', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: 03Feb2017, 23Sep2016, Spring16, Summer16')
+options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: 03Feb2017, 23Sep2016, Spring16, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
@@ -13,6 +13,10 @@ options._tags.pop('numEvent%d')
 options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
+
+options.config = 'Summer16'
+options.inputFiles = ['XX-LFN-XX']
+options.outputFile = 'kraken-output-file-tmp_000.root'
 
 jetMETReco = True
 muEGFixed = False
@@ -37,13 +41,13 @@ elif options.config:
 if options.config == '03Feb2017' or options.config == '23Sep2016':
     import os
 
-    jsonDir = '/cvmfs/cvmfs.cmsaf.mit.edu/hidsk0001/cmsprod/cms/json'
+    jsonDir = os.environ['CMSSW_BASE'] + '/src/PandaProd/Producer/cfg'
     lumilist = 'Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
 
-    if os.path.isdir(jsonDir):
-        options.lumilist = jsonDir + '/' + lumilist
-    elif os.path.exists(lumilist):
+    if os.path.exists(lumilist):
         options.lumilist = lumilist
+    elif os.path.exists(jsonDir + '/' + lumilist):
+        options.lumilist = jsonDir + '/' + lumilist
     else:
         print 'No good lumi mask applied'
 

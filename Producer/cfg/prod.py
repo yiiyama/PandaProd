@@ -37,13 +37,13 @@ elif options.config:
 if options.config == '03Feb2017' or options.config == '23Sep2016':
     import os
 
-    jsonDir = '/cvmfs/cvmfs.cmsaf.mit.edu/hidsk0001/cmsprod/cms/json'
+    jsonDir = os.environ['CMSSW_BASE'] + '/src/PandaProd/Producer/cfg'
     lumilist = 'Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
 
-    if os.path.isdir(jsonDir):
-        options.lumilist = jsonDir + '/' + lumilist
-    elif os.path.exists(lumilist):
+    if os.path.exists(lumilist):
         options.lumilist = lumilist
+    elif os.path.exists(jsonDir + '/' + lumilist):
+        options.lumilist = jsonDir + '/' + lumilist
     else:
         print 'No good lumi mask applied'
 

@@ -44,7 +44,7 @@ class PhotonsFiller : public FillerBase {
   NamedToken<FloatMap> chIsoToken_;
   NamedToken<FloatMap> nhIsoToken_;
   NamedToken<FloatMap> phIsoToken_;
-  NamedToken<FloatMap> wchIsoToken_;
+  NamedToken<FloatMap> chIsoMaxToken_;
   NamedToken<double> rhoToken_;
   NamedToken<pat::PackedGenParticleCollection> genParticlesToken_;
 

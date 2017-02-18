@@ -22,7 +22,6 @@
 #include "DataFormats/METReco/interface/PFMET.h"
 #include "DataFormats/METReco/interface/PFMETCollection.h"
 
-//#include "PandaUtilities/Common/interface/Common.h"
 #include "PandaTree/Objects/interface/Constants.h"
 
 //

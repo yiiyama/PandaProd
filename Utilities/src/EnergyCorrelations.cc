@@ -4,9 +4,18 @@
  * \author S.Narayanan
  */
 #include "../interface/EnergyCorrelations.h"
+#define PI 3.141592654
 
 double DeltaR2(fastjet::PseudoJet j1, fastjet::PseudoJet j2) {
-  return DeltaR2(j1.eta(),j1.phi(),j2.eta(),j2.phi());
+    float dEta2 = (j1.eta()-j2.eta()); dEta2 *= dEta2;
+
+    float dPhi = j1.phi()-j2.phi();
+    if (dPhi<-PI)
+        dPhi = 2*PI+dPhi;
+    else if (dPhi>PI)
+        dPhi = -2*PI+dPhi;
+
+    return dEta2 + dPhi*dPhi;
 }
 
 void calcECF(double beta, std::vector<fastjet::PseudoJet> &constituents, double *n1/*=0*/, double *n2/*=0*/, double *n3/*=0*/, double *n4/*=0*/) {

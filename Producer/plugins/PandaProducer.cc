@@ -215,7 +215,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
     }
   }
 
-  eventTree_->Fill();
+  outEvent_.fill(*eventTree_);
 }
 
 void
@@ -261,7 +261,7 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
     }
   }
 
-  runTree_->Fill();
+  outEvent_.run.fill(*runTree_);
 }
 
 void 

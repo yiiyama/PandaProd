@@ -312,7 +312,8 @@ panda = cms.EDAnalyzer('PandaProducer',
         ),
         weights = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
-            filler = cms.untracked.string('Weights')
+            filler = cms.untracked.string('Weights'),
+            saveSignals = cms.untracked.bool(True)
         ),
         recoil = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

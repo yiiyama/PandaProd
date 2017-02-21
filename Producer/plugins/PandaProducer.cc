@@ -284,6 +284,13 @@ PandaProducer::beginJob()
   for (auto* filler : fillers_)
     filler->addOutput(*outputFile_);
 
+  if (useTrigger_ && outputFile_->Get("hlt")) {
+    outEvent_.run.hlt.create();
+    auto& hltTree(*static_cast<TTree*>(outputFile_->Get("hlt")));
+    hltTree.Branch("menu", "TString", &outEvent_.run.hlt.menu);
+    hltTree.Branch("paths", "std::vector<TString>", &outEvent_.run.hlt.paths, 32000, 0);
+  }
+
   eventCounter_ = new TH1D("eventcounter", "", 2, 0., 2.);
   eventCounter_->SetDirectory(outputFile_);
   eventCounter_->GetXaxis()->SetBinLabel(1, "all");

@@ -33,7 +33,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(chIsoToken_, _cfg, _coll, "chIso");
   getToken_(nhIsoToken_, _cfg, _coll, "nhIso");
   getToken_(phIsoToken_, _cfg, _coll, "phIso");
-  getToken_(wchIsoToken_, _cfg, _coll, "wchIso");
+  getToken_(chIsoMaxToken_, _cfg, _coll, "chIsoMax");
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   if (!isRealData_)
     getToken_(genParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
@@ -93,7 +93,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& chIso(getProduct_(_inEvent, chIsoToken_));
   auto& nhIso(getProduct_(_inEvent, nhIsoToken_));
   auto& phIso(getProduct_(_inEvent, phIsoToken_));
-  auto& wchIso(getProduct_(_inEvent, wchIsoToken_));
+  auto& chIsoMax(getProduct_(_inEvent, chIsoMaxToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
   // final state gen particles
   pat::PackedGenParticleCollection const* genParticles(0);
@@ -173,7 +173,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.phIso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
     if (phIsoLeakage_[iDet].IsValid())
       outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.chIsoWorst = wchIso[inRef];
+    outPhoton.chIsoMax = chIsoMax[inRef];
     
     outPhoton.loose = looseId[inRef];
     outPhoton.medium = mediumId[inRef];
@@ -218,6 +218,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (seedRef.isNonnull()) {
       auto& seed(*seedRef);
       outPhoton.emax = lazyTools.eMax(seed);
+      outPhoton.e2nd = lazyTools.e2nd(seed);
       outPhoton.eleft = lazyTools.eLeft(seed);
       outPhoton.eright = lazyTools.eRight(seed);
       outPhoton.etop = lazyTools.eTop(seed);

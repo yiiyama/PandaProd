@@ -15,6 +15,7 @@ WeightsFiller::WeightsFiller(std::string const& _name, edm::ParameterSet const& 
     getToken_(genInfoToken_, _cfg, _coll, "common", "genEventInfo");
     getToken_(lheEventToken_, _cfg, _coll, "common", "lheEvent");
     getTokenRun_(lheRunToken_, _cfg, _coll, "common", "lheRun");
+    saveSignalWeights_ = getParameter_<bool>(_cfg, "signalWeights");
   }
 }
 
@@ -54,20 +55,23 @@ WeightsFiller::addOutput(TFile& _outputFile)
     for (unsigned iL(0); iL != sizeof(labels) / sizeof(char const*); ++iL)
       hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
 
-    // we only store the RMS of the PDF variations - no need to write this information
+    if (saveSignalWeights_) {
+        // groupTree_ = new TTree("weightGroups", "weightGroups");
+        // gcombine_ = new TString;
+        // gtype_ = new TString;
+        // groupTree_->Branch("combine", "TString", &gcombine_);
+        // groupTree_->Branch("type", "TString", &gtype_);
 
-    // groupTree_ = new TTree("weightGroups", "weightGroups");
-    // gcombine_ = new TString;
-    // gtype_ = new TString;
-    // groupTree_->Branch("combine", "TString", &gcombine_);
-    // groupTree_->Branch("type", "TString", &gtype_);
-
-    // weightTree_ = new TTree("weights", "weights");
-    // wtitle_ = new TString;
-    // weightTree_->Branch("id", &wid_, "id/i");
-    // weightTree_->Branch("title", "TString", &wtitle_);
-    // weightTree_->Branch("group", &gid_, "group/i");
+        weightTree_ = new TTree("weights", "weights");
+        wid_ = new TString;
+        weightTree_->Branch("id", "TString", &wid_); // currently only have the ability to save ID
+        // wtitle_ = new TString;
+        // weightTree_->Branch("title", "TString", &wtitle_);
+        // weightTree_->Branch("group", &gid_, "group/i");
+    }
   }
+
+  eventTree_ = static_cast<TTree*>(_outputFile.Get("events"));
 }
 
 void
@@ -84,7 +88,13 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
   if (lheEvent) {
     double weights[7]{};
-    getLHEWeights_(*lheEvent, weights);
+    bool firstEvent = (nSignalWeights_<0);
+    
+    getLHEWeights_(*lheEvent, weights, _outEvent.genReweight.genParam);
+    
+    if (firstEvent && eventTree_!=0)
+      eventTree_->Branch("genReweight.genParam",_outEvent.genReweight.genParam,
+                      TString::Format("genReweight.genParam[%i]",nSignalWeights_));
 
     _outEvent.genReweight.r1f2DW = weights[0] / lheEvent->originalXWGTUP() - 1.;
     _outEvent.genReweight.r1f5DW = weights[1] / lheEvent->originalXWGTUP() - 1.;
@@ -127,18 +137,18 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
   // LHERunInfoProduct (and GenRunInfoProduct FWIW) have mergeProduct method which forbids them
   // from being fetched in beginRun
 
-  // NOT STORING TAG DATA SINCE WE ONLY STORE ONE RMS OF PDF VARIATIONS
-  return;
+  return; // something is wrong with the LHE header in signal files. fill the tree a different way
 
-  if (isRealData_)
+  if (isRealData_ || !saveSignalWeights_)
     return;
 
   auto* lheRun(getProductSafe_(_inRun, lheRunToken_));
-  if (!lheRun)
+  if (!lheRun) {
     return;
+  }
 
-  std::map<unsigned, unsigned> weightGroups;
-  std::map<unsigned, TString> weightTitles;
+  std::map<TString, unsigned> weightGroups; // use TStrings to cover non-int IDs
+  std::map<TString, TString> weightTitles;
 
   // Parse the LHE run header and find the initrwgt block
   for (auto&& hItr(lheRun->headers_begin()); hItr != lheRun->headers_end(); ++hItr) {
@@ -167,6 +177,7 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     buffer = buffer(0, len);
 
     buffer += "</initrwgt>";
+
 
     TDOMParser parser;
     parser.SetValidate(false); // we don't define XML namespace etc.
@@ -206,7 +217,7 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
         if (!wid)
           continue;
 
-        unsigned id(TString(wid->GetValue()).Atoi());
+        TString id(wid->GetValue());
 
         weightGroups[id] = iG - 1; // first block is skipped
 
@@ -242,31 +253,40 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     while ((wgNode = wgNode->GetNextNode()));
 
     // we don't need to look at any other LHE headers
-    break;
+    // break;
   }
 
   for (auto& idtitle : weightTitles) {
-    wid_ = idtitle.first;
+    *wid_ = idtitle.first;
     *wtitle_ = idtitle.second;
-    gid_ = weightGroups.at(wid_);
-    weightTree_->Fill();
+    gid_ = weightGroups.at(*wid_);
+    if (TString::Itoa(wid_->Atoi(),10)==*wid_) {
+      weightTree_->Fill();
+    }
   }
 }
 
 void
-WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[7])
+WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[7], float _params[])
 {
   // Update this function if changing the set of weights to be save
 
   double sumd2(0.);
+  unsigned genParamCounter(0);
 
   for (auto& wgt : _lheEvent.weights()) {
     unsigned id(0);
     try {
       id =std::stoi(wgt.id);
     }
-     catch (std::invalid_argument& ex) {
-      // id string not in pattern we are looking for
+    catch (std::invalid_argument& ex) {
+      if (saveSignalWeights_ && _params!=0) {
+        _params[genParamCounter++] = wgt.wgt/_lheEvent.originalXWGTUP(); 
+        if (nSignalWeights_<0) {
+          *wid_ = wgt.id.c_str();
+          weightTree_->Fill();
+        }
+      }
       continue;
     }
 
@@ -301,6 +321,9 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
   }
 
   _weights[6] = std::sqrt(sumd2 / 99.) + _lheEvent.originalXWGTUP();
+
+  if (saveSignalWeights_ && nSignalWeights_<0 && _params!=0)
+    nSignalWeights_ = genParamCounter;
 }
 
 DEFINE_TREEFILLER(WeightsFiller);

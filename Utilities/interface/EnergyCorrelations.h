@@ -8,7 +8,6 @@
 #include <map>
 #include "TMath.h"
 #include "TString.h"
-#include "PandaUtilities/Common/interface/Common.h"
 
 #ifndef ECF_H
 #define ECF_H

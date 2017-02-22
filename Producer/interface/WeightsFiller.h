@@ -28,21 +28,27 @@ class WeightsFiller : public FillerBase {
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 
  protected:
-  void getLHEWeights_(LHEEventProduct const&, double [7]);
+  void getLHEWeights_(LHEEventProduct const&, double [7], float _params[]=0);
 
   NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<LHEEventProduct> lheEventToken_;
   NamedToken<LHERunInfoProduct> lheRunToken_;
   
+  bool saveSignalWeights_{false};
+  int nSignalWeights_ = -1;
+
+
   // these objects will be deleted automatically when the output file closes
   TH1D* hSumW_{0};
   TTree* groupTree_{0};
   TString* gcombine_{0};
   TString* gtype_{0};
   TTree* weightTree_{0};
-  unsigned wid_{0};
+  TString* wid_{0};
   TString* wtitle_{0};
   unsigned gid_{0};
+  
+  TTree* eventTree_{0};
 };
 
 #endif

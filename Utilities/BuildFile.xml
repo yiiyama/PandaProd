@@ -1,4 +1,3 @@
-<use name="PandaUtilities/Common"/>
 <use name="RecoJets/JetAlgorithms"/>
 <use name="root"/>
 <use name="fastjet"/>

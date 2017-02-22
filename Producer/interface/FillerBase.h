@@ -33,8 +33,6 @@ class FillerBase {
   virtual void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList& runBranches) const {}
   //! Override when the filler writes additional objects to the output file
   virtual void addOutput(TFile&) {}
-  //! Override when the filler wites additional objects to the output event tree
-  virtual void addOutput(TTree&) {}
   //! Main function
   virtual void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) = 0;
   //! Set references

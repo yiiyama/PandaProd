@@ -23,7 +23,6 @@ class WeightsFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList&, panda::utils::BranchList&) const override;
   void addOutput(TFile&) override;
-  void addOutput(TTree& t) override { eventTree_ = &(t); }
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void fillAll(edm::Event const&, edm::EventSetup const&) override;
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;

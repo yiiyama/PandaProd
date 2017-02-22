@@ -295,7 +295,6 @@ PandaProducer::beginJob()
 
   for (auto* filler : fillers_) {
     filler->addOutput(*outputFile_);
-    filler->addOutput(*eventTree_);
   }
 
   if (useTrigger_ && outputFile_->Get("hlt")) {

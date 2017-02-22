@@ -70,6 +70,8 @@ WeightsFiller::addOutput(TFile& _outputFile)
         // weightTree_->Branch("group", &gid_, "group/i");
     }
   }
+
+  eventTree_ = static_cast<TTree*>(_outputFile.Get("events"));
 }
 
 void

@@ -211,7 +211,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
     try {
       if (printLevel_ > 1)
-        std::cout << "[PandaProducer:fill] " 
+        std::cout << "[PandaProducer:fill] "
           << "Calling " << filler->getName() << "->setRefs()" << std::endl;
 
       filler->setRefs(objectMaps_);

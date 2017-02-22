@@ -19,13 +19,21 @@ WeightsFiller::WeightsFiller(std::string const& _name, edm::ParameterSet const& 
   }
 }
 
+WeightsFiller::~WeightsFiller()
+{
+  delete gcombine_;
+  delete gtype_;
+  delete wid_;
+  delete wtitle_;
+}
+
 void
 WeightsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   _eventBranches.emplace_back("weight");
   if (!isRealData_) {
     _eventBranches.emplace_back("genReweight");
-    // Turned off temporarily
+    // genParam is booked at the first encounter
     _eventBranches.push_back("!genReweight.genParam");
   }
 }
@@ -41,6 +49,7 @@ WeightsFiller::addOutput(TFile& _outputFile)
   hSumW_->SetDirectory(&_outputFile);
 
   hSumW_->GetXaxis()->SetBinLabel(1, "Nominal");
+
   if (!isRealData_) {
     char const* labels[] = {
       "r1f2",
@@ -56,22 +65,17 @@ WeightsFiller::addOutput(TFile& _outputFile)
       hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
 
     if (saveSignalWeights_) {
-        // groupTree_ = new TTree("weightGroups", "weightGroups");
-        // gcombine_ = new TString;
-        // gtype_ = new TString;
-        // groupTree_->Branch("combine", "TString", &gcombine_);
-        // groupTree_->Branch("type", "TString", &gtype_);
+      weightTree_ = new TTree("weights", "weights");
+      wid_ = new TString;
+      weightTree_->Branch("id", "TString", &wid_); // currently only have the ability to save ID
 
-        weightTree_ = new TTree("weights", "weights");
-        wid_ = new TString;
-        weightTree_->Branch("id", "TString", &wid_); // currently only have the ability to save ID
-        // wtitle_ = new TString;
-        // weightTree_->Branch("title", "TString", &wtitle_);
-        // weightTree_->Branch("group", &gid_, "group/i");
+      // we need a handle to the event tree to book the genParams branch if needed
+      eventTree_ = static_cast<TTree*>(_outputFile.Get("events"));
+
+      if (!eventTree_) // something is very wrong
+        throw std::runtime_error("Event tree is missing from the output");
     }
   }
-
-  eventTree_ = static_cast<TTree*>(_outputFile.Get("events"));
 }
 
 void
@@ -86,24 +90,24 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   _outEvent.weight = genInfo.weight();
 
   auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
-  if (lheEvent) {
-    double weights[7]{};
-    bool firstEvent = (nSignalWeights_<0);
-    
-    getLHEWeights_(*lheEvent, weights, _outEvent.genReweight.genParam);
-    
-    if (firstEvent && eventTree_!=0)
-      eventTree_->Branch("genReweight.genParam",_outEvent.genReweight.genParam,
-                      TString::Format("genReweight.genParam[%i]",nSignalWeights_));
+  if (!lheEvent)
+    return;
 
-    _outEvent.genReweight.r1f2DW = weights[0] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.r1f5DW = weights[1] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.r2f1DW = weights[2] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.r2f2DW = weights[3] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.r5f1DW = weights[4] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.r5f5DW = weights[5] / lheEvent->originalXWGTUP() - 1.;
-    _outEvent.genReweight.pdfDW = weights[6] / lheEvent->originalXWGTUP() - 1.;
-  }
+  double weights[7]{};
+    
+  getLHEWeights_(*lheEvent, weights);
+
+  _outEvent.genReweight.r1f2DW = weights[0] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.r1f5DW = weights[1] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.r2f1DW = weights[2] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.r2f2DW = weights[3] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.r5f1DW = weights[4] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.r5f5DW = weights[5] / lheEvent->originalXWGTUP() - 1.;
+  _outEvent.genReweight.pdfDW = weights[6] / lheEvent->originalXWGTUP() - 1.;
+
+  // genParam branch is not filled from the outEvent object, but we copy the value here for consistence
+  // (some other filler module may decide to use the values!)
+  std::copy(genParam_, genParam_ + nSignalWeights_, _outEvent.genReweight.genParam);
 }
 
 void
@@ -118,14 +122,19 @@ WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
   hSumW_->Fill(0.5, genInfo.weight());
 
   auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
-  if (lheEvent) {
-    double weights[7];
-    getLHEWeights_(*lheEvent, weights);
+  if (!lheEvent)
+    return;
 
-    // PDF variation will always be greater than nominal by construction
-    for (unsigned iW(0); iW != 7; ++iW)
-      hSumW_->Fill(iW + 1.5, weights[iW]);
-  }
+  double weights[7]{};
+
+  getLHEWeights_(*lheEvent, weights);
+
+  // PDF variation will always be greater than nominal by construction
+  for (unsigned iW(0); iW != 7; ++iW)
+    hSumW_->Fill(iW + 1.5, weights[iW]);
+
+  for (int iS(0); iS != nSignalWeights_; ++iS)
+    hSumW_->Fill(iS + 9.5, genParam_[iS]);
 }
 
 void
@@ -267,12 +276,14 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
 }
 
 void
-WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[7], float _params[])
+WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[7])
 {
   // Update this function if changing the set of weights to be save
 
   double sumd2(0.);
   unsigned genParamCounter(0);
+
+  bool firstEvent(nSignalWeights_ < 0);
 
   for (auto& wgt : _lheEvent.weights()) {
     unsigned id(0);
@@ -280,11 +291,16 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
       id =std::stoi(wgt.id);
     }
     catch (std::invalid_argument& ex) {
-      if (saveSignalWeights_ && _params!=0) {
-        _params[genParamCounter++] = wgt.wgt/_lheEvent.originalXWGTUP(); 
-        if (nSignalWeights_<0) {
+      if (saveSignalWeights_) {
+        genParam_[genParamCounter++] = wgt.wgt / _lheEvent.originalXWGTUP(); 
+
+        if (firstEvent) {
           *wid_ = wgt.id.c_str();
           weightTree_->Fill();
+
+          unsigned nbinsx(hSumW_->GetNbinsX() + 1);
+          hSumW_->SetBins(nbinsx, 0., nbinsx);
+          hSumW_->GetXaxis()->SetBinLabel(nbinsx, *wid_);
         }
       }
       continue;
@@ -322,8 +338,12 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
 
   _weights[6] = std::sqrt(sumd2 / 99.) + _lheEvent.originalXWGTUP();
 
-  if (saveSignalWeights_ && nSignalWeights_<0 && _params!=0)
+  if (firstEvent) {
     nSignalWeights_ = genParamCounter;
+
+    if (nSignalWeights_ > 0)
+      eventTree_->Branch("genReweight.genParam", genParam_, TString::Format("genParam[%d]/F", nSignalWeights_));
+  }
 }
 
 DEFINE_TREEFILLER(WeightsFiller);

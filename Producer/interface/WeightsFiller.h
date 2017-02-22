@@ -19,7 +19,7 @@
 class WeightsFiller : public FillerBase {
  public:
   WeightsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
-  ~WeightsFiller() {}
+  ~WeightsFiller();
 
   void branchNames(panda::utils::BranchList&, panda::utils::BranchList&) const override;
   void addOutput(TFile&) override;
@@ -28,22 +28,23 @@ class WeightsFiller : public FillerBase {
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 
  protected:
-  void getLHEWeights_(LHEEventProduct const&, double [7], float _params[]=0);
+  void getLHEWeights_(LHEEventProduct const&, double [7]);
 
   NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<LHEEventProduct> lheEventToken_;
   NamedToken<LHERunInfoProduct> lheRunToken_;
   
   bool saveSignalWeights_{false};
-  int nSignalWeights_ = -1;
-
+  int nSignalWeights_{-1};
+  float genParam_[1024]{}; // I don't like that we hard-code the array size here..
 
   // these objects will be deleted automatically when the output file closes
   TH1D* hSumW_{0};
   TTree* groupTree_{0};
+  TTree* weightTree_{0};
+
   TString* gcombine_{0};
   TString* gtype_{0};
-  TTree* weightTree_{0};
   TString* wid_{0};
   TString* wtitle_{0};
   unsigned gid_{0};

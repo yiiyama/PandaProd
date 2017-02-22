@@ -23,6 +23,7 @@ class WeightsFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList&, panda::utils::BranchList&) const override;
   void addOutput(TFile&) override;
+  void addOutput(TTree& t) override { eventTree_ = &(t); }
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void fillAll(edm::Event const&, edm::EventSetup const&) override;
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
@@ -35,6 +36,8 @@ class WeightsFiller : public FillerBase {
   NamedToken<LHERunInfoProduct> lheRunToken_;
   
   bool saveSignalWeights_{false};
+  int nSignalWeights_ = -1;
+
 
   // these objects will be deleted automatically when the output file closes
   TH1D* hSumW_{0};
@@ -45,6 +48,8 @@ class WeightsFiller : public FillerBase {
   TString* wid_{0};
   TString* wtitle_{0};
   unsigned gid_{0};
+  
+  TTree* eventTree_{0};
 };
 
 #endif

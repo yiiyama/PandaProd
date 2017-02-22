@@ -56,17 +56,18 @@ WeightsFiller::addOutput(TFile& _outputFile)
       hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
 
     if (saveSignalWeights_) {
-        groupTree_ = new TTree("weightGroups", "weightGroups");
-        gcombine_ = new TString;
-        gtype_ = new TString;
-        groupTree_->Branch("combine", "TString", &gcombine_);
-        groupTree_->Branch("type", "TString", &gtype_);
+        // groupTree_ = new TTree("weightGroups", "weightGroups");
+        // gcombine_ = new TString;
+        // gtype_ = new TString;
+        // groupTree_->Branch("combine", "TString", &gcombine_);
+        // groupTree_->Branch("type", "TString", &gtype_);
 
         weightTree_ = new TTree("weights", "weights");
-        wtitle_ = new TString;
-        weightTree_->Branch("id", "TString", &wid_);
-        weightTree_->Branch("title", "TString", &wtitle_);
-        weightTree_->Branch("group", &gid_, "group/i");
+        wid_ = new TString;
+        weightTree_->Branch("id", "TString", &wid_); // currently only have the ability to save ID
+        // wtitle_ = new TString;
+        // weightTree_->Branch("title", "TString", &wtitle_);
+        // weightTree_->Branch("group", &gid_, "group/i");
     }
   }
 }
@@ -85,7 +86,13 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto* lheEvent(getProductSafe_(_inEvent, lheEventToken_));
   if (lheEvent) {
     double weights[7]{};
+    bool firstEvent = (nSignalWeights_<0);
+    
     getLHEWeights_(*lheEvent, weights, _outEvent.genReweight.genParam);
+    
+    if (firstEvent && eventTree_!=0)
+      eventTree_->Branch("genReweight.genParam",_outEvent.genReweight.genParam,
+                      TString::Format("genReweight.genParam[%i]",nSignalWeights_));
 
     _outEvent.genReweight.r1f2DW = weights[0] / lheEvent->originalXWGTUP() - 1.;
     _outEvent.genReweight.r1f5DW = weights[1] / lheEvent->originalXWGTUP() - 1.;
@@ -128,12 +135,15 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
   // LHERunInfoProduct (and GenRunInfoProduct FWIW) have mergeProduct method which forbids them
   // from being fetched in beginRun
 
+  return; // something is wrong with the LHE header in signal files. fill the tree a different way
+
   if (isRealData_ || !saveSignalWeights_)
     return;
 
   auto* lheRun(getProductSafe_(_inRun, lheRunToken_));
-  if (!lheRun)
+  if (!lheRun) {
     return;
+  }
 
   std::map<TString, unsigned> weightGroups; // use TStrings to cover non-int IDs
   std::map<TString, TString> weightTitles;
@@ -165,6 +175,7 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     buffer = buffer(0, len);
 
     buffer += "</initrwgt>";
+
 
     TDOMParser parser;
     parser.SetValidate(false); // we don't define XML namespace etc.
@@ -240,7 +251,7 @@ WeightsFiller::fillEndRun(panda::Run& _outRun, edm::Run const& _inRun, edm::Even
     while ((wgNode = wgNode->GetNextNode()));
 
     // we don't need to look at any other LHE headers
-    break;
+    // break;
   }
 
   for (auto& idtitle : weightTitles) {
@@ -259,7 +270,7 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
   // Update this function if changing the set of weights to be save
 
   double sumd2(0.);
-  unsigned _genParamCounter(0);
+  unsigned genParamCounter(0);
 
   for (auto& wgt : _lheEvent.weights()) {
     unsigned id(0);
@@ -268,7 +279,11 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
     }
     catch (std::invalid_argument& ex) {
       if (saveSignalWeights_ && _params!=0) {
-        _params[_genParamCounter++] = wgt.wgt/_lheEvent.originalXWGTUP(); 
+        _params[genParamCounter++] = wgt.wgt/_lheEvent.originalXWGTUP(); 
+        if (nSignalWeights_<0) {
+          *wid_ = wgt.id.c_str();
+          weightTree_->Fill();
+        }
       }
       continue;
     }
@@ -304,6 +319,9 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent, double _weights[
   }
 
   _weights[6] = std::sqrt(sumd2 / 99.) + _lheEvent.originalXWGTUP();
+
+  if (saveSignalWeights_ && nSignalWeights_<0 && _params!=0)
+    nSignalWeights_ = genParamCounter;
 }
 
 DEFINE_TREEFILLER(WeightsFiller);

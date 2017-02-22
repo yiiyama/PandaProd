@@ -76,7 +76,8 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
       auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
 
       if (printLevel_ > 0)
-        edm::LogInfo("PandaProducer") << "Constructing " << className << "::" << fillerName;
+        std::cout << "[PandaProducer::PandaProducer] " 
+          << "Constructing " << className << "::" << fillerName << std::endl;
 
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
       fillers_.push_back(filler);
@@ -85,8 +86,9 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
         filler->setObjectMap(objectMaps_[fillerName]);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Configuration error in " << fillerName << ":"
-                                     << ex.what();
+      std::cerr << "[PandaProducer::PandaProducer] " 
+        << "Configuration error in " << fillerName << ":"
+                                     << ex.what() << std::endl;
       throw;
     }
   }
@@ -115,12 +117,14 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
     try {
       if (printLevel_ > 1)
-        edm::LogInfo("PandaProducer") << "Calling " << filler->getName() << "->fillAll()";
+        std::cout << "[PandaProducer::analyze] " 
+          << "Calling " << filler->getName() << "->fillAll()" << std::endl;
 
       filler->fillAll(_event, _setup);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fillAll()";
+      std::cerr << "[PandaProducer::analyze] " 
+        << "Error in " << filler->getName() << "::fillAll()" << std::endl;
       throw;
     }
   }
@@ -188,12 +192,14 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
     try {
       if (printLevel_ > 1)
-        edm::LogInfo("PandaProducer") << "Calling " << filler->getName() << "->fill()";
+        std::cout << "[PandaProducer::fill] " 
+          << "Calling " << filler->getName() << "->fill()" << std::endl;
 
       filler->fill(outEvent_, _event, _setup);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fill()";
+      std::cerr << "[PandaProducer::fill] " 
+        << "Error in " << filler->getName() << "::fill()" << std::endl;
       throw;
     }
   }
@@ -205,12 +211,14 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
     try {
       if (printLevel_ > 1)
-        edm::LogInfo("PandaProducer") << "Calling " << filler->getName() << "->setRefs()";
+        std::cout << "[PandaProducer:fill] " 
+          << "Calling " << filler->getName() << "->setRefs()" << std::endl;
 
       filler->setRefs(objectMaps_);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::setRefs()";
+      std::cerr << "[PandaProducer:fill] " 
+        << "Error in " << filler->getName() << "::setRefs()" << std::endl;
       throw;
     }
   }
@@ -231,12 +239,14 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
 
     try {
       if (printLevel_ > 1)
-        edm::LogInfo("PandaProducer") << "Calling " << filler->getName() << "->fillBeginRun()";
+        std::cout << "[PandaProducer::beginRun] " 
+          << "Calling " << filler->getName() << "->fillBeginRun()" << std::endl;
 
       filler->fillBeginRun(outEvent_.run, _run, _setup);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fillBeginRun()";
+      std::cerr << "[PandaProducer::beginRun] "
+        << "Error in " << filler->getName() << "::fillBeginRun()" << std::endl;
       throw;
     }
   }
@@ -250,13 +260,15 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
       continue;
 
     try {
-      if (printLevel_ > 1)
-        edm::LogInfo("PandaProducer") << "Calling " << filler->getName() << "->fillEndRun()";
+      if (printLevel_ > 1) 
+        std::cout << "[PandaProducer::endRun] " 
+          << "Calling " << filler->getName() << "->fillEndRun()" << std::endl;
 
       filler->fillEndRun(outEvent_.run, _run, _setup);
     }
     catch (std::exception& ex) {
-      edm::LogError("PandaProducer") << "Error in " << filler->getName() << "::fillEndRun()";
+      std::cerr << "[PandaProducer::endRun] "
+        << "Error in " << filler->getName() << "::fillEndRun()" << std::endl;
       throw;
     }
   }
@@ -281,8 +293,10 @@ PandaProducer::beginJob()
   outEvent_.book(*eventTree_, eventBranches);
   outEvent_.run.book(*runTree_, runBranches);
 
-  for (auto* filler : fillers_)
+  for (auto* filler : fillers_) {
     filler->addOutput(*outputFile_);
+    filler->addOutput(*eventTree_);
+  }
 
   if (useTrigger_ && outputFile_->Get("hlt")) {
     outEvent_.run.hlt.create();

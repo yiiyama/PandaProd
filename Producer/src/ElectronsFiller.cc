@@ -118,6 +118,28 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       return &*hitItr;
     });
 
+  auto findPF([&pfCandidates](reco::GsfElectron const& inElectron)->reco::CandidatePtr {
+      int iMatch(-1);
+
+      double minDR(0.1);
+      for (unsigned iPF(0); iPF != pfCandidates.size(); ++iPF) {
+        auto& pf(pfCandidates.at(iPF));
+        if (std::abs(pf.pdgId()) != 11)
+          continue;
+
+        double dR(reco::deltaR(pf, inElectron));
+        if (dR < minDR) {
+          minDR = dR;
+          iMatch = iPF;
+        }
+      }
+
+      if (iMatch >= 0)
+        return pfCandidates.ptrAt(iMatch);
+      else
+        return reco::CandidatePtr();
+    });
+
   auto& outElectrons(_outEvent.electrons);
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
@@ -214,20 +236,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       }
     }
 
-    reco::Candidate const* matchedPF(0);
-    double minDR(0.1);
-    for (auto& pf : pfCandidates) {
-      if (std::abs(pf.pdgId()) != 11)
-        continue;
+    reco::CandidatePtr matchedPF(findPF(inElectron));
 
-      double dR(reco::deltaR(pf, inElectron));
-      if (dR < minDR) {
-        minDR = dR;
-        matchedPF = &pf;
-      }
-    }
-
-    if (matchedPF)
+    if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
     for (auto& raw : inRawElectrons) {
@@ -259,6 +270,8 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   // make reco <-> panda mapping
   auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>());
   auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
+  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
+  auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
   auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
   
   for (unsigned iP(0); iP != outElectrons.size(); ++iP) {
@@ -266,6 +279,16 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     unsigned idx(originalIndices[iP]);
     eleEleMap.add(ptrList[idx], outElectron);
     scEleMap.add(edm::refToPtr(ptrList[idx]->superCluster()), outElectron);
+
+    reco::CandidatePtr matchedPF(findPF(*ptrList[idx]));
+    if (matchedPF.isNonnull()) {
+      pfEleMap.add(matchedPF, outElectron);
+      if (dynamic_cast<pat::PackedCandidate const*>(matchedPF.get())) {
+        auto vtxRef(static_cast<pat::PackedCandidate const&>(*matchedPF).vertexRef());
+        if (vtxRef.isNonnull())
+          vtxEleMap.add(edm::refToPtr(vtxRef), outElectron);
+      }
+    }
 
     if (!isRealData_) {
       auto& inElectron(*ptrList[idx]);
@@ -284,14 +307,32 @@ void
 ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
   auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
+  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
+  auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
 
   auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+  auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
 
   for (auto& link : scEleMap.bwdMap) { // panda -> edm
     auto& outElectron(*link.first);
     auto& scPtr(link.second);
 
     outElectron.superCluster.setRef(scMap.at(scPtr));
+  }
+
+  for (auto& link : pfEleMap.bwdMap) { // panda -> edm
+    auto& outElectron(*link.first);
+    auto& pfPtr(link.second);
+
+    outElectron.matchedPF.setRef(pfMap.at(pfPtr));
+  }
+
+  for (auto& link : vtxEleMap.bwdMap) { // panda -> edm
+    auto& outElectron(*link.first);
+    auto& vtxPtr(link.second);
+
+    outElectron.vertex.setRef(vtxMap.at(vtxPtr));
   }
 
   if (!isRealData_) {

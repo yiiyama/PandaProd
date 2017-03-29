@@ -205,11 +205,11 @@ panda = cms.EDAnalyzer('PandaProducer',
             phIsoEA = cms.untracked.FileInPath(egmidconf.photonPhIsoEA),
             chIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
             nhIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.014 * x + 0.000019 * x * x'),
-                EE = cms.untracked.string('0.0139 * x + 0.000025 * x * x')
+                EB = cms.untracked.string('0.0148 * x + 0.000017 * x * x'),
+                EE = cms.untracked.string('0.0163 * x + 0.000014 * x * x')
             ),
             phIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.0053 * x'),
+                EB = cms.untracked.string('0.0047 * x'),
                 EE = cms.untracked.string('0.0034 * x')
             ),
             triggerObjects = cms.untracked.PSet(

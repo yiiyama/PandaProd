@@ -124,7 +124,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       double minDR(0.1);
       for (unsigned iPF(0); iPF != pfCandidates.size(); ++iPF) {
         auto& pf(pfCandidates.at(iPF));
-        if (std::abs(pf.pdgId()) != 11)
+        if (std::abs(pf.pdgId()) != 11 || pf.pdgId() == 22)
           continue;
 
         double dR(reco::deltaR(pf, inElectron));

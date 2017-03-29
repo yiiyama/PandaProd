@@ -114,6 +114,28 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       return &*hitItr;
     });
 
+  auto findPF([&pfCandidates](reco::Photon const& inPhoton)->reco::CandidatePtr {
+      int iMatch(-1);
+
+      double minDR(0.1);
+      for (unsigned iPF(0); iPF != pfCandidates.size(); ++iPF) {
+        auto& pf(pfCandidates.at(iPF));
+        if (std::abs(pf.pdgId()) != 11 || pf.pdgId() == 22)
+          continue;
+
+        double dR(reco::deltaR(pf, inPhoton));
+        if (dR < minDR) {
+          minDR = dR;
+          iMatch = iPF;
+        }
+      }
+
+      if (iMatch >= 0)
+        return pfCandidates.ptrAt(iMatch);
+      else
+        return reco::CandidatePtr();
+    });
+
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
   auto& outPhotons(_outEvent.photons);
@@ -280,20 +302,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }      
     }
 
-    reco::Candidate const* matchedPF(0);
-    double minDR(0.1);
-    for (auto& pf : pfCandidates) {
-      if (pf.pdgId() != 22)
-        continue;
+    reco::CandidatePtr matchedPF(findPF(inPhoton));
 
-      double dR(reco::deltaR(pf, inPhoton));
-      if (dR < minDR) {
-        minDR = dR;
-        matchedPF = &pf;
-      }
-    }
-
-    if (matchedPF)
+    if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
     for (auto& raw : inRawPhotons) {
@@ -324,6 +335,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   // make reco <-> panda mapping
   auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>());
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>());
+  auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>());
   auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
   
   for (unsigned iP(0); iP != outPhotons.size(); ++iP) {
@@ -331,6 +343,10 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     unsigned idx(originalIndices[iP]);
     phoPhoMap.add(ptrList[idx], outPhoton);
     scPhoMap.add(edm::refToPtr(ptrList[idx]->superCluster()), outPhoton);
+
+    reco::CandidatePtr matchedPF(findPF(*ptrList[idx]));
+    if (matchedPF.isNonnull())
+      pfPhoMap.add(matchedPF, outPhoton);
 
     if (!isRealData_) {
       auto& inPhoton(*ptrList[idx]);
@@ -350,14 +366,23 @@ void
 PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>().bwdMap);
+  auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>());
 
   auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
 
   for (auto& link : scPhoMap) { // panda -> edm
     auto& outPhoton(*link.first);
     auto& scPtr(link.second);
 
     outPhoton.superCluster.setRef(scMap.at(scPtr));
+  }
+
+  for (auto& link : pfPhoMap.bwdMap) { // panda -> edm
+    auto& outPhoton(*link.first);
+    auto& pfPtr(link.second);
+
+    outPhoton.matchedPF.setRef(pfMap.at(pfPtr));
   }
 
   if (!isRealData_) {

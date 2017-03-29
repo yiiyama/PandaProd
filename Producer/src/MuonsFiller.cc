@@ -16,8 +16,8 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
   getToken_(verticesToken_, _cfg, _coll, "vertices", "vertices");
 
   if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::nMuonTriggerObjects; ++iT) {
-      std::string name(panda::MuonTriggerObjectName[iT]); // "f<trigger filter name>"
+    for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
+      std::string name(panda::Muon::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
       triggerObjects_[iT].insert(filters.begin(), filters.end());
     }
@@ -28,7 +28,7 @@ void
 MuonsFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
-  auto* t(panda::makeMuonTriggerObjectTree());
+  auto* t(panda::utils::makeDocTree("MuonTriggerObject", panda::Muon::TriggerObjectName, panda::Muon::nTriggerObjects));
   t->Write();
   delete t;
 }
@@ -156,10 +156,10 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (useTrigger_) {
     auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::nMuonTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Muon::nTriggerObjects];
 
     // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::nMuonTriggerObjects; ++iT) {
+    for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
       // loop over all trigger objects (and their associated filter names)
       for (auto& objAndNames : objMap) { // (TO ptr, VString)
         VString const& names(*objAndNames.second);
@@ -179,7 +179,7 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inMuon(*link.first);
       auto& outMuon(*link.second);
 
-      for (unsigned iT(0); iT != panda::nMuonTriggerObjects; ++iT) {
+      for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
           if (reco::deltaR(inMuon, *obj) < 0.3) {
             outMuon.triggerMatch[iT] = true;

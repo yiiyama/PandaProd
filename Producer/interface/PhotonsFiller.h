@@ -56,7 +56,7 @@ class PhotonsFiller : public FillerBase {
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
 
-  std::set<std::string> triggerObjects_[panda::nPhotonTriggerObjects];
+  std::set<std::string> triggerObjects_[panda::Photon::nTriggerObjects];
   double minPt_;
   double maxEta_;
 };

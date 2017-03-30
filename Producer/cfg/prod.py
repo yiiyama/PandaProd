@@ -26,7 +26,6 @@ if options.config == '03Feb2017':
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
 elif options.config == '23Sep2016':
-    egFix = True
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
 elif options.config == 'Spring16':
@@ -201,6 +200,7 @@ if egFix:
     runMetCorAndUncFromMiniAOD(
         process,
         isData = options.isData,
+        recoMetFromPFCs = muFix, # no config has egFix = True & muFix = True at the moment
         postfix = 'MuEGClean'
     )
 
@@ -503,42 +503,36 @@ if muFix:
     process.reco.insert(0, pfCleaningSequence)
 
     ### MET
-    # Collections naming aligned with 03Feb2017 reminiaod
+    # Recompute MET from muon-fixed PF candidates
 
-    # Creates process.fullPatMetSequenceUncorrected which includes slimmedMETsUncorrected
-    # This one runs on packedPFCandidates (added after replace-all)
     runMetCorAndUncFromMiniAOD(
         process,
         isData = options.isData,
-        postfix = 'Uncorrected'
+        pfCandColl = 'cleanMuonsPFCandidates',
+        recoMetFromPFCs = True,
+        postfix = 'MuonFixed'
     )
-    # See note on puppi met
-    #process.fullPatMetSequenceUncorrected.remove(process.selectedPatJetsForMetT1T2CorrUncorrected)
 
-    process.reco += process.fullPatMetSequenceUncorrected
+    # see above
+    process.patCaloMet.metSource = 'metrawCaloPuppi'
 
-    if not egFix:
-        # No EG fix - just rename the final product as MuEGClean
-        # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
-        # Postfix MuEGClean is just for convenience - there is no EG cleaning actually applied
-        runMetCorAndUncFromMiniAOD(
-            process,
-            isData = options.isData,
-            pfCandColl = 'cleanMuonsPFCandidates',
-            recoMetFromPFCs = True,
-            postfix = 'MuEGClean'
-        )
-        # See note on puppi met
-        #process.fullPatMetSequenceMuEGClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGClean)
-    
-        process.reco += process.fullPatMetSequenceMuEGClean
+    process.fullPatMetSequenceMuonFixed.remove(process.selectedPatJetsForMetT1T2CorrMuonFixed)
 
+    process.reco += process.fullPatMetSequenceMuonFixed
+
+    process.panda.fillers.metNoFix.met = 'slimmedMETs'
+
+    if egFix: # no config does this at the moment
+        process.panda.fillers.metMuOnlyFix.met = 'slimmedMETsMuonFixed'
+        process.panda.fillers.pfMet.met = 'slimmedMETsMuEGClean'
+    else:
+        process.panda.fillers.pfMet.met = 'slimmedMETsMuonFixed'
 
     # And of course this is against the convention (MET filters are true if event is *good*) but that's what the REMINIAOD developers chose.
     process.Flag_badMuons = cms.Path(process.badGlobalMuonTaggerMAOD)
     process.Flag_duplicateMuons = cms.Path(process.cloneGlobalMuonTaggerMAOD)
-    process.schedule.insert(process.schedule.index(process.ntuples), process.Flag_badMuons)
-    process.schedule.insert(process.schedule.index(process.ntuples), process.Flag_duplicateMuons)
+    process.schedule.insert(0, process.Flag_badMuons)
+    process.schedule.insert(0, process.Flag_duplicateMuons)
 
 if options.connect:
     if options.connect == 'mit':

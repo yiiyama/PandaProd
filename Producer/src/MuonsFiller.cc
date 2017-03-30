@@ -14,7 +14,7 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
-  getToken_(verticesToken_, _cfg, _coll, "vertices", "vertices");
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
 
   if (useTrigger_) {
     for (unsigned iT(0); iT != panda::nMuonTriggerObjects; ++iT) {

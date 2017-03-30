@@ -5,8 +5,8 @@
 VerticesFiller::VerticesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg)
 {
-  getToken_(verticesToken_, _cfg, _coll, "vertices");
-  getToken_(scoresToken_, _cfg, _coll, "vertices");
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
+  getToken_(scoresToken_, _cfg, _coll, "common", "vertices");
   getToken_(candidatesToken_, _cfg, _coll, "common", "pfCandidates");
 
   if (!isRealData_) {

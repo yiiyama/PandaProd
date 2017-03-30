@@ -11,6 +11,7 @@ PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(candidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(puppiMapToken_, _cfg, _coll, "puppiMap", false);
   getToken_(puppiNoLepMapToken_, _cfg, _coll, "puppiNoLepMap", false);
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
 }
 
 void
@@ -29,6 +30,7 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   FloatMap const* inPuppiNoLepMap(0);
   if (!puppiNoLepMapToken_.second.isUninitialized())
     inPuppiNoLepMap = &getProduct_(_inEvent, puppiNoLepMapToken_);
+  auto& inVertices(getProduct_(_inEvent, verticesToken_));
 
   auto& outCands(_outEvent.pfCandidates);
 
@@ -55,9 +57,17 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         outCand.packedPuppiW = exposer.packedPuppiweight();
       if (!inPuppiNoLepMap)
         outCand.packedPuppiWNoLepDiff = exposer.packedPuppiweightNoLepDiff();
+
+      auto vtxRef(inPacked->vertexRef());
+      if (vtxRef.isNonnull())
+        outCand.vertex.idx() = vtxRef.key();
+      else // in reality this seems to never happen
+        outCand.vertex.idx() = -1;
     }
-    else
+    else {
       fillP4(outCand, inCand);
+      outCand.vertex.idx() = -1;
+    }
 
     // if puppi collection is given, use its weight
     if (inPuppiMap && inPuppiNoLepMap)
@@ -76,8 +86,17 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     ptrList.push_back(inCands.ptrAt(iP));
   }
 
+  auto ByVertexAndPt([](panda::Element const& e1, panda::Element const& e2)->Bool_t {
+      auto& p1(static_cast<panda::PFCand const&>(e1));
+      auto& p2(static_cast<panda::PFCand const&>(e2));
+      if (p1.vertex.idx() == p2.vertex.idx())
+        return p1.pt() > p2.pt();
+      else
+        return unsigned(p1.vertex.idx()) < unsigned(p2.vertex.idx());
+    });
+
   // sort the output electrons
-  auto originalIndices(outCands.sort(panda::Particle::PtGreater));
+  auto originalIndices(outCands.sort(ByVertexAndPt));
 
   // make reco <-> panda mapping
   auto& objectMap(objectMap_->get<reco::Candidate, panda::PFCand>());
@@ -86,6 +105,41 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     auto& outCand(outCands[iP]);
     unsigned idx(originalIndices[iP]);
     objectMap.add(ptrList[idx], outCand);
+  }
+
+  outCandidates_ = &outCands;
+
+  orderedVertices_.resize(inVertices.size());
+  for (unsigned iV(0); iV != inVertices.size(); ++iV)
+    orderedVertices_[iV] = inVertices.ptrAt(iV);
+}
+
+void
+PFCandsFiller::setRefs(ObjectMapStore const& _objectMaps)
+{
+  auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
+
+  unsigned nVtx(orderedVertices_.size());
+
+  unsigned iVtx(0);
+  unsigned iPF(0);
+  for (auto& cand : *outCandidates_) {
+    unsigned idx(cand.vertex.idx());
+
+    while (idx != iVtx && iVtx != nVtx) { // first candidate of the next vertex
+      vtxMap.at(orderedVertices_[iVtx])->pfRangeMax = iPF;
+      ++iVtx;
+    }
+
+    if (iVtx == nVtx)
+      break;
+
+    ++iPF;
+  }
+
+  while (iVtx != nVtx) {
+    vtxMap.at(orderedVertices_[iVtx])->pfRangeMax = iPF;
+    ++iVtx;
   }
 }
 

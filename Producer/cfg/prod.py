@@ -14,15 +14,19 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-jetMETReco = True
-muEGFixed = False
+jetRecorrection = True
+muFix = True
+egFix = False
 egmSmearingType = 'Moriond2017_JEC'
+
 if options.config == '03Feb2017':
-    jetMETReco = False
-    muEGFixed = True
+    jetRecorrection = False
+    muFix = False
+    egFix = True
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
 elif options.config == '23Sep2016':
+    egFix = True
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
 elif options.config == 'Spring16':
@@ -185,6 +189,89 @@ runMetCorAndUncFromMiniAOD(
 # The bug appears when we don't call the no-postfix version of runMetCor.. first
 process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPuppi)
 
+metSequence = cms.Sequence(
+    process.fullPatMetSequencePuppi
+)
+
+if egFix:
+    ### RE-EG-CORRECT METs
+
+    # First create the MET sequence
+    # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        postfix = 'MuEGClean'
+    )
+
+    # see above
+    process.fullPatMetSequenceMuEGClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGClean)
+
+    metSequence += process.fullPatMetSequenceMuEGClean
+
+    # THIS FUNCTION IS BUGGY
+    # from PhysicsTools.PatUtils.tools.eGammaCorrection import eGammaCorrection
+    from PandaProd.Producer.utils.eGammaCorrection import eGammaCorrection
+
+    # Postfix is appended to all MET collection names within the eGammaCorrection function
+    metCollections = [
+        'patPFMetRaw',
+        'patPFMetT1',
+        'patPFMetT0pcT1',
+        'patPFMetT1Smear',
+        'patPFMetT1Txy',
+        'patPFMetTxy'
+    ]
+    variations = ['Up', 'Down']
+    for var in variations:
+        metCollections.extend([
+            'patPFMetT1JetEn' + var,
+            'patPFMetT1JetRes' + var,
+            'patPFMetT1SmearJetRes' + var,
+            'patPFMetT1ElectronEn' + var,
+            'patPFMetT1PhotonEn' + var,
+            'patPFMetT1MuonEn' + var,
+            'patPFMetT1TauEn' + var,
+            'patPFMetT1UnclusteredEn' + var,
+        ])
+
+    # Extracts correction from the differences between pre- and post-GSFix e/g collections
+    # and inserts them into various corrected MET objects
+    metEGCorrSequenceMuEGClean = eGammaCorrection(
+        process, 
+        electronCollection = 'slimmedElectronsBeforeGSFix',
+        photonCollection = 'slimmedPhotonsBeforeGSFix',
+        corElectronCollection = 'slimmedElectrons',
+        corPhotonCollection = 'slimmedPhotons',
+        metCollections = metCollections,
+        pfCandMatching = False,
+        pfCandidateCollection = 'packedPFCandidates',
+        postfix = 'MuEGClean'
+    )
+
+    # set to patPFMet due to the way metEGCorrSequence is implemented
+    process.slimmedMETsMuEGClean.rawVariation = 'patPFMetRawMuEGClean'
+
+    # insert right after pat puppi met production
+    process.fullPatMetSequenceMuEGClean.insert(process.fullPatMetSequenceMuEGClean.index(process.patMetModuleSequenceMuEGClean) + 1, metEGCorrSequenceMuEGClean)
+
+    puppiMETEGCorrSequence = eGammaCorrection(
+        process, 
+        electronCollection = 'slimmedElectronsBeforeGSFix',
+        photonCollection = 'slimmedPhotonsBeforeGSFix',
+        corElectronCollection = 'slimmedElectrons',
+        corPhotonCollection = 'slimmedPhotons',
+        metCollections = metCollections,
+        pfCandMatching = False,
+        pfCandidateCollection = 'packedPFCandidates',
+        postfix = 'Puppi'
+    )
+
+    process.slimmedMETsPuppi.rawVariation = 'patPFMetRawPuppi'
+
+    # insert right after pat puppi met production
+    process.fullPatMetSequencePuppi.insert(process.fullPatMetSequencePuppi.index(process.patMetModuleSequencePuppi) + 1, puppiMETEGCorrSequence)
+
 ### EGAMMA ID
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, switchOnVIDElectronIdProducer, DataFormat
@@ -305,94 +392,14 @@ process.reco = cms.Path(
     egmIdSequence +
     puppiSequence +
     puppiJetSequence +
-    process.fullPatMetSequencePuppi +
+    metSequence +
     process.MonoXFilter +
     process.QGTagger +
     fatJetSequence +
     genJetFlavorSequence
 )
 
-if muEGFixed:
-    ### RE-EG-CORRECT PUPPI MET
-
-    # THIS FUNCTION IS BUGGY
-    # from PhysicsTools.PatUtils.tools.eGammaCorrection import eGammaCorrection
-    from PandaProd.Producer.utils.eGammaCorrection import eGammaCorrection
-
-    metCollections = [
-        'patPFMetRaw',
-        'patPFMetT1',
-        'patPFMetT0pcT1',
-        'patPFMetT1Smear',
-        'patPFMetT1Txy',
-        'patPFMetTxy'
-    ]
-    variations = ['Up', 'Down']
-    for var in variations:
-        metCollections.extend([
-            'patPFMetT1JetEn' + var,
-            'patPFMetT1JetRes' + var,
-            'patPFMetT1SmearJetRes' + var,
-            'patPFMetT1ElectronEn' + var,
-            'patPFMetT1PhotonEn' + var,
-            'patPFMetT1MuonEn' + var,
-            'patPFMetT1TauEn' + var,
-            'patPFMetT1UnclusteredEn' + var,
-        ])
-
-    # Extracts correction from the differences between pre- and post-GSFix e/g collections
-    # and inserts them into various corrected MET objects
-    puppiMETEGCorrSequence = eGammaCorrection(
-        process, 
-        electronCollection = 'slimmedElectronsBeforeGSFix',
-        photonCollection = 'slimmedPhotonsBeforeGSFix',
-        corElectronCollection = 'slimmedElectrons',
-        corPhotonCollection = 'slimmedPhotons',
-        metCollections = metCollections,
-        pfCandMatching = False,
-        pfCandidateCollection = 'packedPFCandidates',
-        postfix = 'Puppi'
-    )
-
-    process.slimmedMETsPuppi.rawVariation = 'patPFMetRawPuppi'
-
-    # insert right after pat puppi met production
-    process.fullPatMetSequencePuppi.insert(process.fullPatMetSequencePuppi.index(process.patMetModuleSequencePuppi) + 1, puppiMETEGCorrSequence)
-
-else:
-    ### PF CLEANING (BAD MUON REMOVAL)
-   
-    # Replace all references made so far to packedPFCandidates with cleanMuonsPFCandidates
-
-    from PhysicsTools.PatAlgos.tools.helpers import MassSearchReplaceAnyInputTagVisitor
-
-    replacePFCandidates = MassSearchReplaceAnyInputTagVisitor('packedPFCandidates', 'cleanMuonsPFCandidates', verbose = False)
-    for everywhere in [process.producers, process.filters, process.analyzers, process.psets, process.vpsets]:
-        for name, obj in everywhere.iteritems():
-            replacePFCandidates.doIt(obj, name)
-
-    from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
-
-    # Adds badGlobalMuonTaggerMAOD, cloneGlobalMuonTaggerMAOD, badMuons, and cleanMuonsPFCandidates
-    muonRecoMitigation(
-        process,
-        pfCandCollection = 'packedPFCandidates',
-        runOnMiniAOD = True
-    )
-
-    # And of course this is against the convention (MET filters are true if event is *good*) but that's what the REMINIAOD developers chose.
-    process.Flag_badMuons = cms.Path(process.badGlobalMuonTaggerMAOD)
-    process.Flag_duplicateMuons = cms.Path(process.cloneGlobalMuonTaggerMAOD)
-    process.schedule += [process.Flag_badMuons, process.Flag_duplicateMuons]
-
-    pfCleaningSequence = cms.Sequence(
-        process.badMuons +
-        process.cleanMuonsPFCandidates
-    )
-
-    process.reco.insert(0, pfCleaningSequence)
-
-if jetMETReco:
+if jetRecorrection:
     ### JET RE-CORRECTION
 
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
@@ -421,34 +428,9 @@ if jetMETReco:
 
     process.reco.insert(process.reco.index(process.QGTagger), jetRecorrectionSequence)
 
-    ### MET
-    # Collections naming aligned with 03Feb2017 reminiaod
 
-    # Creates process.fullPatMetSequenceUncorrected which includes slimmedMETsUncorrected
-    runMetCorAndUncFromMiniAOD(
-        process,
-        isData = options.isData,
-        postfix = 'Uncorrected'
-    )
-    # See note on puppi met
-    process.fullPatMetSequenceUncorrected.remove(process.selectedPatJetsForMetT1T2CorrUncorrected)
-
-    # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
-    # Postfix MuEGClean is just for convenience - there is no EG cleaning actually applied
-    runMetCorAndUncFromMiniAOD(
-        process,
-        isData = options.isData,
-        pfCandColl = 'cleanMuonsPFCandidates',
-        recoMetFromPFCs = True,
-        postfix = 'MuEGClean'
-    )
-    # See note on puppi met
-    process.fullPatMetSequenceMuEGClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGClean)
-
-    process.reco += process.fullPatMetSequenceUncorrected
-    process.reco += process.fullPatMetSequenceMuEGClean
-
-# Repeated calls to runMetCorAnd.. overwrites the MET source of patCaloMet
+# runMetCorAnd.. adds a CaloMET module only once, adding the postfix
+# However, repeated calls to the function overwrites the MET source of patCaloMet
 process.patCaloMet.metSource = 'metrawCaloPuppi'
 
 #############
@@ -472,7 +454,7 @@ process.panda.fillers.pfMet.met = 'slimmedMETsMuEGClean'
 process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
     met = 'slimmedMETsUncorrected'
 )
-if muEGFixed:
+if egFix:
     process.panda.fillers.electrons.gsUnfixedElectrons = cms.untracked.string('slimmedElectronsBeforeGSFix')
     process.panda.fillers.photons.gsUnfixedPhotons = cms.untracked.string('slimmedPhotonsBeforeGSFix')
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
@@ -487,6 +469,76 @@ process.panda.printLevel = options.printLevel
 process.ntuples = cms.EndPath(process.panda)
 
 process.schedule += [process.reco, process.ntuples]
+
+############################
+## REPLACE-ALL TYPE FIXES ##
+############################
+
+if muFix:
+    ### PF CLEANING (BAD MUON REMOVAL)
+   
+    # Replace all references made so far to packedPFCandidates with cleanMuonsPFCandidates
+
+    from PhysicsTools.PatAlgos.tools.helpers import MassSearchReplaceAnyInputTagVisitor
+
+    replacePFCandidates = MassSearchReplaceAnyInputTagVisitor('packedPFCandidates', 'cleanMuonsPFCandidates', verbose = False)
+    for everywhere in [process.producers, process.filters, process.analyzers, process.psets, process.vpsets]:
+        for name, obj in everywhere.iteritems():
+            replacePFCandidates.doIt(obj, name)
+
+    from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
+
+    # Adds badGlobalMuonTaggerMAOD, cloneGlobalMuonTaggerMAOD, badMuons, and cleanMuonsPFCandidates
+    muonRecoMitigation(
+        process,
+        pfCandCollection = 'packedPFCandidates',
+        runOnMiniAOD = True
+    )
+
+    pfCleaningSequence = cms.Sequence(
+        process.badMuons +
+        process.cleanMuonsPFCandidates
+    )
+
+    process.reco.insert(0, pfCleaningSequence)
+
+    ### MET
+    # Collections naming aligned with 03Feb2017 reminiaod
+
+    # Creates process.fullPatMetSequenceUncorrected which includes slimmedMETsUncorrected
+    # This one runs on packedPFCandidates (added after replace-all)
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        postfix = 'Uncorrected'
+    )
+    # See note on puppi met
+    #process.fullPatMetSequenceUncorrected.remove(process.selectedPatJetsForMetT1T2CorrUncorrected)
+
+    process.reco += process.fullPatMetSequenceUncorrected
+
+    if not egFix:
+        # No EG fix - just rename the final product as MuEGClean
+        # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
+        # Postfix MuEGClean is just for convenience - there is no EG cleaning actually applied
+        runMetCorAndUncFromMiniAOD(
+            process,
+            isData = options.isData,
+            pfCandColl = 'cleanMuonsPFCandidates',
+            recoMetFromPFCs = True,
+            postfix = 'MuEGClean'
+        )
+        # See note on puppi met
+        #process.fullPatMetSequenceMuEGClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGClean)
+    
+        process.reco += process.fullPatMetSequenceMuEGClean
+
+
+    # And of course this is against the convention (MET filters are true if event is *good*) but that's what the REMINIAOD developers chose.
+    process.Flag_badMuons = cms.Path(process.badGlobalMuonTaggerMAOD)
+    process.Flag_duplicateMuons = cms.Path(process.cloneGlobalMuonTaggerMAOD)
+    process.schedule.insert(process.schedule.index(process.ntuples), process.Flag_badMuons)
+    process.schedule.insert(process.schedule.index(process.ntuples), process.Flag_duplicateMuons)
 
 if options.connect:
     if options.connect == 'mit':

@@ -37,19 +37,6 @@ elif options.config == 'Summer16':
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
-if options.config == '03Feb2017' or options.config == '23Sep2016':
-    import os
-
-    jsonDir = os.environ['CMSSW_BASE'] + '/src/PandaProd/Producer/cfg'
-    lumilist = 'Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
-
-    if os.path.exists(lumilist):
-        options.lumilist = lumilist
-    elif os.path.exists(jsonDir + '/' + lumilist):
-        options.lumilist = jsonDir + '/' + lumilist
-    else:
-        print 'No good lumi mask applied'
-
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('NTUPLES')

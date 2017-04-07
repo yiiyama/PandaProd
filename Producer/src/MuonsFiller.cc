@@ -161,7 +161,12 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& outMuon(*link.first);
     auto& pfPtr(link.second);
 
-    outMuon.matchedPF.setRef(pfMap.at(pfPtr));
+    // muon sourceCandidatePtr can point to the AOD pfCandidates in some cases
+    auto pfItr(pfMap.find(pfPtr));
+    if (pfItr == pfMap.end())
+      continue;
+
+    outMuon.matchedPF.setRef(pfItr->second);
   }
 
   for (auto& link : vtxMuMap.bwdMap) { // panda -> edm

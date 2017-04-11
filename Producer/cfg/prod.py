@@ -382,6 +382,8 @@ else:
         for name, obj in everywhere.iteritems():
             replacePFCandidates.doIt(obj, name)
 
+    process.panda.fillers.common.pfCandidates = 'cleanMuonsPFCandidates'
+
     from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
 
     # Adds badGlobalMuonTaggerMAOD, cloneGlobalMuonTaggerMAOD, badMuons, and cleanMuonsPFCandidates
@@ -507,5 +509,3 @@ if options.connect:
     process.GlobalTag.connect = options.connect
     for toGet in process.GlobalTag.toGet:
         toGet.connect = options.connect
-
-print process.panda.fillers.common.pfCandidates

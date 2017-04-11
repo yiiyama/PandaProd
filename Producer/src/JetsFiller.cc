@@ -24,6 +24,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
   outGenJets_(getParameter_<std::string>(_cfg, "pandaGenJets", "")),
+  constituentsLabel_(getParameter_<std::string>(_cfg, "constituents", "")),
   R_(getParameter_<double>(_cfg, "R", 0.4)),
   minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
@@ -278,7 +279,7 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& jetMap(objectMap_->get<reco::Jet, panda::Jet>());
 
     std::cerr << "test1" << std::endl;
-    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>(constituentsLabel_).fwdMap);
 
     for (auto& link : jetMap.fwdMap) { // edm -> panda
       auto& inJet(*link.first);

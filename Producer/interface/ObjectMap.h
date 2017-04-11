@@ -6,17 +6,20 @@
 
 #include <map>
 #include <string>
-#include <utility>
+#include <tuple>
 #include <typeinfo>
 
 //! Abstract base to handle ObjectMaps for different types in a single container
 class ObjectMapBase {
  public:
-  typedef std::pair<size_t, size_t> MapId;
+  typedef std::tuple<size_t, size_t, std::string> MapId;
 
+  ObjectMapBase(std::string const& _label = "") : label(_label) {}
   virtual ~ObjectMapBase() {}
   virtual void clear() {};
   virtual MapId getId() const { return MapId(); };
+
+  std::string label;
 };
 
 //! Actual EDM <-> panda map
@@ -29,7 +32,7 @@ class ObjectMap : public ObjectMapBase {
   std::map<PANDA*, EDMPtr> bwdMap;
 
   void clear() override { fwdMap.clear(); bwdMap.clear(); }
-  MapId getId() const override { return MapId(typeid(EDM).hash_code(), typeid(PANDA).hash_code()); }
+  MapId getId() const override { return MapId(typeid(EDM).hash_code(), typeid(PANDA).hash_code(), label); }
 
   void add(EDMPtr const& edmRef, PANDA& pandaObj) { fwdMap.emplace(edmRef, &pandaObj); bwdMap.emplace(&pandaObj, edmRef); }
 };
@@ -42,19 +45,19 @@ class FillerObjectMap : public std::map<ObjectMapBase::MapId, ObjectMapBase*> {
   void clearMaps() { for (auto& m : *this) m.second->clear(); }
 
   template<class EDM, class PANDA>
-  ObjectMap<EDM, PANDA>& get();
+  ObjectMap<EDM, PANDA>& get(std::string label = "");
 
   template<class EDM, class PANDA>
-  ObjectMap<EDM, PANDA> const& get() const;
+  ObjectMap<EDM, PANDA> const& get(std::string label = "") const;
 };
 
 typedef std::map<std::string, FillerObjectMap> ObjectMapStore;
 
 template<class EDM, class PANDA>
 ObjectMap<EDM, PANDA>&
-FillerObjectMap::get()
+FillerObjectMap::get(std::string label/* = ""*/)
 {
-  ObjectMapBase::MapId id(typeid(EDM).hash_code(), typeid(PANDA).hash_code());
+  ObjectMapBase::MapId id(typeid(EDM).hash_code(), typeid(PANDA).hash_code(), label);
 
   auto sItr(find(id));
 
@@ -66,9 +69,9 @@ FillerObjectMap::get()
 
 template<class EDM, class PANDA>
 ObjectMap<EDM, PANDA> const&
-FillerObjectMap::get() const
+FillerObjectMap::get(std::string label/* = ""*/) const
 {
-  ObjectMapBase::MapId id(typeid(EDM).hash_code(), typeid(PANDA).hash_code());
+  ObjectMapBase::MapId id(typeid(EDM).hash_code(), typeid(PANDA).hash_code(), label);
   return static_cast<ObjectMap<EDM, PANDA> const&>(*at(id));
 }
 

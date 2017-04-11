@@ -39,8 +39,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
     getToken_(genParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
 
   if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
-      std::string name(panda::PhotonTriggerObjectName[iT]); // "f<trigger filter name>"
+    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
+      std::string name(panda::Photon::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
       triggerObjects_[iT].insert(filters.begin(), filters.end());
     }
@@ -71,8 +71,7 @@ void
 PhotonsFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
-  TTree* t;
-  t = panda::makePhotonTriggerObjectTree();
+  TTree* t(panda::utils::makeDocTree("PhotonTriggerObject", panda::Photon::TriggerObjectName, panda::Photon::nTriggerObjects));
   t->Write();
   delete t;
 }
@@ -403,10 +402,10 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (useTrigger_) {
     auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::nPhotonTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Photon::nTriggerObjects];
 
     // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
+    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
       // loop over all trigger objects (and their associated filter names)
       for (auto& objAndNames : objMap) { // (TO ptr, VString)
         VString const& names(*objAndNames.second);
@@ -426,7 +425,7 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inPhoton(*link.first);
       auto& outPhoton(*link.second);
 
-      for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
+      for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
           if (reco::deltaR(inPhoton, *obj) < 0.3) {
             outPhoton.triggerMatch[iT] = true;

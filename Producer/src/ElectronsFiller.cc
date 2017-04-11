@@ -46,8 +46,8 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
 
   if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
-      std::string name(panda::ElectronTriggerObjectName[iT]); // "f<trigger filter name>"
+    for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
+      std::string name(panda::Electron::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
       triggerObjects_[iT].insert(filters.begin(), filters.end());
     }
@@ -58,7 +58,7 @@ void
 ElectronsFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
-  auto* t(panda::makeElectronTriggerObjectTree());
+  auto* t(panda::utils::makeDocTree("ElectronTriggerObject", panda::Electron::TriggerObjectName, panda::Electron::nTriggerObjects));
   t->Write();
   delete t;
 }
@@ -353,10 +353,10 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (useTrigger_) {
     auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::nElectronTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
 
     // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
+    for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
       // loop over all trigger objects (and their associated filter names)
       for (auto& objAndNames : objMap) { // (TO ptr, VString)
         VString const& names(*objAndNames.second);
@@ -376,7 +376,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inElectron(*link.first);
       auto& outElectron(*link.second);
 
-      for (unsigned iT(0); iT != panda::nElectronTriggerObjects; ++iT) {
+      for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
           if (reco::deltaR(inElectron, *obj) < 0.3) {
             outElectron.triggerMatch[iT] = true;

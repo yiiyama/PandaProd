@@ -144,19 +144,20 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
 
-  std::map<uint32_t, reco::GsfElectron const*> gsFixMap;
-  if (gsUnfixedElectrons) {
-    for (auto& ele : *gsUnfixedElectrons) {
-      auto&& scRef(ele.superCluster());
-      if (scRef.isNull())
-        continue;
-      auto&& bcRef(scRef->seed());
-      if (bcRef.isNull())
-        continue;
+  // See below
+  // std::map<uint32_t, reco::GsfElectron const*> gsFixMap;
+  // if (gsUnfixedElectrons) {
+  //   for (auto& ele : *gsUnfixedElectrons) {
+  //     auto&& scRef(ele.superCluster());
+  //     if (scRef.isNull())
+  //       continue;
+  //     auto&& bcRef(scRef->seed());
+  //     if (bcRef.isNull())
+  //       continue;
 
-      gsFixMap[bcRef->seed().rawId()] = &ele;
-    }
-  }
+  //     gsFixMap[bcRef->seed().rawId()] = &ele;
+  //   }
+  // }
 
   unsigned iEl(-1);
   for (auto& inElectron : inElectrons) {
@@ -255,10 +256,19 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       }
     }
 
-    if (gsUnfixedElectrons && seedRef.isNonnull()) {
-      auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-      if (eItr != gsFixMap.end())
-        outElectron.originalPt = eItr->second->pt();
+    // if (gsUnfixedElectrons && seedRef.isNonnull()) {
+    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
+    //   if (eItr != gsFixMap.end())
+    //     outElectron.originalPt = eItr->second->pt();
+    // }
+    // Following MET POG and doing the most simplistic match
+    if (gsUnfixedElectrons) {
+      for (auto& el : *gsUnfixedElectrons) {
+        if (reco::deltaR(el, inElectron) < 0.01) {
+          outElectron.originalPt = el.pt();
+          break;
+        }
+      }
     }
 
     ptrList.push_back(inElectrons.ptrAt(iEl));

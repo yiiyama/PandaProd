@@ -141,19 +141,20 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
 
-  std::map<uint32_t, reco::Photon const*> gsFixMap;
-  if (gsUnfixedPhotons) {
-    for (auto& ph : *gsUnfixedPhotons) {
-      auto&& scRef(ph.superCluster());
-      if (scRef.isNull())
-        continue;
-      auto&& bcRef(scRef->seed());
-      if (bcRef.isNull())
-        continue;
+  // See below
+  // std::map<uint32_t, reco::Photon const*> gsFixMap;
+  // if (gsUnfixedPhotons) {
+  //   for (auto& ph : *gsUnfixedPhotons) {
+  //     auto&& scRef(ph.superCluster());
+  //     if (scRef.isNull())
+  //       continue;
+  //     auto&& bcRef(scRef->seed());
+  //     if (bcRef.isNull())
+  //       continue;
 
-      gsFixMap[bcRef->seed().rawId()] = &ph;
-    }
-  }
+  //     gsFixMap[bcRef->seed().rawId()] = &ph;
+  //   }
+  // }
 
   unsigned iPh(-1);
   for (auto& inPhoton : inPhotons) {
@@ -320,10 +321,19 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }
     }
 
-    if (gsUnfixedPhotons && seedRef.isNonnull()) {
-      auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-      if (eItr != gsFixMap.end())
-        outPhoton.originalPt = eItr->second->pt();
+    // if (gsUnfixedPhotons && seedRef.isNonnull()) {
+    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
+    //   if (eItr != gsFixMap.end())
+    //     outPhoton.originalPt = eItr->second->pt();
+    // }
+    // Following MET POG and doing the most simplistic match
+    if (gsUnfixedPhotons) {
+      for (auto& ph : *gsUnfixedPhotons) {
+        if (reco::deltaR(ph, inPhoton) < 0.01) {
+          outPhoton.originalPt = ph.pt();
+          break;
+        }
+      }
     }
 
     ptrList.push_back(inPhotons.ptrAt(iPh));

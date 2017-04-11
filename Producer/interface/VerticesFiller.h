@@ -4,6 +4,9 @@
 #include "FillerBase.h"
 
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 #include "TH1D.h"
@@ -19,10 +22,16 @@ class VerticesFiller : public FillerBase {
   void fillAll(edm::Event const&, edm::EventSetup const&) override;
 
  protected:
+  typedef edm::View<reco::Vertex> VertexView;
+  typedef edm::ValueMap<float> VertexScore;
   typedef std::vector<PileupSummaryInfo> PUSummaryCollection;
+  typedef edm::View<reco::GenParticle> GenParticleView;
 
-  NamedToken<reco::VertexCollection> verticesToken_;
+  NamedToken<VertexView> verticesToken_;
+  NamedToken<VertexScore> scoresToken_;
+  NamedToken<pat::PackedCandidateCollection> candidatesToken_;
   NamedToken<PUSummaryCollection> puSummariesToken_;
+  NamedToken<GenParticleView> genParticlesToken_; // for genVertex
 
   TH1D* hNPVReco_{0};
   TH1D* hNPVTrue_{0};

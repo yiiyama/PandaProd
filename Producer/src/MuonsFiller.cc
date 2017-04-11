@@ -5,6 +5,7 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
@@ -13,7 +14,7 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
-  getToken_(verticesToken_, _cfg, _coll, "vertices", "vertices");
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
 
   if (useTrigger_) {
     for (unsigned iT(0); iT != panda::nMuonTriggerObjects; ++iT) {
@@ -115,12 +116,24 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   // export panda <-> reco mapping
 
   auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>());
+  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+  auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
   auto& genMuMap(objectMap_->get<reco::GenParticle, panda::Muon>());
 
   for (unsigned iP(0); iP != outMuons.size(); ++iP) {
     auto& outMuon(outMuons[iP]);
     unsigned idx(originalIndices[iP]);
     muMuMap.add(ptrList[idx], outMuon);
+
+    auto sourcePtr(ptrList[idx]->sourceCandidatePtr(0));
+    if (sourcePtr.isNonnull()) {
+      pfMuMap.add(sourcePtr, outMuon);
+      if (dynamic_cast<pat::PackedCandidate const*>(sourcePtr.get())) {
+        auto vtxRef(static_cast<pat::PackedCandidate const&>(*sourcePtr).vertexRef());
+        if (vtxRef.isNonnull())
+          vtxMuMap.add(edm::refToPtr(vtxRef), outMuon);
+      }
+    }
 
     if (!isRealData_) {
       auto& inMuon(*ptrList[idx]);
@@ -138,6 +151,31 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 void
 MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
+  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+  auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
+
+  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+  auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
+
+  for (auto& link : pfMuMap.bwdMap) { // panda -> edm
+    auto& outMuon(*link.first);
+    auto& pfPtr(link.second);
+
+    // muon sourceCandidatePtr can point to the AOD pfCandidates in some cases
+    auto pfItr(pfMap.find(pfPtr));
+    if (pfItr == pfMap.end())
+      continue;
+
+    outMuon.matchedPF.setRef(pfItr->second);
+  }
+
+  for (auto& link : vtxMuMap.bwdMap) { // panda -> edm
+    auto& outMuon(*link.first);
+    auto& vtxPtr(link.second);
+
+    outMuon.vertex.setRef(vtxMap.at(vtxPtr));
+  }
+
   if (!isRealData_) {
     auto& genMuMap(objectMap_->get<reco::GenParticle, panda::Muon>());
 

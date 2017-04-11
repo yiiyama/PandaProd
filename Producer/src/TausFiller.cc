@@ -1,7 +1,9 @@
 #include "../interface/TausFiller.h"
 
 #include "DataFormats/PatCandidates/interface/Tau.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/Math/interface/deltaR.h"
+#include "DataFormats/Common/interface/RefToPtr.h"
 
 TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
@@ -79,12 +81,23 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   } 
 
   auto& objectMap(objectMap_->get<reco::BaseTau, panda::Tau>());
+  auto& vtxTauMap(objectMap_->get<reco::Vertex, panda::Tau>());
   auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
 
   for (unsigned iP(0); iP != outTaus.size(); ++iP) {
     auto& outTau(outTaus[iP]);
     unsigned idx(originalIndices[iP]);
     objectMap.add(ptrList[idx], outTau);
+
+    auto& inTau(*ptrList[idx]);
+    if (dynamic_cast<pat::Tau const*>(&inTau)) {
+      auto leadCH(static_cast<pat::Tau const&>(inTau).leadChargedHadrCand());
+      if (leadCH.isNonnull() && dynamic_cast<pat::PackedCandidate const*>(leadCH.get())) {
+        auto vtxRef(static_cast<pat::PackedCandidate const&>(*leadCH).vertexRef());
+        if (vtxRef.isNonnull())
+          vtxTauMap.add(edm::refToPtr(vtxRef), outTau);
+      }
+    }
 
     if (!isRealData_) {
       for (auto& genPtr : genTaus) {
@@ -100,6 +113,17 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 void
 TausFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
+  auto& vtxTauMap(objectMap_->get<reco::Vertex, panda::Tau>());
+
+  auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
+
+  for (auto& link : vtxTauMap.bwdMap) { // panda -> edm
+    auto& outTau(*link.first);
+    auto& vtxPtr(link.second);
+
+    outTau.vertex.setRef(vtxMap.at(vtxPtr));
+  }
+
   if (!isRealData_) {
     auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
 

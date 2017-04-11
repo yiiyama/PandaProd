@@ -17,6 +17,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             finalStateParticles = cms.untracked.string('packedGenParticles'),
             genParticles = cms.untracked.string('prunedGenParticles'),
             pfCandidates = cms.untracked.string('packedPFCandidates'),
+            vertices = cms.untracked.string('offlineSlimmedPrimaryVertices'),
             ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
             eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits')
         ),
@@ -284,7 +285,6 @@ panda = cms.EDAnalyzer('PandaProducer',
         vertices = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Vertices'),
-            vertices = cms.untracked.string('offlineSlimmedPrimaryVertices'),
             puSummaries = cms.untracked.string('slimmedAddPileupInfo')
         ),
         pfMet = cms.untracked.PSet(

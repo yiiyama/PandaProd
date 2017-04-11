@@ -73,6 +73,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     fillP4(outParticle, inCand);
 
     outParticle.pdgid = inCand.pdgId();
+    outParticle.finalState = (inCand.status() == 1);
     outParticle.statusFlags = flags.flags_.to_ulong();
 
     ptrList.push_back(inParticles.ptrAt(iP));

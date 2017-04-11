@@ -17,6 +17,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             finalStateParticles = cms.untracked.string('packedGenParticles'),
             genParticles = cms.untracked.string('prunedGenParticles'),
             pfCandidates = cms.untracked.string('packedPFCandidates'),
+            vertices = cms.untracked.string('offlineSlimmedPrimaryVertices'),
             ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
             eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits')
         ),
@@ -154,8 +155,11 @@ panda = cms.EDAnalyzer('PandaProducer',
             ecalIsoEA = cms.untracked.FileInPath(egmidconf.electronEcalIsoEA),
             hcalIsoEA = cms.untracked.FileInPath(egmidconf.electronHcalIsoEA),
             triggerObjects = cms.untracked.PSet(
-                El23Loose = cms.untracked.vstring('hltEle23WPLooseGsfTrackIsoFilter'),
+                El23El12FirstLeg = cms.untracked.vstring('hltEle23Ele12CaloIdLTrackIdLIsoVLHcalIsoLeg1Filter'),
+                El23El12SecondLeg = cms.untracked.vstring('hltEle23Ele12CaloIdLTrackIdLIsoVLTrackIsoLeg2Filter'),
+                El25Tight = cms.untracked.vstring('hltEle25WPTightGsfTrackIsoFilter'),
                 El27Loose = cms.untracked.vstring('hltEle27noerWPLooseGsfTrackIsoFilter'),
+                El27Tight = cms.untracked.vstring('hltEle27WPTightGsfTrackIsoFilter'),
                 El120Ph = cms.untracked.vstring('hltEG120HEFilter'),
                 El135Ph = cms.untracked.vstring('hltEG135HEFilter'),
                 El165HE10Ph = cms.untracked.vstring('hltEG165HE10Filter'),
@@ -175,10 +179,12 @@ panda = cms.EDAnalyzer('PandaProducer',
             filler = cms.untracked.string('Muons'),
             muons = cms.untracked.string('slimmedMuons'),
             triggerObjects = cms.untracked.PSet(
-                Mu20 = cms.untracked.vstring('hltL3crIsoL1sMu18L1f0L2f10QL3f20QL3trkIsoFiltered0p09'),
-                MuTrk20 = cms.untracked.vstring('hltL3fL1sMu18L1f0Tkf20QL3trkIsoFiltered0p09'),
-                Mu24 = cms.untracked.vstring('hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09'),
-                Mu27 = cms.untracked.vstring('hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p09')
+                Mu17Mu8FirstLeg = cms.untracked.vstring('hltL3fL1sDoubleMu114L1f0L2f10L3Filtered17'),
+                Mu17Mu8SecondLeg = cms.untracked.vstring('hltDiMuonGlb17Trk8RelTrkIsoFiltered0p4'),
+                IsoMu22er = cms.untracked.vstring('hltL3crIsoL1sSingleMu20erL1f0L2f10QL3f22QL3trkIsoFiltered0p09'),
+                IsoTkMu22er = cms.untracked.vstring('hltL3fL1sMu20erL1f0Tkf22QL3trkIsoFiltered0p09'),
+                IsoMu24 = cms.untracked.vstring('hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09'),
+                IsoTkMu24 = cms.untracked.vstring('hltL3fL1sMu22L1f0Tkf24QL3trkIsoFiltered0p09')
             ),
             minPt = cms.untracked.double(5.),
             maxEta = cms.untracked.double(10.)
@@ -208,11 +214,11 @@ panda = cms.EDAnalyzer('PandaProducer',
             phIsoEA = cms.untracked.FileInPath(egmidconf.photonPhIsoEA),
             chIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
             nhIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.014 * x + 0.000019 * x * x'),
-                EE = cms.untracked.string('0.0139 * x + 0.000025 * x * x')
+                EB = cms.untracked.string('0.0148 * x + 0.000017 * x * x'),
+                EE = cms.untracked.string('0.0163 * x + 0.000014 * x * x')
             ),
             phIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.0053 * x'),
+                EB = cms.untracked.string('0.0047 * x'),
                 EE = cms.untracked.string('0.0034 * x')
             ),
             triggerObjects = cms.untracked.PSet(
@@ -250,7 +256,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         genParticles = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('GenParticles'),
-            pdgIds = cms.untracked.vstring('-6', '11', '13', '15', '21-25', '1000000-'),
+            pdgIds = cms.untracked.vstring('-6', '11-16', '21-39', '1000000-'),
             minPt = cms.untracked.double(-1.)
         ),
         ak4GenJets = cms.untracked.PSet(
@@ -284,7 +290,6 @@ panda = cms.EDAnalyzer('PandaProducer',
         vertices = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Vertices'),
-            vertices = cms.untracked.string('offlineSlimmedPrimaryVertices'),
             puSummaries = cms.untracked.string('slimmedAddPileupInfo')
         ),
         pfMet = cms.untracked.PSet(

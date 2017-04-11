@@ -485,6 +485,7 @@ if muFix:
             replacePFCandidates.doIt(obj, name)
 
     process.panda.fillers.common.pfCandidates = 'cleanMuonsPFCandidates'
+    process.panda.fillers.pfCandidates.puppiInput = 'cleanMuonsPFCandidates'
 
     from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
 

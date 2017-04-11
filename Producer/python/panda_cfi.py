@@ -244,10 +244,10 @@ panda = cms.EDAnalyzer('PandaProducer',
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('PFCands'),
-            puppi = cms.untracked.string('puppi'),
-            puppiNoLep = cms.untracked.string('puppiNoLep'),
             puppiMap = cms.untracked.string('puppi'),
+            puppiInput = cms.untracked.string('packedPFCandidates'),
             puppiNoLepMap = cms.untracked.string('puppiNoLep'),
+            puppiNoLepInput = cms.untracked.string('pfNoLepPUPPI')
         ),
         partons = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

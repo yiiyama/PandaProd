@@ -9,14 +9,11 @@ PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& 
   FillerBase(_name, _cfg)
 {
   getToken_(candidatesToken_, _cfg, _coll, "common", "pfCandidates");
-<<<<<<< HEAD
-  getToken_(puppiToken_, _cfg, _coll, "puppi", false);
-  getToken_(puppiNoLepToken_, _cfg, _coll, "puppiNoLep", false);
-=======
   getToken_(puppiMapToken_, _cfg, _coll, "puppiMap", false);
+  getToken_(puppiInputToken_, _cfg, _coll, "puppiInput", false);
   getToken_(puppiNoLepMapToken_, _cfg, _coll, "puppiNoLepMap", false);
+  getToken_(puppiNoLepInputToken_, _cfg, _coll, "puppiNoLepInput", false);
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
->>>>>>> branch-003-devel
 }
 
 void
@@ -28,56 +25,64 @@ PFCandsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 void
 PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const&)
 {
-<<<<<<< HEAD
   edm::Handle<reco::CandidateView> candsHandle;
   auto& inCands(getProduct_(_inEvent, candidatesToken_, &candsHandle));
+  auto& inVertices(getProduct_(_inEvent, verticesToken_));
 
-  // i-th element of the vector is a puppi candidate whose sourceCandidatePtr->key is i
-  std::vector<reco::CandidatePtr> puppiPtrMap;
-  std::vector<reco::CandidatePtr> puppiNoLepPtrMap;
+  std::map<reco::Candidate const*, reco::CandidatePtr> puppiPtrMap;
+  std::map<reco::Candidate const*, reco::CandidatePtr> puppiNoLepPtrMap;
 
-  if (!puppiToken_.second.isUninitialized() && !puppiNoLepToken_.second.isUninitialized()) {
-    auto& inPuppi(getProduct_(_inEvent, puppiToken_));
-    unsigned iC(0);
-    for (auto& cand : inPuppi) {
-      auto&& sourcePtr(cand.sourceCandidatePtr(0));
-      if (sourcePtr.id() == candsHandle.id()) {
-        if (sourcePtr.key() >= puppiPtrMap.size())
-          puppiPtrMap.resize(sourcePtr.key() + 1);
+  if (!puppiMapToken_.second.isUninitialized() && !puppiNoLepMapToken_.second.isUninitialized()) {
+    // connect inCands and the puppi candidates by references to the base collection
+    // PuppiProducer produces a ValueMap<CandidatePtr> (ref to input -> puppi candidate)
+    // If the input to PuppiProducer is itself a ref collection (e.g. PtrVector), we need
+    // to map the refs down to the orignal collection.
+    // In more practical terms:
+    //   edm::Ref<View>(viewHandle, iview) maps to a puppi candidate via puppiMap
+    //   View::refAt(iview).key() is the index of the PF candidate in the original collection
 
-        puppiPtrMap[sourcePtr.key()] = inPuppi.ptrAt(iC);
-      }
-      else
-        std::cerr << "source of puppi is not PF candidates: " << sourcePtr.id() << " " << candsHandle.id() << std::endl;
-      ++iC;
+    std::map<reco::CandidatePtr, reco::Candidate const*> inCandsMap;
+    for (unsigned iC(0); iC != inCands.size(); ++iC) {
+      auto ptrToPF(inCands.ptrAt(iC)); // returns a pointer to the original collection (as opposed to Ref<CandidateView> ref(candsHandle, iC));
+      inCandsMap[ptrToPF] = &inCands.at(iC);
     }
 
-    auto& inPuppiNoLep(getProduct_(_inEvent, puppiNoLepToken_));
-    iC = 0;
-    for (auto& cand : inPuppiNoLep) {
-      auto&& sourcePtr(cand.sourceCandidatePtr(0));
-      if (sourcePtr.id() == candsHandle.id()) {
-        if (sourcePtr.key() >= puppiNoLepPtrMap.size())
-          puppiNoLepPtrMap.resize(sourcePtr.key() + 1);
+    auto& puppiMap(getProduct_(_inEvent, puppiMapToken_));
+    edm::Handle<reco::CandidateView> puppiInputHandle;
+    auto& puppiInput(getProduct_(_inEvent, puppiInputToken_, &puppiInputHandle));
+    for (unsigned iC(0); iC != puppiInput.size(); ++iC) {
+      edm::Ref<reco::CandidateView> inputRef(puppiInputHandle, iC);
+      auto& puppiPtr(puppiMap[inputRef]);
 
-        puppiNoLepPtrMap[sourcePtr.key()] = inPuppiNoLep.ptrAt(iC);
+      auto ptrToPF(puppiInput.ptrAt(iC));
+      auto inCandsItr(inCandsMap.find(ptrToPF));
+      if (inCandsItr == inCandsMap.end()) {
+        // You are here because of a misconfiguration or because the input to puppi had some layer(s) of PF candidate cloning.
+        // It may be possible to trace back to the original PF collection through calls to sourceCandidatePtr()
+        // but for now we don't need to implement it.
+        throw std::runtime_error("Cannot find candidate matching a puppi input");
       }
-      else
-        std::cerr << "source of puppiNoLep is not PF candidates: " << sourcePtr.id() << " " << candsHandle.id() << std::endl;
 
-      ++iC;
+      puppiPtrMap[inCandsItr->second] = puppiPtr;
+    }
+
+    auto& puppiNoLepMap(getProduct_(_inEvent, puppiNoLepMapToken_));
+    edm::Handle<reco::CandidateView> puppiNoLepInputHandle;
+    auto& puppiNoLepInput(getProduct_(_inEvent, puppiNoLepInputToken_, &puppiNoLepInputHandle));
+    for (unsigned iC(0); iC != puppiNoLepInput.size(); ++iC) {
+      edm::Ref<reco::CandidateView> inputRef(puppiNoLepInputHandle, iC);
+      auto& puppiNoLepPtr(puppiNoLepMap[inputRef]);
+
+      auto ptrToPF(puppiNoLepInput.ptrAt(iC));
+      auto inCandsItr(inCandsMap.find(ptrToPF));
+      if (inCandsItr == inCandsMap.end()) {
+        // See above
+        throw std::runtime_error("Cannot find candidate matching a puppiNoLep input");
+      }
+
+      puppiNoLepPtrMap[inCandsItr->second] = puppiNoLepPtr;
     }
   }
-=======
-  auto& inCands(getProduct_(_inEvent, candidatesToken_));
-  FloatMap const* inPuppiMap(0);
-  if (!puppiMapToken_.second.isUninitialized())
-    inPuppiMap = &getProduct_(_inEvent, puppiMapToken_);
-  FloatMap const* inPuppiNoLepMap(0);
-  if (!puppiNoLepMapToken_.second.isUninitialized())
-    inPuppiNoLepMap = &getProduct_(_inEvent, puppiNoLepMapToken_);
-  auto& inVertices(getProduct_(_inEvent, verticesToken_));
->>>>>>> branch-003-devel
 
   auto& outCands(_outEvent.pfCandidates);
 
@@ -116,16 +121,16 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     // if puppi collection is given, use its weight
     if (!puppiPtrMap.empty() && !puppiNoLepPtrMap.empty()) {
-      auto& puppiCand(puppiPtrMap[iP]);
-      auto& puppiNoLepCand(puppiNoLepPtrMap[iP]);
+      auto& puppiCand(puppiPtrMap[&inCand]);
+      auto& puppiNoLepCand(puppiNoLepPtrMap[&inCand]);
 
       double puppiW(puppiCand.isNonnull() ? puppiCand->pt() / inCand.pt() : 0.);
       double puppiNoLepW(puppiNoLepCand.isNonnull() ? puppiNoLepCand->pt() / inCand.pt() : 0.);
 
-      if (puppiCand.isNull())
-        std::cerr << "puppi not found for key " << iP << std::endl;
-      if (puppiNoLep.isNull())
-        std::cerr << "puppiNoLep not found for key " << iP << std::endl;
+      // if (puppiCand.isNull())
+      //   std::cerr << "puppi not found for key " << iP << std::endl;
+      // if (puppiNoLepCand.isNull())
+      //   std::cerr << "puppiNoLep not found for key " << iP << std::endl;
       
       outCand.setPuppiW(puppiW, puppiNoLepW);
     }
@@ -162,8 +167,9 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   for (unsigned iP(0); iP != outCands.size(); ++iP) {
     auto& outCand(outCands[iP]);
     unsigned idx(originalIndices[iP]);
-    objectMap.add(ptrList[idx], outCand);
-    auto& puppiPtr(puppiPtrMap[idx]);
+    auto& ptr(ptrList[idx]);
+    objectMap.add(ptr, outCand);
+    auto& puppiPtr(puppiPtrMap[ptr.get()]);
     if (puppiPtr.isNonnull())
       puppiMap.add(puppiPtr, outCand);
   }

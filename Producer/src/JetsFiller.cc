@@ -278,7 +278,6 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (fillConstituents_) {
     auto& jetMap(objectMap_->get<reco::Jet, panda::Jet>());
 
-    std::cerr << "test1" << std::endl;
     auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>(constituentsLabel_).fwdMap);
 
     for (auto& link : jetMap.fwdMap) { // edm -> panda
@@ -287,11 +286,8 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       for (auto&& ptr : inJet.getJetConstituents()) {
         reco::CandidatePtr p(ptr);
-        fprintf(stderr,"pT=%.3f %p %p\n",p->pt(),p.get(),p->sourceCandidatePtr(0).get());
-        while (p->sourceCandidatePtr(0).isNonnull()) {
+        while (p->sourceCandidatePtr(0).isNonnull())
           p = p->sourceCandidatePtr(0);
-          fprintf(stderr,"pT=%.3f %p\n",p->pt(),p.get());
-        }
 
         outJet.constituents.addRef(pfMap.at(p));
       }

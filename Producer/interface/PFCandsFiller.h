@@ -17,13 +17,15 @@ class PFCandsFiller : public FillerBase {
   void setRefs(ObjectMapStore const&) override;
 
  protected:
-  typedef edm::ValueMap<float> FloatMap;
+  typedef edm::ValueMap<reco::CandidatePtr> CandidatePtrMap;
   typedef edm::View<reco::Vertex> VertexView;
   typedef edm::Ptr<reco::Vertex> VertexPtr;
 
   NamedToken<reco::CandidateView> candidatesToken_;
-  NamedToken<FloatMap> puppiMapToken_;
-  NamedToken<FloatMap> puppiNoLepMapToken_;
+  NamedToken<CandidatePtrMap> puppiMapToken_;
+  NamedToken<reco::CandidateView> puppiInputToken_;
+  NamedToken<CandidatePtrMap> puppiNoLepMapToken_;
+  NamedToken<reco::CandidateView> puppiNoLepInputToken_;
   NamedToken<VertexView> verticesToken_;
 
   //! cache the candidate and vertex ordering (using ref keys) to use in setRefs

@@ -5,8 +5,8 @@
 
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 #include "TH1D.h"
@@ -29,7 +29,7 @@ class VerticesFiller : public FillerBase {
 
   NamedToken<VertexView> verticesToken_;
   NamedToken<VertexScore> scoresToken_;
-  NamedToken<pat::PackedCandidateCollection> candidatesToken_;
+  NamedToken<reco::CandidateView> candidatesToken_;
   NamedToken<PUSummaryCollection> puSummariesToken_;
   NamedToken<GenParticleView> genParticlesToken_; // for genVertex
 

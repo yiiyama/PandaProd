@@ -8,6 +8,15 @@ RecoilFiller::RecoilFiller(std::string const& _name, edm::ParameterSet const& _c
 }
 
 void
+RecoilFiller::addOutput(TFile& _outputFile)
+{
+  TDirectory::TContext context(&_outputFile);
+  auto* t(panda::utils::makeDocTree("RecoilCategory", panda::Recoil::CategoryName, panda::Recoil::nCategories));
+  t->Write();
+  delete t;
+}
+
+void
 RecoilFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   _eventBranches.emplace_back("recoil");
@@ -19,12 +28,12 @@ RecoilFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Eve
   int categories(getProduct_(_inEvent, categoriesToken_));
   auto& recoil(_outEvent.recoil);
 
-  recoil.met = ((categories >> panda::rMET) & 1) != 0;
-  recoil.monoMu = ((categories >> panda::rMonoMu) & 1) != 0;
-  recoil.monoE = ((categories >> panda::rMonoE) & 1) != 0;
-  recoil.diMu = ((categories >> panda::rDiMu) & 1) != 0;
-  recoil.diE = ((categories >> panda::rDiE) & 1) != 0;
-  recoil.gamma = ((categories >> panda::rGamma) & 1) != 0;
+  recoil.met = ((categories >> panda::Recoil::rMET) & 1) != 0;
+  recoil.monoMu = ((categories >> panda::Recoil::rMonoMu) & 1) != 0;
+  recoil.monoE = ((categories >> panda::Recoil::rMonoE) & 1) != 0;
+  recoil.diMu = ((categories >> panda::Recoil::rDiMu) & 1) != 0;
+  recoil.diE = ((categories >> panda::Recoil::rDiE) & 1) != 0;
+  recoil.gamma = ((categories >> panda::Recoil::rGamma) & 1) != 0;
 
   recoil.max = getProduct_(_inEvent, maxToken_);
 }

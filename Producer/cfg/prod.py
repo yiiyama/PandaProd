@@ -160,6 +160,17 @@ makePuppiesFromMiniAOD(process, createScheduledSequence = True)
 # Just renaming
 puppiSequence = process.puppiMETSequence
 
+# override photon ID to be consistent
+process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+
+from PhysicsTools.SelectorUtils.tools.vid_id_tools import switchOnVIDPhotonIdProducer, setupAllVIDIdsInModule, setupVIDPhotonSelection, DataFormat
+switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
+setupAllVIDIdsInModule(process, 
+                       'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', 
+                       setupVIDPhotonSelection)
+
+
 ### PUPPI JET
 
 from PandaProd.Producer.utils.makeJets_cff import makeJets
@@ -488,6 +499,7 @@ process.ntuples = cms.EndPath(process.panda)
 
 process.schedule += [process.reco, process.ntuples]
 
+
 if options.connect:
     if options.connect == 'mit':
         options.connect = 'frontier://(proxyurl=http://squid.cmsaf.mit.edu:3128)(proxyurl=http://squid1.cmsaf.mit.edu:3128)(proxyurl=http://squid2.cmsaf.mit.edu:3128)(serverurl=http://cmsfrontier.cern.ch:8000/FrontierProd)/CMS_CONDITIONS'
@@ -495,3 +507,5 @@ if options.connect:
     process.GlobalTag.connect = options.connect
     for toGet in process.GlobalTag.toGet:
         toGet.connect = options.connect
+
+print process.panda.fillers.common.pfCandidates

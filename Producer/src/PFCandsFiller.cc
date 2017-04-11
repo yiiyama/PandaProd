@@ -39,6 +39,7 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     ++iP;
 
     auto&& ref(inCands.refAt(iP));
+    auto&& ptr(inCands.ptrAt(iP));
 
     auto* inPacked(dynamic_cast<pat::PackedCandidate const*>(&inCand));
 
@@ -61,7 +62,13 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     // if puppi collection is given, use its weight
     if (inPuppiMap && inPuppiNoLepMap)
+    {
+      //outCand.setPuppiW((*inPuppiMap)[ref], (*inPuppiNoLepMap)[ref]);
+      fprintf(stderr,"puppi no lep weight=%.3f\n",(*inPuppiNoLepMap)[ref]);
+      fprintf(stderr,"puppi weight=%.3f\n",(*inPuppiMap)[ref]);
       outCand.setPuppiW((*inPuppiMap)[ref], (*inPuppiNoLepMap)[ref]);
+
+    }
 
     outCand.ptype = panda::PFCand::X;
     unsigned ptype(0);

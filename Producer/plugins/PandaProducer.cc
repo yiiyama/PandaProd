@@ -134,16 +134,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
         std::cout << "[PandaProducer::analyze] " 
           << "Calling " << filler->getName() << "->fillAll()" << std::endl;
 
-      if (printLevel_ > 2) {
-        sw_->Start();
-      }
-
       filler->fillAll(_event, _setup);
-
-      if (printLevel_ > 2) {
-        std::cout << "[PandaProducer::analyze]" 
-          << filler->getName() << " took " << sw_->RealTime()*1000 << " s" << std::endl;
-      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer::analyze] " 
@@ -219,7 +210,16 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
         std::cout << "[PandaProducer::fill] " 
           << "Calling " << filler->getName() << "->fill()" << std::endl;
 
+      if (printLevel_ > 2) {
+        sw_->Start();
+      }
+
       filler->fill(outEvent_, _event, _setup);
+
+      if (printLevel_ > 2) {
+        std::cout << "[PandaProducer::analyze] Step " 
+          << filler->getName() << "->fill() took " << sw_->RealTime()*1000 << " s" << std::endl;
+      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer::fill] " 

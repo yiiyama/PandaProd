@@ -89,11 +89,11 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
     initialSeed = cms.untracked.uint32(1234567),
     engineName = cms.untracked.string('TRandom3')
 )
-process.RandomNumberGeneratorService.slimmedElectrons = cms.PSet(
+process.RandomNumberGeneratorService.smearedElectrons = cms.PSet(
     initialSeed = cms.untracked.uint32(89101112),
     engineName = cms.untracked.string('TRandom3')
 )
-process.RandomNumberGeneratorService.slimmedPhotons = cms.PSet(
+process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
     initialSeed = cms.untracked.uint32(13141516),
     engineName = cms.untracked.string('TRandom3')
 )

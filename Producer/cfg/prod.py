@@ -106,36 +106,36 @@ import PandaProd.Producer.utils.egmidconf as egmidconf
 
 ### EGAMMA CORRECTIONS
 
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as correctedElectrons
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as correctedPhotons
+from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
+from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
 from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
 regressionWeights(process)
-process.correctedElectrons = correctedElectrons
-process.correctedPhotons = correctedPhotons
+process.regressionElectrons = regressionElectrons
+process.regressionPhotons = regressionPhotons
 
 process.selectedElectrons = cms.EDFilter('PATElectronSelector',
-    src = cms.InputTag('correctedElectrons'),
+    src = cms.InputTag('regressionElectrons'),
     cut = cms.string('pt > 5 && abs(eta) < 2.5')
 )
 
 from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
-process.slimmedElectrons = calibratedPatElectrons.clone(
+process.smearedElectrons = calibratedPatElectrons.clone(
     electrons = 'selectedElectrons',
     isMC = (not options.isData),
     correctionFile = egmidconf.electronSmearingData[egmSmearingType]
 )
-process.slimmedPhotons = calibratedPatPhotons.clone(
-    photons = 'correctedPhotons',
+process.smearedPhotons = calibratedPatPhotons.clone(
+    photons = 'regressionPhotons',
     isMC = (not options.isData),
     correctionFile = egmidconf.photonSmearingData[egmSmearingType]
 )   
 
 egmCorrectionSequence = cms.Sequence(
-    process.correctedElectrons +
-    process.correctedPhotons +
-    process.selectedElectrons +
-    process.slimmedElectrons +
-    process.slimmedPhotons
+     process.regressionElectrons +
+     process.regressionPhotons +
+     process.selectedElectrons +
+     process.smearedElectrons +
+     process.smearedPhotons
 )
 
 ### PUPPI
@@ -149,6 +149,17 @@ makePuppiesFromMiniAOD(process, createScheduledSequence = True)
 
 # Just renaming
 puppiSequence = process.puppiMETSequence
+
+# override photon ID to be consistent
+process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+
+from PhysicsTools.SelectorUtils.tools.vid_id_tools import switchOnVIDPhotonIdProducer, setupAllVIDIdsInModule, setupVIDPhotonSelection, DataFormat
+switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
+setupAllVIDIdsInModule(process, 
+                               'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', 
+                                                      setupVIDPhotonSelection)
+
 
 ### PUPPI JET
 
@@ -183,18 +194,18 @@ if egFix:
     ### RE-EG-CORRECT METs
 
     # First create the MET sequence
-    # Creates process.fullPatMetSequenceMuEGClean which includes slimmedMETsMuEGClean
+    # Creates process.fullPatMetSequence which includes slimmedMETs
     runMetCorAndUncFromMiniAOD(
         process,
         isData = options.isData,
         recoMetFromPFCs = muFix, # no config has egFix = True & muFix = True at the moment
-        postfix = 'MuEGClean'
+        postfix = 'MuEGReClean',
     )
 
     # see above
-    process.fullPatMetSequenceMuEGClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGClean)
+    process.fullPatMetSequenceMuEGReClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGReClean)
 
-    metSequence += process.fullPatMetSequenceMuEGClean
+    # metSequence += process.fullPatMetSequence
 
     # THIS FUNCTION IS BUGGY
     # from PhysicsTools.PatUtils.tools.eGammaCorrection import eGammaCorrection
@@ -224,7 +235,7 @@ if egFix:
 
     # Extracts correction from the differences between pre- and post-GSFix e/g collections
     # and inserts them into various corrected MET objects
-    metEGCorrSequenceMuEGClean = eGammaCorrection(
+    metEGCorrSequence = eGammaCorrection(
         process, 
         electronCollection = 'slimmedElectronsBeforeGSFix',
         photonCollection = 'slimmedPhotonsBeforeGSFix',
@@ -233,15 +244,18 @@ if egFix:
         metCollections = metCollections,
         pfCandMatching = False,
         pfCandidateCollection = 'packedPFCandidates',
-        postfix = 'MuEGClean'
+        postfix = 'MuEGReClean'
     )
 
     # set to patPFMet due to the way metEGCorrSequence is implemented
-    process.slimmedMETsMuEGClean.rawVariation = 'patPFMetRawMuEGClean'
+    process.slimmedMETsMuEGReClean.rawVariation = 'patPFMetRawMuEGReClean'
 
-    # insert right after pat puppi met production
-    process.fullPatMetSequenceMuEGClean.insert(process.fullPatMetSequenceMuEGClean.index(process.patMetModuleSequenceMuEGClean) + 1, metEGCorrSequenceMuEGClean)
+    # insert right after pat met production
+    process.fullPatMetSequenceMuEGReClean.insert(process.fullPatMetSequenceMuEGReClean.index(process.patMetModuleSequenceMuEGReClean) + 1, metEGCorrSequence)
+    metSequence += process.fullPatMetSequenceMuEGReClean
 
+
+    ## now correct puppi MET
     puppiMETEGCorrSequence = eGammaCorrection(
         process, 
         electronCollection = 'slimmedElectronsBeforeGSFix',
@@ -437,7 +451,7 @@ if options.isData:
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-process.panda.fillers.pfMet.met = 'slimmedMETsMuEGClean'
+process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
 process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
     met = 'slimmedMETsUncorrected'
 )
@@ -511,7 +525,7 @@ if muFix:
 
     if egFix: # no config does this at the moment
         process.panda.fillers.metMuOnlyFix.met = 'slimmedMETsMuonFixed'
-        process.panda.fillers.pfMet.met = 'slimmedMETsMuEGClean'
+        process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
     else:
         process.panda.fillers.pfMet.met = 'slimmedMETsMuonFixed'
 

@@ -1,35 +1,103 @@
 #include "../interface/GenParticlesFiller.h"
 
 #include "DataFormats/Common/interface/RefToPtr.h"
+#include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 
 #include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
+#include "PandaTree/Utils/interface/PNode.h"
+
+typedef edm::Ptr<reco::GenParticle> GenPtr;
+
+typedef ObjectMap<reco::GenParticle, panda::GenParticle> GenParticleMap;
+
+unsigned counter(0);
+
+struct PNodeWithGenPtr : public PNode {
+  GenPtr genPtr{};
+
+  PNodeWithGenPtr(GenPtr const& _ptr, std::map<GenPtr, PNodeWithGenPtr*>& _nodeMap, PNode* _mother = 0) {
+    auto& inCand(*_ptr);
+    pdgId = inCand.pdgId();
+    status = inCand.status();
+    statusBits = inCand.statusFlags().flags_;
+    mass = inCand.mass();
+    pt = inCand.pt();
+    eta = inCand.eta();
+    phi = inCand.phi();
+    mother = _mother;
+
+    ownDaughters = false;
+
+    genPtr = _ptr;
+
+    _nodeMap[genPtr] = this;
+
+    for (auto& dref : inCand.daughterRefVector()) {
+      GenPtr dptr(edm::refToPtr(dref));
+
+      auto nItr(_nodeMap.find(dptr));
+
+      if (nItr != _nodeMap.end()) {
+        // this node is already constructed
+
+        PNode* dnode(nItr->second);
+        PNode* dmother(dnode->mother);
+
+        if (dmother) {
+          // and it's someone's daughter
+
+          if (dmother == this) // mine!?
+            continue;
+
+          bool takeCustody(false);
+          if (!isHadronic() && dmother->isHadronic())
+            takeCustody = true;
+          else if (isHadronic() && !dmother->isHadronic())
+            takeCustody = false;
+          else
+            takeCustody = reco::deltaR2(eta, phi, dnode->eta, dnode->phi) < reco::deltaR2(dmother->eta, dmother->phi, dnode->eta, dnode->phi);
+
+          if (takeCustody) {
+            dnode->mother = this;
+            daughters.push_back(dnode);
+            std::vector<PNode*>::iterator dItr(std::find(dmother->daughters.begin(), dmother->daughters.end(), dnode));
+            if (dItr != dmother->daughters.end()) // can happen that this daughter is still being pushed into mother's daughter list
+              dmother->daughters.erase(dItr);
+          }
+        }
+        else {
+          dnode->mother = this;
+          daughters.push_back(dnode);
+        }
+      }
+      else
+        daughters.push_back(new PNodeWithGenPtr(dptr, _nodeMap, this));
+    }
+  }
+
+  void fillPanda(panda::GenParticleCollection& _outParticles, GenParticleMap& _map, int parentIdx = -1) const {
+    auto& outParticle(_outParticles.create_back());
+    int myidx(_outParticles.size() - 1);
+
+    fillP4(outParticle, *genPtr);
+
+    outParticle.pdgid = pdgId;
+    outParticle.finalState = (status == 1);
+    outParticle.statusFlags = statusBits.to_ulong();
+    outParticle.parent.idx() = parentIdx;
+
+    _map.add(genPtr, outParticle);
+
+    for (auto* d : daughters)
+      static_cast<PNodeWithGenPtr*>(d)->fillPanda(_outParticles, _map, myidx);
+  }
+};
 
 GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.))
+  FillerBase(_name, _cfg)
 {
   getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
-
-  auto vPdgIds(getParameter_<VString>(_cfg, "pdgIds"));
-  for (auto& idstr : vPdgIds) {
-    size_t dash(idstr.find('-'));
-    if (dash != std::string::npos) {
-      // is a range
-      if (dash == 0)
-        allPdgBelow_ = std::stoi(idstr.substr(1));
-      else if (dash == idstr.size() - 1)
-        allPdgAbove_ = std::stoi(idstr.substr(0, dash));
-      else {
-        unsigned low(std::stoi(idstr.substr(0, dash)));
-        unsigned high(std::stoi(idstr.substr(dash + 1)));
-        for (unsigned pdg(low); pdg <= high; ++pdg)
-          pdgIds_.insert(pdg);
-      }
-    }
-    else
-      pdgIds_.insert(std::stoi(idstr));
-  }
 }
 
 void
@@ -45,82 +113,22 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
 
   auto& outParticles(_outEvent.genParticles);
 
-  std::vector<edm::Ptr<reco::GenParticle>> ptrList;
-
-  unsigned iP(-1);
-  for (auto& inCand : inParticles) {
-    ++iP;
-
-    auto&& flags(inCand.statusFlags());
-
-    // only keep the first or last copy
-    if (!flags.isLastCopy() && !flags.isFirstCopy())
-      continue;
-
-    if (inCand.pt() < minPt_)
-      continue;
-
-    unsigned absId(std::abs(inCand.pdgId()));
-    if (absId > allPdgBelow_ && absId < allPdgAbove_ && pdgIds_.find(absId) == pdgIds_.end())
-      continue;
-
-    // photons should be kept only if prompt and final state
-    if (absId == 22 && !inCand.isPromptFinalState())
-      continue;
-
-    auto& outParticle(outParticles.create_back());
-
-    fillP4(outParticle, inCand);
-
-    outParticle.pdgid = inCand.pdgId();
-    outParticle.finalState = (inCand.status() == 1);
-    outParticle.statusFlags = flags.flags_.to_ulong();
-
-    ptrList.push_back(inParticles.ptrAt(iP));
-  }
-
-  // sort the output particles
-  auto originalIndices(outParticles.sort(panda::Particle::PtGreater));
-
-  // make reco <-> panda mapping
   auto& objectMap(objectMap_->get<reco::GenParticle, panda::GenParticle>());
-  
-  for (unsigned iP(0); iP != outParticles.size(); ++iP) {
-    auto& outParticle(outParticles[iP]);
-    unsigned idx(originalIndices[iP]);
-    objectMap.add(ptrList[idx], outParticle);
+
+  std::map<GenPtr, PNodeWithGenPtr*> nodeMap;
+
+  for (unsigned iP(0); iP != inParticles.size(); ++iP) {
+    auto& inCand(inParticles.at(iP));
+    if (inCand.motherRefVector().size() == 0) {
+      auto* rootNode(new PNodeWithGenPtr(inParticles.ptrAt(iP), nodeMap));
+      rootNode->pruneDaughters();
+      rootNode->fillPanda(outParticles, objectMap);
+    }
   }
-}
 
-void
-GenParticlesFiller::setRefs(ObjectMapStore const& _objectMaps)
-{
-  auto& map(objectMap_->get<reco::GenParticle, panda::GenParticle>());
-
-  for (auto& link : map.bwdMap) { // panda -> edm
-    auto& outChild(*link.first);
-    auto& inChild(link.second);
-
-    std::function<bool(edm::Ptr<reco::GenParticle> const&)> findMother;
-
-    findMother = [&map, &outChild, &findMother](edm::Ptr<reco::GenParticle> const& ptr)->bool {
-      for (auto&& mRef : ptr->motherRefVector()) {
-        auto&& mPtr(edm::refToPtr(mRef));
-
-        auto&& pItr(map.fwdMap.find(mPtr));
-        if (pItr != map.fwdMap.end()) {
-          outChild.parent.setRef(pItr->second);
-          return true;
-        }
-
-        if (findMother(mPtr))
-          return true;
-      }
-      return false;
-    };
-    
-    findMother(inChild);
-  }
+  // ownDaughter is false; need to clean up pnodes
+  for (auto& node : nodeMap)
+    delete node.second;
 }
 
 DEFINE_TREEFILLER(GenParticlesFiller);

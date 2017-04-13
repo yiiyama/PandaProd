@@ -1,6 +1,7 @@
 #include "../interface/VerticesFiller.h"
 
 #include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 
 VerticesFiller::VerticesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg)
@@ -51,11 +52,15 @@ VerticesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::E
 
   _outEvent.npv = npvCache_;
 
+  // if MINIAOD
   std::vector<unsigned> ntrkCounters(inVertices.size(), 0);
   for (auto& cand : inCandidates) {
-    auto&& vtxRef(cand.vertexRef());
-    if (vtxRef.isNonnull())
-      ntrkCounters.at(vtxRef.key()) += 1;
+    auto* inPacked(dynamic_cast<pat::PackedCandidate const*>(&cand));
+    if (inPacked) {
+      auto&& vtxRef(inPacked->vertexRef());
+      if (vtxRef.isNonnull())
+        ntrkCounters.at(vtxRef.key()) += 1;
+    }
   }
 
   unsigned iVtx(0);

@@ -150,6 +150,17 @@ makePuppiesFromMiniAOD(process, createScheduledSequence = True)
 # Just renaming
 puppiSequence = process.puppiMETSequence
 
+# override photon ID to be consistent
+process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+
+from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDPhotonSelection
+setupAllVIDIdsInModule(
+    process, 
+    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', 
+    setupVIDPhotonSelection
+)
+
 ### PUPPI JET
 
 from PandaProd.Producer.utils.makeJets_cff import makeJets
@@ -472,6 +483,9 @@ if muFix:
     for everywhere in [process.producers, process.filters, process.analyzers, process.psets, process.vpsets]:
         for name, obj in everywhere.iteritems():
             replacePFCandidates.doIt(obj, name)
+
+    process.panda.fillers.common.pfCandidates = 'cleanMuonsPFCandidates'
+    process.panda.fillers.pfCandidates.puppiInput = 'cleanMuonsPFCandidates'
 
     from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
 

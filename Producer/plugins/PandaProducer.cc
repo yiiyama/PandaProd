@@ -17,6 +17,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TH1D.h"
+#include "TStopwatch.h"
 
 #include <vector>
 #include <utility>
@@ -49,6 +50,7 @@ private:
   TH1D* eventCounter_{0};
   panda::Event outEvent_;
 
+  TStopwatch *sw_{0};
   std::string outputName_;
   bool useTrigger_;
   // [[filter0, filter1, ...], ...] outer index runs over trigger objects
@@ -97,6 +99,11 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     hltResultsToken_ = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults", "", "HLT"));
     triggerObjectsToken_ = consumes<TriggerObjectView>(edm::InputTag(fillersCfg.getUntrackedParameterSet("common").getUntrackedParameter<std::string>("triggerObjects")));
   }
+
+  if (printLevel_ > 2) {
+    sw_ = new TStopwatch();
+    sw_->Start();
+  }
 }
 
 PandaProducer::~PandaProducer()
@@ -109,6 +116,13 @@ void
 PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 {
   eventCounter_->Fill(0.5);
+  
+  if (printLevel_ > 2) {
+    std::cout << "[PandaProducer::analyze]" 
+      << "Previous (CMSSW) step took " << sw_->RealTime()*1000 << " s" << std::endl;
+    sw_->Start();
+  }
+
 
   // Fill "all events" information
   for (auto* filler : fillers_) {
@@ -127,6 +141,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
         << "Error in " << filler->getName() << "::fillAll()" << std::endl;
       throw;
     }
+
   }
 
   // If path names are given, check if at least one succeeded
@@ -195,7 +210,16 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
         std::cout << "[PandaProducer::fill] " 
           << "Calling " << filler->getName() << "->fill()" << std::endl;
 
+      if (printLevel_ > 2) {
+        sw_->Start();
+      }
+
       filler->fill(outEvent_, _event, _setup);
+
+      if (printLevel_ > 2) {
+        std::cout << "[PandaProducer::analyze] Step " 
+          << filler->getName() << "->fill() took " << sw_->RealTime()*1000 << " s" << std::endl;
+      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer::fill] " 

@@ -17,10 +17,15 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TH1D.h"
-#include "TStopwatch.h"
-
 #include <vector>
 #include <utility>
+#include <chrono>
+
+typedef std::chrono::steady_clock SClock;
+double toMS(SClock::duration const& interval)
+{
+  return std::chrono::duration_cast<std::chrono::milliseconds>(interval).count();
+}
 
 class PandaProducer : public edm::EDAnalyzer {
 public:
@@ -50,12 +55,14 @@ private:
   TH1D* eventCounter_{0};
   panda::Event outEvent_;
 
-  TStopwatch *sw_{0};
   std::string outputName_;
   bool useTrigger_;
   // [[filter0, filter1, ...], ...] outer index runs over trigger objects
   std::vector<VString> triggerObjectNames_;
   unsigned printLevel_;
+
+  std::vector<SClock::duration> timers_;
+  SClock::time_point lastAnalyze_; //! Time point of last return from analyze()
 };
 
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
@@ -63,11 +70,15 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   skimResultsToken_(consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"))), // no process name -> pick up the trigger results from the current process
   outputName_(_cfg.getUntrackedParameter<std::string>("outputFile", "panda.root")),
   useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger", true)),
-  printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0))
+  printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0)),
+  timers_(),
+  lastAnalyze_()
 {
   auto&& coll(consumesCollector());
 
   auto& fillersCfg(_cfg.getUntrackedParameterSet("fillers"));
+
+  SClock::time_point start;
 
   for (auto& fillerName : fillersCfg.getParameterNames()) {
     if (fillerName == "common")
@@ -77,15 +88,26 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     try {
       auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
 
-      if (printLevel_ > 0)
+      if (printLevel_ >= 1) {
         std::cout << "[PandaProducer::PandaProducer] " 
           << "Constructing " << className << "::" << fillerName << std::endl;
+
+        if (printLevel_ >= 3)
+          start = SClock::now();
+      }
 
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
       fillers_.push_back(filler);
 
       if (filler->enabled())
         filler->setObjectMap(objectMaps_[fillerName]);
+
+      if (printLevel_ >= 1) {
+        timers_.push_back(SClock::duration::zero());
+
+        if (printLevel_ >= 3)
+          std::cout << "Initializing " << fillerName << " took " << toMS(SClock::now() - start) << " ms." << std::endl;
+      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer::PandaProducer] " 
@@ -100,9 +122,9 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     triggerObjectsToken_ = consumes<TriggerObjectView>(edm::InputTag(fillersCfg.getUntrackedParameterSet("common").getUntrackedParameter<std::string>("triggerObjects")));
   }
 
-  if (printLevel_ > 2) {
-    sw_ = new TStopwatch();
-    sw_->Start();
+  if (printLevel_ >= 1) {
+    // timer for the CMSSW execution outside of this module
+    timers_.push_back(SClock::duration::zero());
   }
 }
 
@@ -117,31 +139,59 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 {
   eventCounter_->Fill(0.5);
   
-  if (printLevel_ > 2) {
-    std::cout << "[PandaProducer::analyze]" 
-      << "Previous (CMSSW) step took " << sw_->RealTime()*1000 << " s" << std::endl;
-    sw_->Start();
+  if (printLevel_ >= 1) {
+    if (lastAnalyze_ == SClock::time_point()) {
+      if (printLevel_ >= 3)
+        std::cout << "[PandaProducer::analyze] "
+                  << "First event; CMSSW step time unknown" << std::endl;
+
+    }
+    else {
+      auto dt(SClock::now() - lastAnalyze_);
+      if (printLevel_ >= 3)
+        std::cout << "[PandaProducer::analyze] "
+                  << "Previous (CMSSW) step took " << toMS(dt) << " ms" << std::endl;
+
+      timers_.back() += dt;
+    }
   }
 
+  SClock::time_point start;
 
   // Fill "all events" information
-  for (auto* filler : fillers_) {
+  for (unsigned iF(0); iF != fillers_.size(); ++iF) {
+    auto* filler(fillers_[iF]);
+
     if (!filler->enabled())
       continue;
 
     try {
-      if (printLevel_ > 1)
-        std::cout << "[PandaProducer::analyze] " 
-          << "Calling " << filler->getName() << "->fillAll()" << std::endl;
+      if (printLevel_ >= 1) {
+        start = SClock::now();
+
+        if (printLevel_ >= 2)
+          std::cout << "[PandaProducer::analyze] " 
+                    << "Calling " << filler->getName() << "->fillAll()" << std::endl;
+      }
 
       filler->fillAll(_event, _setup);
+
+      if (printLevel_ >= 1) {
+        auto dt(SClock::now() - start);
+
+        if (printLevel_ >= 3) {
+          std::cout << "[PandaProducer::analyze] " 
+                    << "Step " << filler->getName() << "->fillAll() took " << toMS(dt) << " ms" << std::endl;
+        }
+        
+        timers_[iF] += dt;
+      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer::analyze] " 
         << "Error in " << filler->getName() << "::fillAll()" << std::endl;
       throw;
     }
-
   }
 
   // If path names are given, check if at least one succeeded
@@ -201,24 +251,31 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   outEvent_.eventNumber = _event.id().event();
   outEvent_.isData = _event.isRealData();
 
-  for (auto* filler : fillers_) {
+  for (unsigned iF(0); iF != fillers_.size(); ++iF) {
+    auto* filler(fillers_[iF]);
+
     if (!filler->enabled())
       continue;
 
     try {
-      if (printLevel_ > 1)
-        std::cout << "[PandaProducer::fill] " 
-          << "Calling " << filler->getName() << "->fill()" << std::endl;
+      if (printLevel_ >= 1) {
+        if (printLevel_ >= 2)
+          std::cout << "[PandaProducer::fill] " 
+                    << "Calling " << filler->getName() << "->fill()" << std::endl;
 
-      if (printLevel_ > 2) {
-        sw_->Start();
+        start = SClock::now();
       }
 
       filler->fill(outEvent_, _event, _setup);
 
-      if (printLevel_ > 2) {
-        std::cout << "[PandaProducer::analyze] Step " 
-          << filler->getName() << "->fill() took " << sw_->RealTime()*1000 << " s" << std::endl;
+      if (printLevel_ >= 1) {
+        auto dt(SClock::now() - start);
+
+        if (printLevel_ >= 3)
+          std::cout << "[PandaProducer::analyze] " 
+                    << "Step " << filler->getName() << "->fill() took " << toMS(dt) << " ms" << std::endl;
+
+        timers_[iF] += dt;
       }
     }
     catch (std::exception& ex) {
@@ -229,16 +286,32 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   }
 
   // Set inter-branch references
-  for (auto* filler : fillers_) {
+  for (unsigned iF(0); iF != fillers_.size(); ++iF) {
+    auto* filler(fillers_[iF]);
+
     if (!filler->enabled())
       continue;
 
     try {
-      if (printLevel_ > 1)
-        std::cout << "[PandaProducer:fill] "
-          << "Calling " << filler->getName() << "->setRefs()" << std::endl;
+      if (printLevel_ >= 1) {
+        if (printLevel_ >= 2)
+          std::cout << "[PandaProducer:fill] "
+                    << "Calling " << filler->getName() << "->setRefs()" << std::endl;
+
+        start = SClock::now();
+      }
 
       filler->setRefs(objectMaps_);
+
+      if (printLevel_ >= 1) {
+        auto dt(SClock::now() - start);
+
+        if (printLevel_ >= 3)
+          std::cout << "[PandaProducer::analyze] " 
+                    << "Step " << filler->getName() << "->setRefs() took " << toMS(dt) << " ms" << std::endl;
+
+        timers_[iF] += dt;
+      }
     }
     catch (std::exception& ex) {
       std::cerr << "[PandaProducer:fill] " 
@@ -248,6 +321,8 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   }
 
   outEvent_.fill(*eventTree_);
+
+  lastAnalyze_ = SClock::now();
 }
 
 void
@@ -262,7 +337,7 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
       continue;
 
     try {
-      if (printLevel_ > 1)
+      if (printLevel_ >= 2)
         std::cout << "[PandaProducer::beginRun] " 
           << "Calling " << filler->getName() << "->fillBeginRun()" << std::endl;
 
@@ -284,7 +359,7 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
       continue;
 
     try {
-      if (printLevel_ > 1) 
+      if (printLevel_ >= 2) 
         std::cout << "[PandaProducer::endRun] " 
           << "Calling " << filler->getName() << "->fillEndRun()" << std::endl;
 
@@ -341,6 +416,26 @@ PandaProducer::endJob()
   outputFile_->cd();
   outputFile_->Write();
   delete outputFile_;
+
+  if (printLevel_ >= 1) {
+    std::cout << "[PandaProducer::endJob] Timer summary" << std::endl;
+    for (unsigned iF(0); iF != fillers_.size(); ++iF) {
+      std::cout << " " << fillers_[iF]->getName() << "  ";
+      double time(toMS(timers_[iF]));
+      if (time > 10000.)
+        std::cout << std::fixed << std::setprecision(5) << time / 1000. << " s";
+      else
+        std::cout << time << " ms";
+      std::cout << std::endl;
+    }
+    std::cout << " Other CMSSW  ";
+    double time(toMS(timers_.back()));
+    if (time > 10000.)
+      std::cout << std::fixed << std::setprecision(5) << time / 1000. << " s";
+    else
+      std::cout << time << " ms";
+    std::cout << std::endl;
+  }
 }
 
 DEFINE_FWK_MODULE(PandaProducer);

@@ -280,9 +280,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   // make reco <-> panda mapping
   auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>());
   auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
-  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
+  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>("pf"));
   auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
-  auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
+  auto& genEleMap(objectMap_->get<reco::Candidate, panda::Electron>("gen"));
   
   for (unsigned iP(0); iP != outElectrons.size(); ++iP) {
     auto& outElectron(outElectrons[iP]);
@@ -317,7 +317,7 @@ void
 ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
   auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
-  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
+  auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>("pf"));
   auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
 
   auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
@@ -346,9 +346,9 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
+    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>("gen"));
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genEleMap.bwdMap) {
       auto& genPtr(link.second);

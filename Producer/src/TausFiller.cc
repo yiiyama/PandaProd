@@ -82,7 +82,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
   auto& objectMap(objectMap_->get<reco::BaseTau, panda::Tau>());
   auto& vtxTauMap(objectMap_->get<reco::Vertex, panda::Tau>());
-  auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
+  auto& genTauMap(objectMap_->get<reco::Candidate, panda::Tau>());
 
   for (unsigned iP(0); iP != outTaus.size(); ++iP) {
     auto& outTau(outTaus[iP]);
@@ -125,9 +125,9 @@ TausFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genTauMap(objectMap_->get<reco::GenParticle, panda::Tau>());
+    auto& genTauMap(objectMap_->get<reco::Candidate, panda::Tau>());
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genTauMap.bwdMap) {
       auto& genPtr(link.second);

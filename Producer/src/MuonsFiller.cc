@@ -116,9 +116,9 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   // export panda <-> reco mapping
 
   auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>());
-  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>("pf"));
   auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
-  auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+  auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>("gen"));
 
   for (unsigned iP(0); iP != outMuons.size(); ++iP) {
     auto& outMuon(outMuons[iP]);

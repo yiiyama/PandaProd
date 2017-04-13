@@ -24,7 +24,7 @@
 typedef std::chrono::steady_clock SClock;
 double toMS(SClock::duration const& interval)
 {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(interval).count();
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(interval).count() * 1.e-6;
 }
 
 class PandaProducer : public edm::EDAnalyzer {
@@ -63,6 +63,7 @@ private:
 
   std::vector<SClock::duration> timers_;
   SClock::time_point lastAnalyze_; //! Time point of last return from analyze()
+  unsigned long long nEvents_;
 };
 
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
@@ -72,7 +73,8 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger", true)),
   printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0)),
   timers_(),
-  lastAnalyze_()
+  lastAnalyze_(),
+  nEvents_(0)
 {
   auto&& coll(consumesCollector());
 
@@ -140,7 +142,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   eventCounter_->Fill(0.5);
   
   if (printLevel_ >= 1) {
-    if (lastAnalyze_ == SClock::time_point()) {
+    if (nEvents_ == 0) {
       if (printLevel_ >= 3)
         std::cout << "[PandaProducer::analyze] "
                   << "First event; CMSSW step time unknown" << std::endl;
@@ -155,6 +157,8 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
       timers_.back() += dt;
     }
   }
+
+  ++nEvents_;
 
   SClock::time_point start;
 
@@ -423,17 +427,17 @@ PandaProducer::endJob()
       std::cout << " " << fillers_[iF]->getName() << "  ";
       double time(toMS(timers_[iF]));
       if (time > 10000.)
-        std::cout << std::fixed << std::setprecision(5) << time / 1000. << " s";
+        std::cout << std::fixed << std::setprecision(5) << time / nEvents_ / 1000. << " s/evt";
       else
-        std::cout << time << " ms";
+        std::cout << time / nEvents_ << " ms/evt";
       std::cout << std::endl;
     }
     std::cout << " Other CMSSW  ";
     double time(toMS(timers_.back()));
     if (time > 10000.)
-      std::cout << std::fixed << std::setprecision(5) << time / 1000. << " s";
+      std::cout << std::fixed << std::setprecision(5) << time / nEvents_ / 1000. << " s/evt";
     else
-      std::cout << time << " ms";
+      std::cout << time / nEvents_ << " ms/evt";
     std::cout << std::endl;
   }
 }

@@ -21,7 +21,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(rawPhotonsToken_, _cfg, _coll, "rawPhotons");
+  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
   getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
   getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
@@ -80,7 +80,7 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
-  auto& inRawPhotons(getProduct_(_inEvent, rawPhotonsToken_));
+  auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
   auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
   auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
@@ -307,9 +307,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
-    for (auto& raw : inRawPhotons) {
-      if (raw.superCluster() == scRef) {
-        outPhoton.rawPt = raw.pt();
+    for (auto& smeared : inSmearedPhotons) {
+      if (smeared.superCluster() == scRef) {
+        outPhoton.smearedPt = smeared.pt();
         break;
       }
     }

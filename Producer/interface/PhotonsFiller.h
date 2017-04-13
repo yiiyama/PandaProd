@@ -32,7 +32,7 @@ class PhotonsFiller : public FillerBase {
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<PhotonView> photonsToken_;
-  NamedToken<PhotonView> rawPhotonsToken_;
+  NamedToken<PhotonView> smearedPhotonsToken_;
   NamedToken<PhotonView> regressionPhotonsToken_;
   NamedToken<PhotonView> gsUnfixedPhotonsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<reco::CandidateView> pfCandidatesToken_;

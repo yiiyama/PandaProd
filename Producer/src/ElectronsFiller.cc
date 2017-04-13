@@ -282,7 +282,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& scEleMap(objectMap_->get<reco::SuperCluster, panda::Electron>());
   auto& pfEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
   auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
-  auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
+  auto& genEleMap(objectMap_->get<reco::Candidate, panda::Electron>());
   
   for (unsigned iP(0); iP != outElectrons.size(); ++iP) {
     auto& outElectron(outElectrons[iP]);
@@ -348,7 +348,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (!isRealData_) {
     auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>());
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genEleMap.bwdMap) {
       auto& genPtr(link.second);

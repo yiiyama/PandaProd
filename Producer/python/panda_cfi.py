@@ -250,7 +250,8 @@ panda = cms.EDAnalyzer('PandaProducer',
         ),
         genParticles = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
-            filler = cms.untracked.string('GenParticles')
+            filler = cms.untracked.string('GenParticles'),
+            prune = cms.untracked.bool(True)
         ),
         ak4GenJets = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

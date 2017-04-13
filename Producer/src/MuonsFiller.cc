@@ -118,7 +118,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>());
   auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
   auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
-  auto& genMuMap(objectMap_->get<reco::GenParticle, panda::Muon>());
+  auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
 
   for (unsigned iP(0); iP != outMuons.size(); ++iP) {
     auto& outMuon(outMuons[iP]);
@@ -177,9 +177,9 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genMuMap(objectMap_->get<reco::GenParticle, panda::Muon>());
+    auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genMuMap.bwdMap) {
       auto& genPtr(link.second);

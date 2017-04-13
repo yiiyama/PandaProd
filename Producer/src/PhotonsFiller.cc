@@ -345,7 +345,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>());
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>());
   auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>());
-  auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
+  auto& genPhoMap(objectMap_->get<reco::Candidate, panda::Photon>());
   
   for (unsigned iP(0); iP != outPhotons.size(); ++iP) {
     auto& outPhoton(outPhotons[iP]);
@@ -395,9 +395,9 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
+    auto& genPhoMap(objectMap_->get<reco::Candidate, panda::Photon>());
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genPhoMap.bwdMap) {
       auto& genPtr(link.second);

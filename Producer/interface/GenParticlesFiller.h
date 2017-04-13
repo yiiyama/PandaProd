@@ -4,6 +4,7 @@
 #include "FillerBase.h"
 
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 
 class GenParticlesFiller : public FillerBase {
  public:
@@ -15,8 +16,12 @@ class GenParticlesFiller : public FillerBase {
 
  protected:
   typedef edm::View<reco::GenParticle> GenParticleView;
+  typedef edm::View<pat::PackedGenParticle> PackedGenParticleView;
 
   NamedToken<GenParticleView> genParticlesToken_;
+  NamedToken<PackedGenParticleView> finalStateParticlesToken_;
+
+  bool furtherPrune_{true};
 };
 
 #endif

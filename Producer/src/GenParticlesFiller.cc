@@ -161,6 +161,22 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
   getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
   // this is miniaod-specific
   getToken_(finalStateParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
+
+  if (furtherPrune_) {
+    // Using a non-default function to accommodate the case where important decay trees are truncated by CMSSW pruning
+    /* Removing the following:
+     *  . Terminal non-final state (d.daughters.size() == 0 && d.status != 1) with pt < 0.05 GeV
+     *  . Repeating link (d.daughters.size() == 1 && d.daughters[0].pdgId == d.pdgId)
+     *  . Hadronic intermediates (status != 1 and (the hundreds place of |d.pdgId| is nonzero, or pdgId == 21, 81-100)) that is not the first heavy-flavor hadron in the chain
+     *  . |d.pdgId| <= 3 and |d.daughters[n].pdgId| <= 3 for all n
+    */
+    PNode::gPruningFunction = [](PNode const& node)->bool {
+      return (node.isIntermediateTerminal() && node.pt < 0.05) ||
+      node.isNoDecay() ||
+      (node.isHadronicIntermediate() && !node.isFirstHeavyHadron()) ||
+      node.isLightDecayingToLight();
+    };
+  }
 }
 
 void

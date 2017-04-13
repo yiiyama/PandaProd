@@ -424,21 +424,13 @@ PandaProducer::endJob()
   if (printLevel_ >= 1) {
     std::cout << "[PandaProducer::endJob] Timer summary" << std::endl;
     for (unsigned iF(0); iF != fillers_.size(); ++iF) {
-      std::cout << " " << fillers_[iF]->getName() << "  ";
-      double time(toMS(timers_[iF]));
-      if (time > 10000.)
-        std::cout << std::fixed << std::setprecision(5) << time / nEvents_ / 1000. << " s/evt";
-      else
-        std::cout << time / nEvents_ << " ms/evt";
-      std::cout << std::endl;
+      std::cout << " " << fillers_[iF]->getName() << "  "
+                << std::fixed << std::setprecision(3) << toMS(timers_[iF]) / nEvents_ << " ms/evt"
+                << std::endl;
     }
-    std::cout << " Other CMSSW  ";
-    double time(toMS(timers_.back()));
-    if (time > 10000.)
-      std::cout << std::fixed << std::setprecision(5) << time / nEvents_ / 1000. << " s/evt";
-    else
-      std::cout << time / nEvents_ << " ms/evt";
-    std::cout << std::endl;
+    std::cout << " Other CMSSW  "
+              << std::fixed << std::setprecision(3) << toMS(timers_.back()) / nEvents_ << " ms/evt"
+              << std::endl;
   }
 }
 

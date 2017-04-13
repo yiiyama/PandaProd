@@ -151,7 +151,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 void
 MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
-  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+  auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>("pf"));
   auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
 
   auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
@@ -177,7 +177,7 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>());
+    auto& genMuMap(objectMap_->get<reco::Candidate, panda::Muon>("gen"));
 
     auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 

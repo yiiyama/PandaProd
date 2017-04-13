@@ -33,7 +33,7 @@ class ElectronsFiller : public FillerBase {
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<GsfElectronView> electronsToken_;
-  NamedToken<GsfElectronView> rawElectronsToken_;
+  NamedToken<GsfElectronView> smearedElectronsToken_;
   NamedToken<GsfElectronView> regressionElectronsToken_;
   NamedToken<GsfElectronView> gsUnfixedElectronsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<PhotonView> photonsToken_;

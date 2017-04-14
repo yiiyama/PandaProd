@@ -128,6 +128,13 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     // timer for the CMSSW execution outside of this module
     timers_.push_back(SClock::duration::zero());
   }
+
+  // The lambda function inside will be called by CMSSW Framework whenever a new product is registered
+  callWhenNewProductsRegistered([this](edm::BranchDescription const& branchDescription) {
+      auto&& coll(this->consumesCollector());
+      for (auto* filler : this->fillers_)
+        filler->notifyNewProduct(branchDescription, coll);
+    });
 }
 
 PandaProducer::~PandaProducer()

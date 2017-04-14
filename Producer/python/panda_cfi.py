@@ -12,8 +12,6 @@ panda = cms.EDAnalyzer('PandaProducer',
         common = cms.untracked.PSet(
             triggerObjects = cms.untracked.string('selectedPatTrigger'),
             genEventInfo = cms.untracked.string('generator'),
-            lheEvent = cms.untracked.string('externalLHEProducer'),
-            lheRun = cms.untracked.string('externalLHEProducer'),
             finalStateParticles = cms.untracked.string('packedGenParticles'),
             genParticles = cms.untracked.string('prunedGenParticles'),
             pfCandidates = cms.untracked.string('packedPFCandidates'),
@@ -321,8 +319,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         ),
         weights = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
-            filler = cms.untracked.string('Weights'),
-            signalWeights = cms.untracked.bool(True)
+            filler = cms.untracked.string('Weights')
         ),
         recoil = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

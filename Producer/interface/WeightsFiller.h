@@ -31,6 +31,7 @@ class WeightsFiller : public FillerBase {
 
  protected:
   void getLHEWeights_(LHEEventProduct const&);
+  void bookGenParam_();
 
   NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<LHEEventProduct> lheEventToken_;
@@ -44,7 +45,6 @@ class WeightsFiller : public FillerBase {
 
   double central_{0.};
   double qcdVariations_[7]{};
-  double originalXWGTUP_{0.}; // this is probably always the same as central
   float genParam_[1024]{}; // I don't like that we hard-code the array size here..
 
   // these objects will be deleted automatically when the output file closes

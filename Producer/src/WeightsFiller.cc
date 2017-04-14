@@ -103,13 +103,13 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const&, edm::EventSetup 
 
   _outEvent.weight = central_;
 
-  _outEvent.genReweight.r1f2DW = qcdVariations_[0] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.r1f5DW = qcdVariations_[1] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.r2f1DW = qcdVariations_[2] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.r2f2DW = qcdVariations_[3] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.r5f1DW = qcdVariations_[4] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.r5f5DW = qcdVariations_[5] / originalXWGTUP_ - 1.;
-  _outEvent.genReweight.pdfDW = qcdVariations_[6] / originalXWGTUP_ - 1.;
+  _outEvent.genReweight.r1f2DW = qcdVariations_[0] / central_ - 1.;
+  _outEvent.genReweight.r1f5DW = qcdVariations_[1] / central_ - 1.;
+  _outEvent.genReweight.r2f1DW = qcdVariations_[2] / central_ - 1.;
+  _outEvent.genReweight.r2f2DW = qcdVariations_[3] / central_ - 1.;
+  _outEvent.genReweight.r5f1DW = qcdVariations_[4] / central_ - 1.;
+  _outEvent.genReweight.r5f5DW = qcdVariations_[5] / central_ - 1.;
+  _outEvent.genReweight.pdfDW = qcdVariations_[6] / central_ - 1.;
 
   // genParam branch is not filled from the outEvent object, but we copy the value here for consistence
   // (some other filler module may decide to use the values!)
@@ -122,27 +122,7 @@ WeightsFiller::fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&)
   if (!isRealData_ && bufferCounter_ < learningPhase) {
     // Run boundary before getting out of learning phase
     // It could be a genuine run boundary, but there is no way to tell -> we need to exit learning phase now
-
-    if (wids_.size() != 0) {
-      TDirectory::TContext context(outputFile_);
-
-      auto* weightTree(new TTree("weights", "weights"));
-      auto* wid(new TString);
-      weightTree->Branch("id", "TString", &wid); // currently only have the ability to save ID
-
-      for (TString& w : wids_) {
-        *wid = w;
-        weightTree->Fill();
-      }
-
-      auto* eventTree(static_cast<TTree*>(outputFile_->Get("events")));
-      auto* branch(eventTree->Branch("genReweight.genParam", genParam_, TString::Format("genParam[%d]/F", int(wids_.size()))));
-
-      for (unsigned iE(0); iE != bufferCounter_; ++iE) {
-        std::copy(genParamBuffer_[iE], genParamBuffer_[iE] + wids_.size(), genParam_);
-        branch->Fill();
-      }
-    }
+    bookGenParam_();
 
     bufferCounter_ = unsigned(-1);
   }
@@ -162,8 +142,6 @@ void
 WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
 {
   // Update this function if changing the set of weights to save
-
-  originalXWGTUP_ = _lheEvent.originalXWGTUP();
 
   double sumd2(0.);
   unsigned iS(0);
@@ -192,7 +170,7 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
         }
       }
 
-      genParam_[iS++] = wgt.wgt / originalXWGTUP_; 
+      genParam_[iS++] = wgt.wgt / central_;
 
       continue;
     }
@@ -222,7 +200,7 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
       }
     }
     else if ((id >= 11 && id <= 110) || (id >= 2001 && id < 2100)) {
-      double d(wgt.wgt - originalXWGTUP_);
+      double d(wgt.wgt - central_);
       sumd2 += d * d;
     }
   }
@@ -236,29 +214,35 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
   }
   else if (bufferCounter_ == learningPhase) {
     // By now we should know how large the signal weights vector is
-
-    if (wids_.size() != 0) {
-      TDirectory::TContext context(outputFile_);
-
-      auto* weightTree(new TTree("weights", "weights"));
-      auto* wid(new TString);
-      weightTree->Branch("id", "TString", &wid); // currently only have the ability to save ID
-
-      for (TString& w : wids_) {
-        *wid = w;
-        weightTree->Fill();
-      }
-
-      auto* eventTree(static_cast<TTree*>(outputFile_->Get("events")));
-      auto* branch(eventTree->Branch("genReweight.genParam", genParam_, TString::Format("genParam[%d]/F", int(wids_.size()))));
-
-      for (unsigned iE(0); iE != learningPhase; ++iE) {
-        std::copy(genParamBuffer_[iE], genParamBuffer_[iE] + wids_.size(), genParam_);
-        branch->Fill();
-      }
-    }
+    bookGenParam_();
 
     bufferCounter_ = unsigned(-1);
+  }
+}
+
+void
+WeightsFiller::bookGenParam_()
+{
+  if (wids_.size() == 0)
+    return;
+
+  TDirectory::TContext context(outputFile_);
+
+  auto* weightTree(new TTree("weights", "weights"));
+  auto* wid(new TString);
+  weightTree->Branch("id", "TString", &wid); // currently only have the ability to save ID
+
+  for (TString& w : wids_) {
+    *wid = w;
+    weightTree->Fill();
+  }
+
+  auto* eventTree(static_cast<TTree*>(outputFile_->Get("events")));
+  auto* branch(eventTree->Branch("genReweight.genParam", genParam_, TString::Format("genParam[%d]/F", int(wids_.size()))));
+
+  for (unsigned iE(0); iE != learningPhase; ++iE) {
+    std::copy(genParamBuffer_[iE], genParamBuffer_[iE] + wids_.size(), genParam_);
+    branch->Fill();
   }
 }
 

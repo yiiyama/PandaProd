@@ -111,10 +111,10 @@ panda = cms.EDAnalyzer('PandaProducer',
             subjetBtag = cms.untracked.string('pfCombinedInclusiveSecondaryVertexV2BJetTags'),
             subjetQGL = cms.untracked.string('subQGTagCA15PFchs:qgLikelihood'),
             doubleBTagWeights = cms.untracked.FileInPath('PandaProd/Utilities/data/BoostedSVDoubleCA15_withSubjet_v4.weights.xml'),
-            computeSubstructure = cms.untracked.string('recoil'),
+            computeSubstructure = cms.untracked.string('never'),
             recoil = cms.untracked.string('MonoXFilter:categories'),
             fillConstituents = cms.untracked.bool(True),
-            minPt = cms.untracked.double(100.),
+            minPt = cms.untracked.double(180.),
             maxEta = cms.untracked.double(4.7)
         ),
         puppiCA15Jets = cms.untracked.PSet(
@@ -137,7 +137,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             computeSubstructure = cms.untracked.string('recoil'),
             recoil = cms.untracked.string('MonoXFilter:categories'),
             fillConstituents = cms.untracked.bool(True),
-            minPt = cms.untracked.double(100.),
+            minPt = cms.untracked.double(180.),
             maxEta = cms.untracked.double(4.7)
         ),
         electrons = cms.untracked.PSet(

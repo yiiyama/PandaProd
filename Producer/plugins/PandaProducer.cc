@@ -422,14 +422,27 @@ PandaProducer::endJob()
   delete outputFile_;
 
   if (printLevel_ >= 1) {
+    double total(0.);
+
     std::cout << "[PandaProducer::endJob] Timer summary" << std::endl;
     for (unsigned iF(0); iF != fillers_.size(); ++iF) {
+      double msPerEvt(toMS(timers_[iF]) / nEvents_);
       std::cout << " " << fillers_[iF]->getName() << "  "
-                << std::fixed << std::setprecision(3) << toMS(timers_[iF]) / nEvents_ << " ms/evt"
+                << std::fixed << std::setprecision(3) << msPerEvt << " ms/evt"
                 << std::endl;
+
+      total += msPerEvt;
     }
-    std::cout << " Other CMSSW  "
-              << std::fixed << std::setprecision(3) << toMS(timers_.back()) / nEvents_ << " ms/evt"
+    if (nEvents_ > 1) {
+      double msPerEvt(toMS(timers_.back()) / (nEvents_ - 1));
+      std::cout << " Other CMSSW  "
+                << std::fixed << std::setprecision(3) << msPerEvt << " ms/evt"
+                << std::endl;
+
+      total += msPerEvt;
+    }
+    std::cout << std::endl << " Total  "
+              << std::fixed << std::setprecision(3) << total << " ms/evt"
               << std::endl;
   }
 }

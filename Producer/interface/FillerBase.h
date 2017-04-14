@@ -43,6 +43,8 @@ class FillerBase {
   virtual void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
   //! Fill the run tree
   virtual void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
+  //! Called (indirectly) by CMSSW framework whenever a new product is registered to Event
+  virtual void notifyNewProduct(edm::BranchDescription const&, edm::ConsumesCollector&) {}
 
   std::string const& getName() const { return fillerName_; }
   bool enabled() const { return enabled_; }

@@ -21,7 +21,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(rawPhotonsToken_, _cfg, _coll, "rawPhotons");
+  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
   getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
   getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
@@ -39,8 +39,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
     getToken_(genParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
 
   if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
-      std::string name(panda::PhotonTriggerObjectName[iT]); // "f<trigger filter name>"
+    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
+      std::string name(panda::Photon::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
       triggerObjects_[iT].insert(filters.begin(), filters.end());
     }
@@ -71,8 +71,7 @@ void
 PhotonsFiller::addOutput(TFile& _outputFile)
 {
   TDirectory::TContext context(&_outputFile);
-  TTree* t;
-  t = panda::makePhotonTriggerObjectTree();
+  TTree* t(panda::utils::makeDocTree("PhotonTriggerObject", panda::Photon::TriggerObjectName, panda::Photon::nTriggerObjects));
   t->Write();
   delete t;
 }
@@ -81,7 +80,7 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
-  auto& inRawPhotons(getProduct_(_inEvent, rawPhotonsToken_));
+  auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
   auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
   auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
@@ -114,25 +113,48 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       return &*hitItr;
     });
 
+  auto findPF([&pfCandidates](reco::Photon const& inPhoton)->reco::CandidatePtr {
+      int iMatch(-1);
+
+      double minDR(0.1);
+      for (unsigned iPF(0); iPF != pfCandidates.size(); ++iPF) {
+        auto& pf(pfCandidates.at(iPF));
+        if (std::abs(pf.pdgId()) != 11 || pf.pdgId() == 22)
+          continue;
+
+        double dR(reco::deltaR(pf, inPhoton));
+        if (dR < minDR) {
+          minDR = dR;
+          iMatch = iPF;
+        }
+      }
+
+      if (iMatch >= 0)
+        return pfCandidates.ptrAt(iMatch);
+      else
+        return reco::CandidatePtr();
+    });
+
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
   auto& outPhotons(_outEvent.photons);
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
 
-  std::map<uint32_t, reco::Photon const*> gsFixMap;
-  if (gsUnfixedPhotons) {
-    for (auto& ph : *gsUnfixedPhotons) {
-      auto&& scRef(ph.superCluster());
-      if (scRef.isNull())
-        continue;
-      auto&& bcRef(scRef->seed());
-      if (bcRef.isNull())
-        continue;
+  // See below
+  // std::map<uint32_t, reco::Photon const*> gsFixMap;
+  // if (gsUnfixedPhotons) {
+  //   for (auto& ph : *gsUnfixedPhotons) {
+  //     auto&& scRef(ph.superCluster());
+  //     if (scRef.isNull())
+  //       continue;
+  //     auto&& bcRef(scRef->seed());
+  //     if (bcRef.isNull())
+  //       continue;
 
-      gsFixMap[bcRef->seed().rawId()] = &ph;
-    }
-  }
+  //     gsFixMap[bcRef->seed().rawId()] = &ph;
+  //   }
+  // }
 
   unsigned iPh(-1);
   for (auto& inPhoton : inPhotons) {
@@ -280,25 +302,14 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }      
     }
 
-    reco::Candidate const* matchedPF(0);
-    double minDR(0.1);
-    for (auto& pf : pfCandidates) {
-      if (pf.pdgId() != 22)
-        continue;
+    reco::CandidatePtr matchedPF(findPF(inPhoton));
 
-      double dR(reco::deltaR(pf, inPhoton));
-      if (dR < minDR) {
-        minDR = dR;
-        matchedPF = &pf;
-      }
-    }
-
-    if (matchedPF)
+    if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
-    for (auto& raw : inRawPhotons) {
-      if (raw.superCluster() == scRef) {
-        outPhoton.rawPt = raw.pt();
+    for (auto& smeared : inSmearedPhotons) {
+      if (smeared.superCluster() == scRef) {
+        outPhoton.smearedPt = smeared.pt();
         break;
       }
     }
@@ -310,10 +321,19 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }
     }
 
-    if (gsUnfixedPhotons && seedRef.isNonnull()) {
-      auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-      if (eItr != gsFixMap.end())
-        outPhoton.originalPt = eItr->second->pt();
+    // if (gsUnfixedPhotons && seedRef.isNonnull()) {
+    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
+    //   if (eItr != gsFixMap.end())
+    //     outPhoton.originalPt = eItr->second->pt();
+    // }
+    // Following MET POG and doing the most simplistic match
+    if (gsUnfixedPhotons) {
+      for (auto& ph : *gsUnfixedPhotons) {
+        if (reco::deltaR(ph, inPhoton) < 0.01) {
+          outPhoton.originalPt = ph.pt();
+          break;
+        }
+      }
     }
 
     ptrList.push_back(inPhotons.ptrAt(iPh));
@@ -324,13 +344,18 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   // make reco <-> panda mapping
   auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>());
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>());
-  auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
+  auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("pf"));
+  auto& genPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("gen"));
   
   for (unsigned iP(0); iP != outPhotons.size(); ++iP) {
     auto& outPhoton(outPhotons[iP]);
     unsigned idx(originalIndices[iP]);
     phoPhoMap.add(ptrList[idx], outPhoton);
     scPhoMap.add(edm::refToPtr(ptrList[idx]->superCluster()), outPhoton);
+
+    reco::CandidatePtr matchedPF(findPF(*ptrList[idx]));
+    if (matchedPF.isNonnull())
+      pfPhoMap.add(matchedPF, outPhoton);
 
     if (!isRealData_) {
       auto& inPhoton(*ptrList[idx]);
@@ -350,8 +375,10 @@ void
 PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>().bwdMap);
+  auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("pf"));
 
   auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
 
   for (auto& link : scPhoMap) { // panda -> edm
     auto& outPhoton(*link.first);
@@ -360,10 +387,17 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     outPhoton.superCluster.setRef(scMap.at(scPtr));
   }
 
-  if (!isRealData_) {
-    auto& genPhoMap(objectMap_->get<reco::GenParticle, panda::Photon>());
+  for (auto& link : pfPhoMap.bwdMap) { // panda -> edm
+    auto& outPhoton(*link.first);
+    auto& pfPtr(link.second);
 
-    auto& genMap(_objectMaps.at("genParticles").get<reco::GenParticle, panda::GenParticle>().fwdMap);
+    outPhoton.matchedPF.setRef(pfMap.at(pfPtr));
+  }
+
+  if (!isRealData_) {
+    auto& genPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("gen"));
+
+    auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
     for (auto& link : genPhoMap.bwdMap) {
       auto& genPtr(link.second);
@@ -378,10 +412,10 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   if (useTrigger_) {
     auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::nPhotonTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Photon::nTriggerObjects];
 
     // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
+    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
       // loop over all trigger objects (and their associated filter names)
       for (auto& objAndNames : objMap) { // (TO ptr, VString)
         VString const& names(*objAndNames.second);
@@ -401,7 +435,7 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inPhoton(*link.first);
       auto& outPhoton(*link.second);
 
-      for (unsigned iT(0); iT != panda::nPhotonTriggerObjects; ++iT) {
+      for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
           if (reco::deltaR(inPhoton, *obj) < 0.3) {
             outPhoton.triggerMatch[iT] = true;

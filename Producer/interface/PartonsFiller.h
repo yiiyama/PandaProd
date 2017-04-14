@@ -12,6 +12,7 @@ class PartonsFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void notifyNewProduct(edm::BranchDescription const&, edm::ConsumesCollector&) override;
 
  protected:
   NamedToken<LHEEventProduct> lheEventToken_;

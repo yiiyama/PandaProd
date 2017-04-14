@@ -43,6 +43,8 @@ class FillerBase {
   virtual void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
   //! Fill the run tree
   virtual void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) {}
+  //! Called (indirectly) by CMSSW framework whenever a new product is registered to Event
+  virtual void notifyNewProduct(edm::BranchDescription const&, edm::ConsumesCollector&) {}
 
   std::string const& getName() const { return fillerName_; }
   bool enabled() const { return enabled_; }
@@ -126,10 +128,10 @@ class FillerBase {
 
   //! get a product from the Event or Run.
   template<class Principal, class Product>
-  Product const& getProduct_(Principal const&, NamedToken<Product> const&);
+  Product const& getProduct_(Principal const&, NamedToken<Product> const&, edm::Handle<Product>* = 0);
   //! get a product from the Event or Run. Return a null pointer if the product does not exist
   template<class Principal, class Product>
-  Product const* getProductSafe_(Principal const&, NamedToken<Product> const&);
+  Product const* getProductSafe_(Principal const&, NamedToken<Product> const&, edm::Handle<Product>* = 0);
 
   FillerObjectMap* objectMap_{0};
 
@@ -192,27 +194,35 @@ FillerBase::getTokenImpl_(NamedToken<Product>& _token, edm::ParameterSet const& 
 
 template<class Principal, class Product>
 Product const&
-FillerBase::getProduct_(Principal const& _prn, NamedToken<Product> const& _token)
+FillerBase::getProduct_(Principal const& _prn, NamedToken<Product> const& _token, edm::Handle<Product>* _handle/* = 0*/)
 {
   edm::Handle<Product> handle;
-  if (!_prn.getByToken(_token.second, handle))
+  edm::Handle<Product>* handlePtr(_handle);
+  if (!handlePtr)
+    handlePtr = &handle;
+
+  if (!_prn.getByToken(_token.second, *handlePtr))
     throw cms::Exception("ProductNotFound") << "fillers." << getName() << "." << _token.first;
 
-  return *handle;
+  return **handlePtr;
 }
 
 template<class Principal, class Product>
 Product const*
-FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _token)
+FillerBase::getProductSafe_(Principal const& _prn, NamedToken<Product> const& _token, edm::Handle<Product>* _handle/* = 0*/)
 {
   if (_token.second.isUninitialized())
     return 0;
 
   edm::Handle<Product> handle;
-  if (!_prn.getByToken(_token.second, handle))
+  edm::Handle<Product>* handlePtr(_handle);
+  if (!handlePtr)
+    handlePtr = &handle;
+
+  if (!_prn.getByToken(_token.second, *handlePtr))
     return 0;
 
-  return handle.product();
+  return handlePtr->product();
 }
 
 void fillP4(panda::Particle&, reco::Candidate const&);

@@ -9,6 +9,7 @@
 
 #include "FillerBase.h"
 
+#include "FWCore/Framework/interface/GetterOfProducts.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/LHERunInfoProduct.h"
@@ -19,37 +20,38 @@
 class WeightsFiller : public FillerBase {
  public:
   WeightsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
-  ~WeightsFiller();
+  ~WeightsFiller() {}
 
   void branchNames(panda::utils::BranchList&, panda::utils::BranchList&) const override;
   void addOutput(TFile&) override;
-  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void fillAll(edm::Event const&, edm::EventSetup const&) override;
+  void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
+  void notifyNewProduct(edm::BranchDescription const&, edm::ConsumesCollector&) override;
 
  protected:
-  void getLHEWeights_(LHEEventProduct const&, double [7]);
+  void getLHEWeights_(LHEEventProduct const&);
+  void bookGenParam_();
 
   NamedToken<GenEventInfoProduct> genInfoToken_;
   NamedToken<LHEEventProduct> lheEventToken_;
-  NamedToken<LHERunInfoProduct> lheRunToken_;
+
+  // learn the size of the signal weights vector in the first 100 events
+  static unsigned const learningPhase{100};
   
-  bool saveSignalWeights_{false};
-  int nSignalWeights_{-1};
+  std::vector<TString> wids_{};
+  float genParamBuffer_[learningPhase][1024]{};
+  unsigned bufferCounter_{0};
+
+  double central_{0.};
+  double qcdVariations_[7]{};
   float genParam_[1024]{}; // I don't like that we hard-code the array size here..
 
   // these objects will be deleted automatically when the output file closes
   TH1D* hSumW_{0};
-  TTree* groupTree_{0};
-  TTree* weightTree_{0};
 
-  TString* gcombine_{0};
-  TString* gtype_{0};
-  TString* wid_{0};
-  TString* wtitle_{0};
-  unsigned gid_{0};
-  
-  TTree* eventTree_{0};
+  // need to hold on to the output file handle
+  TFile* outputFile_{0};
 };
 
 #endif

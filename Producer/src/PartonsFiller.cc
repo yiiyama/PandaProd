@@ -3,7 +3,9 @@
 PartonsFiller::PartonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg)
 {
-  getToken_(lheEventToken_, _cfg, _coll, "common", "lheEvent");
+  // Some samples have non-standard LHEEventProduct names
+  // Using notifyNewProduct() to dynamically find the tag
+  lheEventToken_.first = "lheEvent";
 }
 
 void
@@ -34,6 +36,15 @@ PartonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outParton.setXYZE(pup[0], pup[1], pup[2], pup[3]);
 
     outParton.pdgid = hepeup.IDUP[iP];
+  }
+}
+
+void
+PartonsFiller::notifyNewProduct(edm::BranchDescription const& _bdesc, edm::ConsumesCollector& _coll)
+{
+  if (_bdesc.unwrappedTypeID() == edm::TypeID(typeid(LHEEventProduct))) {
+    edm::InputTag tag(_bdesc.moduleLabel(), _bdesc.productInstanceName(), _bdesc.processName());
+    lheEventToken_.second = _coll.consumes<LHEEventProduct>(tag);
   }
 }
 

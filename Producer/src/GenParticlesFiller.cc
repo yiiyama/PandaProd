@@ -43,6 +43,17 @@ struct PNodeWithPtr : public PNode {
         // this node is already constructed
 
         PNode* dnode(nItr->second);
+
+        // protect against cyclic graphs - is dnode my ancestor?
+        PNode* p(this);
+        while (p) {
+          if (p == dnode)
+            break;
+          p = p->mother;
+        }
+        if (p) // one of my ancestors is dnode; don't add this node as my daughter
+          continue;
+
         PNode* dmother(dnode->mother);
 
         if (dmother) {

@@ -47,6 +47,7 @@ VerticesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::E
   auto& inCandidates(getProduct_(_inEvent, candidatesToken_));
 
   auto& outVertices(_outEvent.vertices);
+  outVertices.reserve(inVertices.size());
 
   auto& objMap(objectMap_->get<reco::Vertex, panda::RecoVertex>());
 

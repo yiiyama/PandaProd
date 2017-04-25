@@ -220,6 +220,8 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   }
 
   auto& outParticles(_outEvent.genParticles);
+  outParticles.reserve(inParticles.size() + inFinalStates.size());
+  
   auto& objectMap(objectMap_->get<reco::Candidate, panda::GenParticle>());
 
   for (auto* rootNode : rootNodes) {

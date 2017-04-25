@@ -285,12 +285,16 @@ setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identificatio
 process.photonIDValueMapProducer.srcMiniAOD = 'slimmedPhotons'
 
 process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
+process.worstIsolationProducerFT = worstIsolationProducer.clone(
+    photons = 'slimmedPhotonsFT'
+)
 
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
     process.egmGsfElectronIDs +
-    process.worstIsolationProducer
+    process.worstIsolationProducer +
+    process.worstIsolationProducerFT
 )
 
 ### QG TAGGING

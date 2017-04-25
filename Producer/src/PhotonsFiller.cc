@@ -17,12 +17,13 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   chIsoEA_(getParameter_<edm::FileInPath>(_cfg, "chIsoEA").fullPath()),
   nhIsoEA_(getParameter_<edm::FileInPath>(_cfg, "nhIsoEA").fullPath()),
   phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath()),
+  superClustersFillerName_(getParameter_<std::string>(_cfg, "superClusters")),
   minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
-  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
+  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons", false);
+  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons", false);
   getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
@@ -57,14 +58,14 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
 void
 PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  _eventBranches.emplace_back("photons");
+  _eventBranches.emplace_back(getName());
 
   if (isRealData_)
-    _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
+    _eventBranches += {"!" + getName() + ".geniso", "!" + getName() + ".matchedGen_"};
   if (!useTrigger_)
-    _eventBranches.emplace_back("!photons.triggerMatch");
+    _eventBranches.emplace_back("!" + getName() + ".triggerMatch");
   if (gsUnfixedPhotonsToken_.second.isUninitialized())
-    _eventBranches.emplace_back("!photons.originalPt");
+    _eventBranches.emplace_back("!" + getName() + ".originalPt");
 }
 
 void
@@ -80,8 +81,8 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
-  auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
-  auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
+  auto* inSmearedPhotons(getProductSafe_(_inEvent, smearedPhotonsToken_));
+  auto* inRegressionPhotons(getProductSafe_(_inEvent, regressionPhotonsToken_));
   auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
@@ -137,7 +138,13 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
-  auto& outPhotons(_outEvent.photons);
+  panda::PhotonCollection* outPtr(0);
+  if (getName() == "photons")
+    outPtr = &_outEvent.photons;
+  else
+    outPtr = &_outEvent.photonsFT;
+
+  auto& outPhotons(*outPtr);
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
 
@@ -307,17 +314,21 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
-    for (auto& smeared : inSmearedPhotons) {
-      if (smeared.superCluster() == scRef) {
-        outPhoton.smearedPt = smeared.pt();
-        break;
+    if (inSmearedPhotons) {
+      for (auto& smeared : *inSmearedPhotons) {
+        if (smeared.superCluster() == scRef) {
+          outPhoton.smearedPt = smeared.pt();
+          break;
+        }
       }
     }
 
-    for (auto& reg : inRegressionPhotons) {
-      if (reg.superCluster() == scRef) {
-        outPhoton.regPt = reg.pt();
-        break;
+    if (inRegressionPhotons) {
+      for (auto& reg : *inRegressionPhotons) {
+        if (reg.superCluster() == scRef) {
+          outPhoton.regPt = reg.pt();
+          break;
+        }
       }
     }
 
@@ -377,7 +388,7 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   auto& scPhoMap(objectMap_->get<reco::SuperCluster, panda::Photon>().bwdMap);
   auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("pf"));
 
-  auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& scMap(_objectMaps.at(superClustersFillerName_).get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
   auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
 
   for (auto& link : scPhoMap) { // panda -> edm

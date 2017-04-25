@@ -237,8 +237,53 @@ panda = cms.EDAnalyzer('PandaProducer',
                 Ph90EBR9Iso = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph120EBR9Iso = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
             ),
+            superClusters = cms.untracked.string('superClusters'),
             minPt = cms.untracked.double(10.)
         ),
+#        photonsFT = cms.untracked.PSet(
+#            enabled = cms.untracked.bool(True),
+#            filler = cms.untracked.string('Photons'),
+#            photons = cms.untracked.string('slimmedPhotonsFT'),
+#            looseId = cms.untracked.string(egmidconf.photonLooseId.replace('egmPhotonIDs', 'egmPhotonIDsFT')),
+#            mediumId = cms.untracked.string(egmidconf.photonMediumId.replace('egmPhotonIDs', 'egmPhotonIDsFT')),
+#            tightId = cms.untracked.string(egmidconf.photonTightId.replace('egmPhotonIDs', 'egmPhotonIDsFT')),
+#            chIso = cms.untracked.string('photonIDValueMapProducerFT:phoChargedIsolation'),
+#            nhIso = cms.untracked.string('photonIDValueMapProducerFT:phoNeutralHadronIsolation'),
+#            phIso = cms.untracked.string('photonIDValueMapProducerFT:phoPhotonIsolation'),
+#            chIsoMax = cms.untracked.string('worstIsolationProducerFT'),
+#            chIsoEA = cms.untracked.FileInPath(egmidconf.photonCHIsoEA),
+#            nhIsoEA = cms.untracked.FileInPath(egmidconf.photonNHIsoEA),
+#            phIsoEA = cms.untracked.FileInPath(egmidconf.photonPhIsoEA),
+#            chIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
+#            nhIsoLeakage = cms.untracked.PSet(
+#                EB = cms.untracked.string('0.0148 * x + 0.000017 * x * x'),
+#                EE = cms.untracked.string('0.0163 * x + 0.000014 * x * x')
+#            ),
+#            phIsoLeakage = cms.untracked.PSet(
+#                EB = cms.untracked.string('0.0047 * x'),
+#                EE = cms.untracked.string('0.0034 * x')
+#            ),
+#            triggerObjects = cms.untracked.PSet(
+#                SEG34IorSEG40 = cms.untracked.vstring('hltL1sSingleEG34IorSingleEG40'),
+#                SEG40IorSJet200 = cms.untracked.vstring('hltL1sSingleEG40IorSingleJet200'),
+#                SEG34IorSEG40IorSJet200 = cms.untracked.vstring('hltL1sSingleEG34IorSingleEG40IorSingleJet200'),
+#                SEG24 = cms.untracked.vstring('hltL1sSingleEG24'),
+#                SEG30 = cms.untracked.vstring('hltL1sSingleEG30'),
+#                SEG40 = cms.untracked.vstring('hltL1sSingleEG40'),
+#                Ph120 = cms.untracked.vstring('hltEG120HEFilter'),
+#                Ph135 = cms.untracked.vstring('hltEG135HEFilter'),
+#                Ph165HE10 = cms.untracked.vstring('hltEG165HE10Filter'),
+#                Ph175 = cms.untracked.vstring('hltEG175HEFilter'),
+#                Ph22EBR9Iso = cms.untracked.vstring('hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+#                Ph36EBR9Iso = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+#                Ph50EBR9Iso = cms.untracked.vstring('hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+#                Ph75EBR9Iso = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+#                Ph90EBR9Iso = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
+#                Ph120EBR9Iso = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
+#            ),
+#            superClusters = cms.untracked.string('superClustersFT'),
+#            minPt = cms.untracked.double(10.)
+#        ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('PFCands'),
@@ -281,8 +326,32 @@ panda = cms.EDAnalyzer('PandaProducer',
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('SuperClusters'),
             superClusters = cms.untracked.string('reducedEgamma:reducedSuperClusters'),
-            ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
-            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits')
+            ebHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB'),
+            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits'),
+            mipTagger = cms.untracked.PSet(
+                YRangeFit = cms.double(7.),
+                XRangeFit = cms.double(180.),
+                ResidualWidth = cms.double(0.23),
+                HaloDiscThreshold = cms.double(70.)
+            )
+        ),
+        superClustersFT = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('SuperClusters'),
+            superClusters = cms.untracked.string('particleFlowSuperClusterECALFT:particleFlowSuperClusterECALBarrel'),
+            ebHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB'),
+            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits'),
+            mipTagger = cms.untracked.PSet(
+                YRangeFit = cms.double(7.),
+                XRangeFit = cms.double(180.),
+                ResidualWidth = cms.double(0.23),
+                HaloDiscThreshold = cms.double(70.)
+            )
+        ),
+        ebRecHitsFT = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('EBRecHits'),
+            ebHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB')
         ),
         vertices = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

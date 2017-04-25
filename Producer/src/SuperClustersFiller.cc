@@ -28,6 +28,7 @@ SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, e
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
   auto& outSuperClusters(_outEvent.superClusters);
+  outSuperClusters.reserve(inSuperClusters.size());
 
   auto& objectMap(objectMap_->get<reco::SuperCluster, panda::SuperCluster>());
 

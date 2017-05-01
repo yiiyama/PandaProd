@@ -321,7 +321,6 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   auto& vtxEleMap(objectMap_->get<reco::Vertex, panda::Electron>());
 
   auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
-  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
   auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
 
   for (auto& link : scEleMap.bwdMap) { // panda -> edm
@@ -331,11 +330,15 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
     outElectron.superCluster.setRef(scMap.at(scPtr));
   }
 
-  for (auto& link : pfEleMap.bwdMap) { // panda -> edm
-    auto& outElectron(*link.first);
-    auto& pfPtr(link.second);
+  if (_objectMaps.count("pfCandidates") != 0) {
+    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
 
-    outElectron.matchedPF.setRef(pfMap.at(pfPtr));
+    for (auto& link : pfEleMap.bwdMap) { // panda -> edm
+      auto& outElectron(*link.first);
+      auto& pfPtr(link.second);
+
+      outElectron.matchedPF.setRef(pfMap.at(pfPtr));
+    }
   }
 
   for (auto& link : vtxEleMap.bwdMap) { // panda -> edm

@@ -62,10 +62,13 @@ SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, e
     outPtr = &_outEvent.superClustersFT;
 
   auto& outSuperClusters(*outPtr);
+  outSuperClusters.reserve(inSuperClusters.size());
 
   auto& objectMap(objectMap_->get<reco::SuperCluster, panda::SuperCluster>());
 
+  unsigned iSC(-1);
   for (auto& inSC : inSuperClusters) {
+    ++iSC;
     auto& outSC(outSuperClusters.create_back());
 
     outSC.eta = inSC.eta();
@@ -130,10 +133,9 @@ SuperClustersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, e
     outSC.mipSlope = mipVariables.mipSlope;
     outSC.mipIntercept = mipVariables.mipIntercept;
     outSC.mipNhits = mipVariables.mipNhitCone;
-  }
 
-  for (unsigned iSC(0); iSC != inSuperClusters.size(); ++iSC)
-    objectMap.add(inSuperClusters.ptrAt(iSC), outSuperClusters[iSC]);
+    objectMap.add(inSuperClusters.ptrAt(iSC), outSC);
+  }
 }
 
 DEFINE_TREEFILLER(SuperClustersFiller);

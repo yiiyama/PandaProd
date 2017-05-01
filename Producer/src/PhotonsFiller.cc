@@ -389,7 +389,6 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   auto& pfPhoMap(objectMap_->get<reco::Candidate, panda::Photon>("pf"));
 
   auto& scMap(_objectMaps.at(superClustersFillerName_).get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
-  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
 
   for (auto& link : scPhoMap) { // panda -> edm
     auto& outPhoton(*link.first);
@@ -398,11 +397,14 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     outPhoton.superCluster.setRef(scMap.at(scPtr));
   }
 
-  for (auto& link : pfPhoMap.bwdMap) { // panda -> edm
-    auto& outPhoton(*link.first);
-    auto& pfPtr(link.second);
+  if (_objectMaps.count("pfCandidates") != 0) {
+    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+    for (auto& link : pfPhoMap.bwdMap) { // panda -> edm
+      auto& outPhoton(*link.first);
+      auto& pfPtr(link.second);
 
-    outPhoton.matchedPF.setRef(pfMap.at(pfPtr));
+      outPhoton.matchedPF.setRef(pfMap.at(pfPtr));
+    }
   }
 
   if (!isRealData_) {

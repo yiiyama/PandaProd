@@ -154,19 +154,21 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   auto& pfMuMap(objectMap_->get<reco::Candidate, panda::Muon>("pf"));
   auto& vtxMuMap(objectMap_->get<reco::Vertex, panda::Muon>());
 
-  auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
   auto& vtxMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>().fwdMap);
 
-  for (auto& link : pfMuMap.bwdMap) { // panda -> edm
-    auto& outMuon(*link.first);
-    auto& pfPtr(link.second);
+  if (_objectMaps.count("pfCandidates") != 0) {
+    auto& pfMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+    for (auto& link : pfMuMap.bwdMap) { // panda -> edm
+      auto& outMuon(*link.first);
+      auto& pfPtr(link.second);
 
-    // muon sourceCandidatePtr can point to the AOD pfCandidates in some cases
-    auto pfItr(pfMap.find(pfPtr));
-    if (pfItr == pfMap.end())
-      continue;
+      // muon sourceCandidatePtr can point to the AOD pfCandidates in some cases
+      auto pfItr(pfMap.find(pfPtr));
+      if (pfItr == pfMap.end())
+        continue;
 
-    outMuon.matchedPF.setRef(pfItr->second);
+      outMuon.matchedPF.setRef(pfItr->second);
+    }
   }
 
   for (auto& link : vtxMuMap.bwdMap) { // panda -> edm

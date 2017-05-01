@@ -24,11 +24,15 @@ EBRecHitsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   edm::Handle<EcalRecHitCollection> handle;
   auto& inEBRecHits(getProduct_(_inEvent, ebHitsToken_, &handle));
 
-  auto& outEBRecHits(_outEvent.ebRecHitsFT);
+  auto& outEBRecHits(_outEvent.ebRecHits);
+  outEBRecHits.reserve(inEBRecHits.size());
 
   auto& objectMap(objectMap_->get<EcalRecHit, panda::EBRecHit>());
 
+  unsigned iRH(-1);
   for (auto& inRH : inEBRecHits) {
+    ++iRH;
+
     auto& outRH(outEBRecHits.create_back());
 
     EBDetId id(inRH.detid());
@@ -38,10 +42,9 @@ EBRecHitsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outRH.timeError = inRH.timeError();
     outRH.ieta = id.ieta();
     outRH.iphi = id.iphi();
-  }
 
-  for (unsigned iRH(0); iRH != inEBRecHits.size(); ++iRH)
-    objectMap.add(edm::Ptr<EcalRecHit>(handle, iRH), outEBRecHits[iRH]);
+    objectMap.add(edm::Ptr<EcalRecHit>(handle, iRH), outRH);
+  }
 }
 
 void
@@ -53,13 +56,22 @@ EBRecHitsFiller::setRefs(ObjectMapStore const& _objectMaps)
   for (auto& link : hitMap)
     idHitMap[link.first->detid().rawId()] = link.second;
 
-  auto& scPhoMap(_objectMaps.at("superClustersFT").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& scMap(_objectMaps.at("superClusters").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
+  auto& scftMap(_objectMaps.at("superClustersFT").get<reco::SuperCluster, panda::SuperCluster>().fwdMap);
 
-  for (auto& link : scPhoMap) {
+  for (auto& link : scMap) {
     for (auto&& idfrac : link.first->hitsAndFractions()) {
       auto&& hitItr(idHitMap.find(idfrac.first.rawId()));
       if (hitItr != idHitMap.end())
         hitItr->second->superCluster.setRef(link.second);
+    }
+  }
+
+  for (auto& link : scftMap) {
+    for (auto&& idfrac : link.first->hitsAndFractions()) {
+      auto&& hitItr(idHitMap.find(idfrac.first.rawId()));
+      if (hitItr != idHitMap.end())
+        hitItr->second->superClusterFT.setRef(link.second);
     }
   }
 }

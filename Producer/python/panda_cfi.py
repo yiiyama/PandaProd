@@ -35,7 +35,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             maxEta = cms.untracked.double(4.7)
         ),
         puppiAK4Jets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('Jets'),
             jets = cms.untracked.string('slimmedJetsPuppi'),
             genJets = cms.untracked.string('slimmedGenJets'),
@@ -49,7 +49,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             maxEta = cms.untracked.double(4.7)
         ),
         chsAK8Jets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('FatJets'),
             jets = cms.untracked.string('packedPatJetsAK8PFchs'),
             genJets = cms.untracked.string('genJetsNoNuAK8'),
@@ -71,7 +71,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             maxEta = cms.untracked.double(4.7)
         ),
         puppiAK8Jets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('FatJets'),
             jets = cms.untracked.string('packedPatJetsAK8PFPuppi'),
             genJets = cms.untracked.string('genJetsNoNuAK8'),
@@ -94,7 +94,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             maxEta = cms.untracked.double(4.7)
         ),
         chsCA15Jets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('FatJets'),
             jets = cms.untracked.string('packedPatJetsCA15PFchs'),
             genJets = cms.untracked.string('genJetsNoNuCA15'),
@@ -116,7 +116,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             maxEta = cms.untracked.double(4.7)
         ),
         puppiCA15Jets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('FatJets'),
             jets = cms.untracked.string('packedPatJetsCA15PFPuppi'),
             genJets = cms.untracked.string('genJetsNoNuCA15'),
@@ -285,7 +285,7 @@ panda = cms.EDAnalyzer('PandaProducer',
 #            minPt = cms.untracked.double(10.)
 #        ),
         pfCandidates = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('PFCands'),
             puppiMap = cms.untracked.string('puppi'),
             puppiInput = cms.untracked.string('packedPFCandidates'),
@@ -293,30 +293,30 @@ panda = cms.EDAnalyzer('PandaProducer',
             puppiNoLepInput = cms.untracked.string('pfNoLepPUPPI')
         ),
         partons = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('Partons')
         ),
         genParticles = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('GenParticles'),
             prune = cms.untracked.bool(False) # Attempted further pruning during the development of version 003, but we could not come up with an effective algorithm.
         ),
         ak4GenJets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('GenJets'),
             genJets = cms.untracked.string('slimmedGenJets'),
             flavor = cms.untracked.string('ak4GenJetFlavourInfos'),
             minPt = cms.untracked.double(15.)
         ),
         ak8GenJets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('GenJets'),
             genJets = cms.untracked.string('genJetsNoNuAK8'),
             flavor = cms.untracked.string('ak8GenJetFlavourInfos'),
             minPt = cms.untracked.double(150.)
         ),
         ca15GenJets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('GenJets'),
             genJets = cms.untracked.string('genJetsNoNuCA15'),
             flavor = cms.untracked.string('ca15GenJetFlavourInfos'),
@@ -348,7 +348,7 @@ panda = cms.EDAnalyzer('PandaProducer',
                 HaloDiscThreshold = cms.double(70.)
             )
         ),
-        ebRecHitsFT = cms.untracked.PSet(
+        ebRecHits = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('EBRecHits'),
             ebHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB')
@@ -366,7 +366,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             fillOthers = cms.untracked.bool(True)
         ),
         puppiMet = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('Met'),
             met = cms.untracked.string('slimmedMETsPuppi')
         ),
@@ -391,7 +391,7 @@ panda = cms.EDAnalyzer('PandaProducer',
             filler = cms.untracked.string('Weights')
         ),
         recoil = cms.untracked.PSet(
-            enabled = cms.untracked.bool(True),
+            enabled = cms.untracked.bool(False),
             filler = cms.untracked.string('Recoil'),
             categories = cms.untracked.string('MonoXFilter:categories'),
             max = cms.untracked.string('MonoXFilter:max')

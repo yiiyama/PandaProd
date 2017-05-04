@@ -83,11 +83,11 @@ WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
 
   // PDF variation will always be greater than nominal by construction
   for (unsigned iW(0); iW != 7; ++iW)
-    hSumW_->Fill(iW + 1.5, qcdVariations_[iW]);
+    hSumW_->Fill(iW + 1.5, normQCDVariations_[iW] * central_);
 
   for (unsigned iS(0); iS != wids_.size(); ++iS) {
     if (genParam_[iS] >= 0.)
-      hSumW_->Fill(iS + 9.5, genParam_[iS]);
+      hSumW_->Fill(iS + 9.5, genParam_[iS] * central_);
   }
 }
 
@@ -103,16 +103,23 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const&, edm::EventSetup 
 
   _outEvent.weight = central_;
 
-  _outEvent.genReweight.r1f2DW = qcdVariations_[0] / central_ - 1.;
-  _outEvent.genReweight.r1f5DW = qcdVariations_[1] / central_ - 1.;
-  _outEvent.genReweight.r2f1DW = qcdVariations_[2] / central_ - 1.;
-  _outEvent.genReweight.r2f2DW = qcdVariations_[3] / central_ - 1.;
-  _outEvent.genReweight.r5f1DW = qcdVariations_[4] / central_ - 1.;
-  _outEvent.genReweight.r5f5DW = qcdVariations_[5] / central_ - 1.;
-  _outEvent.genReweight.pdfDW = qcdVariations_[6] / central_ - 1.;
+  if (bufferCounter_ == 0) // getLHEWeights was not called
+    return;
+
+  // Save the offset of normalized reweight factor from 1 for precision
+  // (Normalized weights have values close to 1, and epsilon can be saved with higher precision than 1 + epsilon)
+  _outEvent.genReweight.r1f2DW = normQCDVariations_[0] - 1.;
+  _outEvent.genReweight.r1f5DW = normQCDVariations_[1] - 1.;
+  _outEvent.genReweight.r2f1DW = normQCDVariations_[2] - 1.;
+  _outEvent.genReweight.r2f2DW = normQCDVariations_[3] - 1.;
+  _outEvent.genReweight.r5f1DW = normQCDVariations_[4] - 1.;
+  _outEvent.genReweight.r5f5DW = normQCDVariations_[5] - 1.;
+  _outEvent.genReweight.pdfDW = normQCDVariations_[6] - 1.;
 
   // genParam branch is not filled from the outEvent object, but we copy the value here for consistence
   // (some other filler module may decide to use the values!)
+  // Unlike QCD variation reweights, genParam can represent anything and is not guaranteed to cluster around 1.
+  // Therefore we save the normalized weights directly and do not subtract 1.
   std::copy(genParam_, genParam_ + wids_.size(), _outEvent.genReweight.genParam);
 }
 
@@ -124,7 +131,7 @@ WeightsFiller::fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&)
     // It could be a genuine run boundary, but there is no way to tell -> we need to exit learning phase now
     bookGenParam_();
 
-    bufferCounter_ = unsigned(-1);
+    bufferCounter_ = learningPhase;
   }
 }
 
@@ -146,6 +153,9 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
   double sumd2(0.);
   unsigned iS(0);
   std::fill_n(genParam_, sizeof(genParam_) / sizeof(float), -1.);
+
+  // this is not the same as central_ in MadGraph (LO) samples
+  double lheCentral(_lheEvent.originalXWGTUP());
 
   for (auto& wgt : _lheEvent.weights()) {
     unsigned id(0);
@@ -170,42 +180,50 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
         }
       }
 
-      genParam_[iS++] = wgt.wgt / central_;
+      // unlike QCD weights, we simply save normalized weights to the tree
+      genParam_[iS++] = wgt.wgt / lheCentral;
 
       continue;
     }
 
     if ((id >= 1 && id <= 9) || (id >= 1001 && id <= 1009)) {
+      unsigned iV(0);
       switch (id % 1000) {
       case 2:
-        qcdVariations_[0] = wgt.wgt;
+        iV = 0;
         break;
       case 3:
-        qcdVariations_[1] = wgt.wgt;
+        iV = 1;
         break;
       case 4:
-        qcdVariations_[2] = wgt.wgt;
+        iV = 2;
         break;
       case 5:
-        qcdVariations_[3] = wgt.wgt;
+        iV = 3;
         break;
       case 7:
-        qcdVariations_[4] = wgt.wgt;
+        iV = 4;
         break;
       case 9:
-        qcdVariations_[5] = wgt.wgt;
+        iV = 5;
         break;
       default:
-        break;
+        continue; // r2f5 and r5f2 -> won't save
       }
+
+      normQCDVariations_[iV] = wgt.wgt / lheCentral;
     }
     else if ((id >= 11 && id <= 110) || (id >= 2001 && id < 2100)) {
-      double d(wgt.wgt - central_);
+      // We assume NNPDF-type MC uncertainties (as opposed to CTEQ-type fit correlation matrix eigenvalues)
+      // Reference: https://nnpdf.hepforge.org/html/tutorial.html
+      // sigma = sqrt[sum_{i=1..100}[(w_i - w_0)^2] / 99]
+      double d(wgt.wgt - lheCentral);
       sumd2 += d * d;
     }
   }
 
-  qcdVariations_[6] = std::sqrt(sumd2 / 99.) + _lheEvent.originalXWGTUP();
+  // We fill the sumW histogram with (1 + sigma / w_0), and save sigma / w_0 in the trees
+  normQCDVariations_[6] = std::sqrt(sumd2 / 99.) / lheCentral + 1.;
 
   if (bufferCounter_ < learningPhase) {
     // save the weights to the buffer
@@ -215,8 +233,6 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
   else if (bufferCounter_ == learningPhase) {
     // By now we should know how large the signal weights vector is
     bookGenParam_();
-
-    bufferCounter_ = unsigned(-1);
   }
 }
 

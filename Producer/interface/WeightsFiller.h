@@ -44,7 +44,7 @@ class WeightsFiller : public FillerBase {
   unsigned bufferCounter_{0};
 
   double central_{0.};
-  double qcdVariations_[7]{};
+  double normQCDVariations_[7]{}; // QCD variations (muR, muF, and PDF) normalized by originalXWGTUP
   float genParam_[1024]{}; // I don't like that we hard-code the array size here..
 
   // these objects will be deleted automatically when the output file closes

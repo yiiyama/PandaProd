@@ -91,10 +91,13 @@ VerticesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::E
 
     _outEvent.npvTrue = npvTrueCache_;
 
-    if (inGenParticles.size() != 0) {
-      _outEvent.genVertex.x = inGenParticles.at(0).vx();
-      _outEvent.genVertex.y = inGenParticles.at(0).vy();
-      _outEvent.genVertex.z = inGenParticles.at(0).vz();
+    for (auto& gen : inGenParticles) {
+      if (std::abs(gen.vx()) > 1.e-6 || std::abs(gen.vy()) > 1.e-6 || std::abs(gen.vz()) > 1.e-6) {
+        _outEvent.genVertex.x = gen.vx();
+        _outEvent.genVertex.y = gen.vy();
+        _outEvent.genVertex.z = gen.vz();
+        break;
+      }
     }
   }
 }

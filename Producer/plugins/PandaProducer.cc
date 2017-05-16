@@ -38,6 +38,8 @@ private:
   void analyze(edm::Event const&, edm::EventSetup const&) override;
   void beginRun(edm::Run const&, edm::EventSetup const&) override;
   void endRun(edm::Run const&, edm::EventSetup const&) override;
+  void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
   void beginJob() override;
   void endJob() override;
 
@@ -52,8 +54,11 @@ private:
   TFile* outputFile_{0};
   TTree* eventTree_{0};
   TTree* runTree_{0};
+  TTree* lumiSummaryTree_{0};
   TH1D* eventCounter_{0};
   panda::Event outEvent_;
+
+  unsigned nEventsInLumi_;
 
   std::string outputName_;
   bool useTrigger_;
@@ -69,6 +74,9 @@ private:
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   selectEvents_(_cfg.getUntrackedParameter<VString>("SelectEvents")),
   skimResultsToken_(consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"))), // no process name -> pick up the trigger results from the current process
+  triggerObjectsToken_(),
+  outEvent_(),
+  nEventsInLumi_(0),
   outputName_(_cfg.getUntrackedParameter<std::string>("outputFile", "panda.root")),
   useTrigger_(_cfg.getUntrackedParameter<bool>("useTrigger", true)),
   printLevel_(_cfg.getUntrackedParameter<unsigned>("printLevel", 0)),
@@ -166,6 +174,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   }
 
   ++nEvents_;
+  ++nEventsInLumi_;
 
   SClock::time_point start;
 
@@ -386,12 +395,27 @@ PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
   outEvent_.run.fill(*runTree_);
 }
 
+void
+PandaProducer::beginLuminosityBlock(edm::LuminosityBlock const& _lumi, edm::EventSetup const& _setup)
+{
+  nEventsInLumi_ = 0;
+}
+
+void
+PandaProducer::endLuminosityBlock(edm::LuminosityBlock const& _lumi, edm::EventSetup const& _setup)
+{
+  outEvent_.runNumber = _lumi.id().run();
+  outEvent_.lumiNumber = _lumi.id().luminosityBlock();
+  lumiSummaryTree_->Fill();
+}
+
 void 
 PandaProducer::beginJob()
 {
   outputFile_ = TFile::Open(outputName_.c_str(), "recreate");
   eventTree_ = new TTree("events", "");
   runTree_ = new TTree("runs", "");
+  lumiSummaryTree_ = new TTree("lumiSummary", "");
 
   panda::utils::BranchList eventBranches = {"runNumber", "lumiNumber", "eventNumber", "isData"};
   panda::utils::BranchList runBranches = {"runNumber"};
@@ -402,6 +426,10 @@ PandaProducer::beginJob()
 
   outEvent_.book(*eventTree_, eventBranches);
   outEvent_.run.book(*runTree_, runBranches);
+
+  lumiSummaryTree_->Branch("runNumber", &outEvent_.runNumber, "runNumber/i");
+  lumiSummaryTree_->Branch("lumiNumber", &outEvent_.lumiNumber, "lumiNumber/i");
+  lumiSummaryTree_->Branch("nEvents", &nEventsInLumi_, "nEventsInLumi_/i");
 
   for (auto* filler : fillers_) {
     filler->addOutput(*outputFile_);

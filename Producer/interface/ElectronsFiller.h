@@ -5,6 +5,7 @@
 
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
@@ -27,6 +28,7 @@ class ElectronsFiller : public FillerBase {
   void setRefs(ObjectMapStore const&) override;
 
  protected:
+  typedef edm::View<reco::Vertex> VertexView;
   typedef edm::View<reco::Photon> PhotonView;
   typedef edm::View<reco::GsfElectron> GsfElectronView;
   typedef edm::ValueMap<bool> BoolMap;
@@ -48,6 +50,7 @@ class ElectronsFiller : public FillerBase {
   NamedToken<FloatMap> phCHIsoToken_;
   NamedToken<FloatMap> phNHIsoToken_;
   NamedToken<FloatMap> phPhIsoToken_;
+  NamedToken<VertexView> verticesToken_;
   // Iso tokens only used if filling from AOD
   NamedToken<FloatMap> ecalIsoToken_;
   NamedToken<FloatMap> hcalIsoToken_;

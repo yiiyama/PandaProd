@@ -20,6 +20,7 @@ void
 PFCandsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   _eventBranches.emplace_back("pfCandidates");
+  _eventBranches.emplace_back("tracks");
 }
 
 void
@@ -172,6 +173,31 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     auto& puppiPtr(puppiPtrMap[ptr.get()]);
     if (puppiPtr.isNonnull())
       puppiMap.add(puppiPtr, outCand);
+
+    // add track information for charged hadrons
+    // track order matters; track ref from PFCand are set during Event::getEntry relying on the order
+    switch (outCand.ptype) {
+    case panda::PFCand::hp:
+    case panda::PFCand::hm:
+    case panda::PFCand::ep:
+    case panda::PFCand::em:
+    case panda::PFCand::mup:
+    case panda::PFCand::mum:
+      {
+        auto& track(_outEvent.tracks.create_back());
+        PackedPatCandidateExposer exposer(static_cast<pat::PackedCandidate const&>(*ptr));
+
+        auto* bestTrack(ptr->bestTrack());
+        if (bestTrack)
+          track.setPtError(bestTrack->ptError());
+        track.packedDxy = exposer.packedDxy();
+        track.packedDz = exposer.packedDz();
+        track.packedDPhi = exposer.packedDPhi();
+      }
+      break;
+    default:
+      break;
+    }
   }
 
   outCandidates_ = &outCands;

@@ -10,6 +10,7 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   JetsFiller(_name, _cfg, _coll),
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
   sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
+  prunedKinematicsTag_(getParameter_<std::string>(_cfg, "prunedKinematics")),
   subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
   subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
   activeArea_(7., 1, 0.01),
@@ -134,6 +135,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
       outJet.tau2 = inJet.userFloat(njettinessTag_ + ":tau2");
       outJet.tau3 = inJet.userFloat(njettinessTag_ + ":tau3");
       outJet.mSD  = inJet.userFloat(sdKinematicsTag_ + ":Mass");
+      outJet.mPruned = inJet.userFloat(prunedKinematicsTag_ + ":Mass");
 
       unsigned iSJ(-1);
       for (auto& inSubjet : inSubjets) {

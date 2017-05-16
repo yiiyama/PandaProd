@@ -16,6 +16,8 @@ class MetFiltersFiller : public FillerBase {
 
  protected:
   std::vector<NamedToken<edm::TriggerResults>> filterResultsTokens_;
+  NamedToken<bool> badPFMuonsToken_;
+  NamedToken<bool> badChargedHadronsToken_;
   NamedToken<bool> dupECALClustersToken_; // temporary for 03Feb2017 REMINIAOD
   NamedToken<DetIdCollection> unfixedECALHitsToken_; // temporary for 03Feb2017 REMINIAOD
 };

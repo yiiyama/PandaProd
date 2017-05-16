@@ -164,6 +164,22 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         )
     )
     subjets = cms.InputTag(pfJetsSoftDrop.getModuleLabel(), 'SubJets')
+
+    pfJetsPruned = addattr('pfJetsPruned',
+        ak4PFJets.clone(
+            jetAlgorithm = cms.string(algoName),
+            rParam = cms.double(radius),
+            src = cms.InputTag(candidates),
+            jetPtMin = cms.double(ptMin),
+            usePruning = cms.bool(True),
+            useExplicitGhosts = cms.bool(True),
+            writeCompound = cms.bool(True),
+            zcut = cms.double(0.1),       # no idea if these parameters are correct
+            rcut_factor = cms.double(0.5), 
+            nFilt = cms.int32(2),
+            jetCollInstanceName = cms.string("SubJets")
+        )
+    )
   
     ########################################
     ##           SUBSTRUCTURE             ##
@@ -181,7 +197,17 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         cms.EDProducer('RecoJetDeltaRValueMapProducer',
             src = pfJets,
             matched = pfJetsSoftDrop,
-            distMax = cms.double(1.5),
+            distMax = cms.double(radius),
+            values = cms.vstring('mass'),
+            valueLabels = cms.vstring('Mass')
+        )
+    )
+
+    prunedKinematics = addattr('prunedKinematics',
+        cms.EDProducer('RecoJetDeltaRValueMapProducer',
+            src = pfJets,
+            matched = pfJetsPruned,
+            distMax = cms.double(radius),
             values = cms.vstring('mass'),
             valueLabels = cms.vstring('Mass')
         )
@@ -257,6 +283,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         patJetsMod.userData.userFloats.src.append(Njettiness.getModuleLabel() + ':' + tau)
 
     patJetsMod.userData.userFloats.src.append(sdKinematics.getModuleLabel() + ':Mass')
+    patJetsMod.userData.userFloats.src.append(prunedKinematics.getModuleLabel() + ':Mass')
 
     selectedPatJets = addattr('selectedPatJets',
         jetSelector_cfi.selectedPatJets.clone(

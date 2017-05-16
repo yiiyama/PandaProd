@@ -310,7 +310,9 @@ panda = cms.EDAnalyzer('PandaProducer',
         metFilters = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('MetFilters'),
-            filterProcesses = cms.untracked.vstring('', 'PAT', 'RECO')
+            filterProcesses = cms.untracked.vstring('', 'PAT', 'RECO'),
+            badPFMuons = cms.untracked.string('BadPFMuonFilter'),
+            badChargedHadrons = cms.untracked.string('BadChargedCandidateFilter'),
         ),
         hlt = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

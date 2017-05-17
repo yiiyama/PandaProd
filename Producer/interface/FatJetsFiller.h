@@ -35,6 +35,7 @@ class FatJetsFiller : public JetsFiller {
   NamedToken<int> categoriesToken_;
   std::string njettinessTag_;
   std::string sdKinematicsTag_;
+  std::string prunedKinematicsTag_;
   std::string subjetBtagTag_;
   std::string subjetQGLTag_;
 

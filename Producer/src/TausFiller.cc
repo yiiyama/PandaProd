@@ -52,6 +52,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       outTau.decayMode = patTau.tauID("decayModeFinding") > 0.5;
       outTau.decayModeNew = patTau.tauID("decayModeFindingNewDMs") > 0.5;
       outTau.looseIsoMVA = patTau.tauID("byVLooseIsolationMVArun2v1DBnewDMwLT") > 0.5;
+      outTau.looseIsoMVAOld = patTau.tauID("byVLooseIsolationMVArun2v1DBoldDMwLT") > 0.5;
       outTau.isoDeltaBetaCorr = patTau.tauID("byCombinedIsolationDeltaBetaCorrRaw3Hits");
       outTau.iso = 0.;
       for (auto&& cand : patTau.isolationGammaCands())

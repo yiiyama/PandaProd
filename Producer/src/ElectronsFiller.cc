@@ -44,6 +44,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso", false);
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
 
   if (useTrigger_) {
     for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
@@ -95,6 +96,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
+  auto& vertices(getProduct_(_inEvent, verticesToken_));
   FloatMap const* ecalIso(0);
   if (!ecalIsoToken_.second.isUninitialized())
     ecalIso = &getProduct_(_inEvent, ecalIsoToken_);
@@ -192,6 +194,17 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
     outElectron.hOverE = inElectron.hadronicOverEm();
+
+    auto gsftrack = inElectron.gsfTrack();
+    if (vertices.size()>0) {
+      auto& pv = vertices.at(0);
+      auto pos = pv.position();
+      outElectron.dxy = fabs(gsftrack->dxy(pos));
+      outElectron.dz = fabs(gsftrack->dz(pos));
+    } else {
+      outElectron.dxy = gsftrack->dxy();
+      outElectron.dz = gsftrack->dz();
+    }
 
     double scEta(std::abs(sc.eta()));
 

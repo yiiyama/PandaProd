@@ -140,6 +140,34 @@ egmCorrectionSequence = cms.Sequence(
      process.smearedPhotons
 )
 
+### EXTRA MET FILTERS
+process.load('RecoMET.METFilters.BadPFMuonFilter_cfi')
+process.BadPFMuonFilter.muons = cms.InputTag("slimmedMuons")
+process.BadPFMuonFilter.PFCandidates = cms.InputTag("packedPFCandidates")
+process.BadPFMuonFilter.taggingMode = cms.bool(True)
+
+process.load('RecoMET.METFilters.BadChargedCandidateFilter_cfi')
+process.BadChargedCandidateFilter.muons = cms.InputTag("slimmedMuons")
+process.BadChargedCandidateFilter.PFCandidates = cms.InputTag("packedPFCandidates")
+process.BadChargedCandidateFilter.taggingMode = cms.bool(True)
+
+metFilterSequence = cms.Sequence(
+        process.BadPFMuonFilter + 
+        process.BadChargedCandidateFilter
+)
+
+### Vanilla MET
+# this is the most basic MET one can find
+# even if we override with various types of MET later on, create this so we have a consistent calo MET
+from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
+runMetCorAndUncFromMiniAOD(
+    process,
+    isData = options.isData,
+) 
+metSequence = cms.Sequence(
+    process.fullPatMetSequence
+)
+
 ### PUPPI
 
 # 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
@@ -171,7 +199,6 @@ puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Pup
 
 ### PUPPI MET
 
-from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
 # Creates process.fullPatMetSequencePuppi
 # With metType = 'Puppi', slimmedJetsPuppi is automatically selected as the jet source for type 1
 runMetCorAndUncFromMiniAOD(
@@ -188,9 +215,7 @@ runMetCorAndUncFromMiniAOD(
 # The bug appears when we don't call the no-postfix version of runMetCor.. first
 process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPuppi)
 
-metSequence = cms.Sequence(
-    process.fullPatMetSequencePuppi
-)
+metSequence += process.fullPatMetSequencePuppi
 
 if egFix:
     ### RE-EG-CORRECT METs
@@ -393,6 +418,7 @@ process.MonoXFilter.taggingMode = True
 process.reco = cms.Path(
     egmCorrectionSequence +
     egmIdSequence +
+    metFilterSequence +
     puppiSequence +
     puppiJetSequence +
     metSequence +
@@ -429,12 +455,12 @@ if jetRecorrection:
         process.slimmedJets
     )
 
-    process.reco.insert(process.reco.index(process.QGTagger), jetRecorrectionSequence)
+    process.reco.insert(process.reco.index(metSequence), jetRecorrectionSequence)
 
 
 # runMetCorAnd.. adds a CaloMET module only once, adding the postfix
 # However, repeated calls to the function overwrites the MET source of patCaloMet
-process.patCaloMet.metSource = 'metrawCaloPuppi'
+process.patCaloMet.metSource = 'metrawCalo'
 
 #############
 ## NTULPES ##
@@ -453,11 +479,16 @@ if options.isData:
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
-process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
-    met = 'slimmedMETsUncorrected'
-)
+if muFix or egFix:
+    process.panda.fillers.metNoFix = process.panda.fillers.puppiMet.clone(
+        met = 'slimmedMETsUncorrected'
+    )
+else:
+    process.panda.fillers.pfMet.met = 'slimmedMets'
+if muFix:
+    process.panda.fillers.pfMet.met = 'slimmedMetsMuonFixed'
 if egFix:
+    process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
     process.panda.fillers.electrons.gsUnfixedElectrons = cms.untracked.string('slimmedElectronsBeforeGSFix')
     process.panda.fillers.photons.gsUnfixedPhotons = cms.untracked.string('slimmedPhotonsBeforeGSFix')
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
@@ -520,7 +551,7 @@ if muFix:
     )
 
     # see above
-    process.patCaloMet.metSource = 'metrawCaloPuppi'
+    process.patCaloMet.metSource = 'metrawCalo'
 
     process.fullPatMetSequenceMuonFixed.remove(process.selectedPatJetsForMetT1T2CorrMuonFixed)
 

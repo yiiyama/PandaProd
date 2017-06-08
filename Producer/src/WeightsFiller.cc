@@ -131,7 +131,7 @@ WeightsFiller::fillEndRun(panda::Run&, edm::Run const&, edm::EventSetup const&)
     // It could be a genuine run boundary, but there is no way to tell -> we need to exit learning phase now
     bookGenParam_();
 
-    bufferCounter_ = learningPhase;
+    bufferCounter_ = 0xffffffff;
   }
 }
 
@@ -233,6 +233,7 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
   else if (bufferCounter_ == learningPhase) {
     // By now we should know how large the signal weights vector is
     bookGenParam_();
+    bufferCounter_ = 0xffffffff;
   }
 }
 

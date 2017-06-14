@@ -211,11 +211,11 @@ MonoXFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
   }
 
-  std::auto_ptr<int> categoriesP(new int(categories));
-  std::auto_ptr<double> maxP(new double(maxRecoil));
+  auto categoriesP = std::make_unique<int>(categories);
+  auto maxP = std::make_unique<double>(maxRecoil);
 
-  iEvent.put(categoriesP, "categories");
-  iEvent.put(maxP, "max");
+  iEvent.put(std::move(categoriesP), "categories");
+  iEvent.put(std::move(maxP), "max");
 
   // PInfo("PandaProd::MonoXFilter::analyze",
   //     TString::Format("Rejecting event %llu",iEvent.id().event()));

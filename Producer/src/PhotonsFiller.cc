@@ -22,7 +22,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
   getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
-  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
+  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons", false);
   getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
@@ -81,7 +81,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
   auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
-  auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
+  auto* inRegressionPhotons(getProductSafe_(_inEvent, regressionPhotonsToken_));
   auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
@@ -314,10 +314,12 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }
     }
 
-    for (auto& reg : inRegressionPhotons) {
-      if (reg.superCluster() == scRef) {
-        outPhoton.regPt = reg.pt();
-        break;
+    if (inRegressionPhotons) {
+      for (auto& reg : *inRegressionPhotons) {
+        if (reg.superCluster() == scRef) {
+          outPhoton.regPt = reg.pt();
+          break;
+        }
       }
     }
 

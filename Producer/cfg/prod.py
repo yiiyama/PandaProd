@@ -1,6 +1,6 @@
 from FWCore.ParameterSet.VarParsing import VarParsing
 
-options =VarParsing('analysis')
+options = VarParsing('analysis')
 options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: 03Feb2017, 23Sep2016, Spring16, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
@@ -18,6 +18,11 @@ jetRecorrection = True
 muFix = True
 egFix = False
 egmSmearingType = 'Moriond2017_JEC'
+egRegression = True
+
+# Global tags
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_2017_data_taking
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
 
 if options.config == '03Feb2017':
     jetRecorrection = False
@@ -28,6 +33,12 @@ if options.config == '03Feb2017':
 elif options.config == '23Sep2016':
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
+elif options.config == 'Prompt17':
+    options.isData = True
+    options.globaltag = '92X_dataRun2_Prompt_v4'
+    egRegression = False
+    jetRecorrection = False
+    muFix = False
 elif options.config == 'Spring16':
     options.isData = False
     options.globaltag = '80X_mcRun2_asymptotic_2016_v3'
@@ -102,43 +113,66 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
+
+egmCorrectionSequence = cms.Sequence()
+
+if egRegression:
+
+    ### EGAMMA CORRECTIONS
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMRegression
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
+
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
+    from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
+    regressionWeights(process)
+    process.regressionElectrons = regressionElectrons
+    process.regressionPhotons = regressionPhotons
+
+    process.selectedElectrons = cms.EDFilter('PATElectronSelector',
+        src = cms.InputTag('regressionElectrons'),
+        cut = cms.string('pt > 5 && abs(eta) < 2.5')
+    )
+
+    ## Set names of EG objects
+    electronsName = 'selectedElectrons'
+    photonsName = 'regressionPhotons'
+
+    egmCorrectionSequence += \
+        process.regressionElectrons + \
+        process.regressionPhotons + \
+        process.selectedElectrons
+
+
+else:
+    
+    electronsName = 'slimmedElectrons'
+    photonsName = 'slimmedPhotons'
+
+
 import PandaProd.Producer.utils.egmidconf as egmidconf
-
-### EGAMMA CORRECTIONS
-
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
-from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
-regressionWeights(process)
-process.regressionElectrons = regressionElectrons
-process.regressionPhotons = regressionPhotons
-
-process.selectedElectrons = cms.EDFilter('PATElectronSelector',
-    src = cms.InputTag('regressionElectrons'),
-    cut = cms.string('pt > 5 && abs(eta) < 2.5')
-)
 
 from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
 process.smearedElectrons = calibratedPatElectrons.clone(
-    electrons = 'selectedElectrons',
+    electrons = electronsName,
     isMC = (not options.isData),
     correctionFile = egmidconf.electronSmearingData[egmSmearingType]
 )
 process.smearedPhotons = calibratedPatPhotons.clone(
-    photons = 'regressionPhotons',
+    photons = photonsName,
     isMC = (not options.isData),
     correctionFile = egmidconf.photonSmearingData[egmSmearingType]
 )   
 
-egmCorrectionSequence = cms.Sequence(
-     process.regressionElectrons +
-     process.regressionPhotons +
-     process.selectedElectrons +
-     process.smearedElectrons +
-     process.smearedPhotons
-)
+egmCorrectionSequence += \
+    process.smearedElectrons + \
+    process.smearedPhotons
+
 
 ### EXTRA MET FILTERS
+# https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETOptionalFiltersRun2
+# https://github.com/cms-sw/cmssw/blob/CMSSW_8_0_X/PhysicsTools/PatAlgos/python/slimming/metFilterPaths_cff.py
+
 process.load('RecoMET.METFilters.BadPFMuonFilter_cfi')
 process.BadPFMuonFilter.muons = cms.InputTag("slimmedMuons")
 process.BadPFMuonFilter.PFCandidates = cms.InputTag("packedPFCandidates")
@@ -150,14 +184,17 @@ process.BadChargedCandidateFilter.PFCandidates = cms.InputTag("packedPFCandidate
 process.BadChargedCandidateFilter.taggingMode = cms.bool(True)
 
 metFilterSequence = cms.Sequence(
-        process.BadPFMuonFilter + 
-        process.BadChargedCandidateFilter
+    process.BadPFMuonFilter + 
+    process.BadChargedCandidateFilter
 )
 
 ### Vanilla MET
 # this is the most basic MET one can find
 # even if we override with various types of MET later on, create this so we have a consistent calo MET
+# https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
+
 from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
+
 runMetCorAndUncFromMiniAOD(
     process,
     isData = options.isData,
@@ -167,6 +204,10 @@ metSequence = cms.Sequence(
 )
 
 ### PUPPI
+# TODO find PUPPI recipes, the following doesn't look right:
+# https://twiki.cern.ch/twiki/bin/viewauth/CMS/PUPPI
+# From PUPPI MET recipe in
+# https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
 
 # 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
 from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
@@ -299,6 +340,7 @@ if egFix:
     process.fullPatMetSequencePuppi.insert(process.fullPatMetSequencePuppi.index(process.patMetModuleSequencePuppi) + 1, puppiMETEGCorrSequence)
 
 ### EGAMMA ID
+# https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2 ???
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, switchOnVIDElectronIdProducer, DataFormat
 # Loads egmGsfElectronIDs
@@ -428,6 +470,7 @@ process.reco = cms.Path(
 
 if jetRecorrection:
     ### JET RE-CORRECTION
+    # ???
 
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 
@@ -482,7 +525,8 @@ if muFix or egFix:
         met = 'slimmedMETsUncorrected'
     )
 else:
-    process.panda.fillers.pfMet.met = 'slimmedMets'
+    process.panda.fillers.pfMet.met = 'slimmedMETs'
+
 if muFix:
     process.panda.fillers.pfMet.met = 'slimmedMetsMuonFixed'
 if egFix:
@@ -494,6 +538,9 @@ if egFix:
     )
     process.panda.fillers.metFilters.dupECALClusters = cms.untracked.string('particleFlowEGammaGSFixed:dupECALClusters')
     process.panda.fillers.metFilters.unfixedECALHits = cms.untracked.string('ecalMultiAndGSGlobalRecHitEB:hitsNotReplaced')
+if not egRegression:
+    del process.panda.fillers.electrons.regressionElectrons
+    del process.panda.fillers.photons.regressionPhotons
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

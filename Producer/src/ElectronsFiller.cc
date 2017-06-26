@@ -26,7 +26,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons");
-  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons");
+  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
   getToken_(gsUnfixedElectronsToken_, _cfg, _coll, "gsUnfixedElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
@@ -82,7 +82,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
   auto& inSmearedElectrons(getProduct_(_inEvent, smearedElectronsToken_));
-  auto& inRegressionElectrons(getProduct_(_inEvent, regressionElectronsToken_));
+  auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
   auto* gsUnfixedElectrons(getProductSafe_(_inEvent, gsUnfixedElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
@@ -262,10 +262,12 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       }
     }
 
-    for (auto& reg : inRegressionElectrons) {
-      if (reg.superCluster() == scRef) {
-        outElectron.regPt = reg.pt();
-        break;
+    if (inRegressionElectrons) {
+      for (auto& reg : *inRegressionElectrons) {
+        if (reg.superCluster() == scRef) {
+          outElectron.regPt = reg.pt();
+          break;
+        }
       }
     }
 

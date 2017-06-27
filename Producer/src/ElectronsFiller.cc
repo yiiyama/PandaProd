@@ -328,7 +328,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>("gen"));
+    auto& genEleMap(objectMap_->get<reco::Candidate, panda::Electron>("gen"));
 
     auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 

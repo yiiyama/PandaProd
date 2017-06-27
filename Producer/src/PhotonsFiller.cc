@@ -16,14 +16,11 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   FillerBase(_name, _cfg),
   chIsoEA_(getParameter_<edm::FileInPath>(_cfg, "chIsoEA").fullPath()),
   nhIsoEA_(getParameter_<edm::FileInPath>(_cfg, "nhIsoEA").fullPath()),
-  phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath()),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath())
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
   getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
   getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons", false);
-  getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
@@ -63,8 +60,6 @@ PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
     _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
   if (!useTrigger_)
     _eventBranches.emplace_back("!photons.triggerMatch");
-  if (gsUnfixedPhotonsToken_.second.isUninitialized())
-    _eventBranches.emplace_back("!photons.originalPt");
 }
 
 void
@@ -82,7 +77,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
   auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
   auto* inRegressionPhotons(getProductSafe_(_inEvent, regressionPhotonsToken_));
-  auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
@@ -141,29 +135,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
 
-  // See below
-  // std::map<uint32_t, reco::Photon const*> gsFixMap;
-  // if (gsUnfixedPhotons) {
-  //   for (auto& ph : *gsUnfixedPhotons) {
-  //     auto&& scRef(ph.superCluster());
-  //     if (scRef.isNull())
-  //       continue;
-  //     auto&& bcRef(scRef->seed());
-  //     if (bcRef.isNull())
-  //       continue;
-
-  //     gsFixMap[bcRef->seed().rawId()] = &ph;
-  //   }
-  // }
-
   unsigned iPh(-1);
   for (auto& inPhoton : inPhotons) {
     ++iPh;
-    if (inPhoton.pt() < minPt_)
-      continue;
-    if (inPhoton.eta() > maxEta_)
-      continue;
-
     auto&& inRef(inPhotons.refAt(iPh));
 
     bool isPAT(dynamic_cast<pat::Photon const*>(&inPhoton));
@@ -318,21 +292,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       for (auto& reg : *inRegressionPhotons) {
         if (reg.superCluster() == scRef) {
           outPhoton.regPt = reg.pt();
-          break;
-        }
-      }
-    }
-
-    // if (gsUnfixedPhotons && seedRef.isNonnull()) {
-    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-    //   if (eItr != gsFixMap.end())
-    //     outPhoton.originalPt = eItr->second->pt();
-    // }
-    // Following MET POG and doing the most simplistic match
-    if (gsUnfixedPhotons) {
-      for (auto& ph : *gsUnfixedPhotons) {
-        if (reco::deltaR(ph, inPhoton) < 0.01) {
-          outPhoton.originalPt = ph.pt();
           break;
         }
       }

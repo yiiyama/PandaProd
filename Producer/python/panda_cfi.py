@@ -162,19 +162,12 @@ panda = cms.EDAnalyzer('PandaProducer',
                 El25Tight = cms.untracked.vstring('hltEle25WPTightGsfTrackIsoFilter'),
                 El27Loose = cms.untracked.vstring('hltEle27noerWPLooseGsfTrackIsoFilter'),
                 El27Tight = cms.untracked.vstring('hltEle27WPTightGsfTrackIsoFilter'),
-                El120Ph = cms.untracked.vstring('hltEG120HEFilter'),
-                El135Ph = cms.untracked.vstring('hltEG135HEFilter'),
-                El165HE10Ph = cms.untracked.vstring('hltEG165HE10Filter'),
-                El175Ph = cms.untracked.vstring('hltEG175HEFilter'),
-                El22EBR9IsoPh = cms.untracked.vstring('hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
-                El36EBR9IsoPh = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
-                El50EBR9IsoPh = cms.untracked.vstring('hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
-                El75EBR9IsoPh = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
-                El90EBR9IsoPh = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
-                El120EBR9IsoPh = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
-            ),
-            minPt = cms.untracked.double(5.),
-            maxEta = cms.untracked.double(10.)
+                El35Tight = cms.untracked.vstring(''),
+                Ph165HE10 = cms.untracked.vstring('hltEG165HE10Filter'),
+                Ph175 = cms.untracked.vstring('hltEG175HEFilter'),
+                Ph200 = cms.untracked.vstring('hltEG175HEFilter'),
+                Ph36EBR9Iso = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter')
+            )
         ),
         muons = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
@@ -186,10 +179,11 @@ panda = cms.EDAnalyzer('PandaProducer',
                 IsoMu22er = cms.untracked.vstring('hltL3crIsoL1sSingleMu20erL1f0L2f10QL3f22QL3trkIsoFiltered0p09'),
                 IsoTkMu22er = cms.untracked.vstring('hltL3fL1sMu20erL1f0Tkf22QL3trkIsoFiltered0p09'),
                 IsoMu24 = cms.untracked.vstring('hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09'),
-                IsoTkMu24 = cms.untracked.vstring('hltL3fL1sMu22L1f0Tkf24QL3trkIsoFiltered0p09')
-            ),
-            minPt = cms.untracked.double(5.),
-            maxEta = cms.untracked.double(10.)
+                IsoTkMu24 = cms.untracked.vstring('hltL3fL1sMu22L1f0Tkf24QL3trkIsoFiltered0p09'),
+                IsoMu27 = cms.untracked.vstring(''),
+                IsoTkMu27 = cms.untracked.vstring(''),
+                Mu50 = cms.untracked.vstring('')
+            )
         ),
         taus = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
@@ -230,18 +224,18 @@ panda = cms.EDAnalyzer('PandaProducer',
                 SEG24 = cms.untracked.vstring('hltL1sSingleEG24'),
                 SEG30 = cms.untracked.vstring('hltL1sSingleEG30'),
                 SEG40 = cms.untracked.vstring('hltL1sSingleEG40'),
-                Ph120 = cms.untracked.vstring('hltEG120HEFilter'),
+                Ph200Seed = cms.untracked.vstring(''),
                 Ph135 = cms.untracked.vstring('hltEG135HEFilter'),
                 Ph165HE10 = cms.untracked.vstring('hltEG165HE10Filter'),
                 Ph175 = cms.untracked.vstring('hltEG175HEFilter'),
+                Ph200 = cms.untracked.vstring('hltEG175HEFilter'),
                 Ph22EBR9Iso = cms.untracked.vstring('hltEG22R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph36EBR9Iso = cms.untracked.vstring('hltEG36R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph50EBR9Iso = cms.untracked.vstring('hltEG50R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph75EBR9Iso = cms.untracked.vstring('hltEG75R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph90EBR9Iso = cms.untracked.vstring('hltEG90R9Id90HE10Iso40EBOnlyTrackIsoFilter'),
                 Ph120EBR9Iso = cms.untracked.vstring('hltEG120R9Id90HE10Iso40EBOnlyTrackIsoFilter')
-            ),
-            minPt = cms.untracked.double(10.)
+            )
         ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

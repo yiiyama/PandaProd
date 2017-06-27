@@ -63,16 +63,9 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
     }
   }
 
-  if (!dupECALClustersToken_.second.isUninitialized())
-    outMetFilters.dupECALClusters = getProduct_(_inEvent, dupECALClustersToken_);
+  outMetFilters.badPFMuons = !getProduct_(_inEvent, badPFMuonsToken_); // CMSSW tool returns 1 if good, 0 otherwise. stay in line with convention above
 
-  if (!unfixedECALHitsToken_.second.isUninitialized())
-    outMetFilters.unfixedECALHits = (getProduct_(_inEvent, unfixedECALHitsToken_).size() != 0);
-
-  outMetFilters.badPFMuons = ! getProduct_(_inEvent, badPFMuonsToken_); // CMSSW tool returns 1 if good, 0 otherwise. stay in line with convention above
-
-  outMetFilters.badChargedHadrons = ! getProduct_(_inEvent, badChargedHadronsToken_);
-
+  outMetFilters.badChargedHadrons = !getProduct_(_inEvent, badChargedHadronsToken_);
 }
 
 DEFINE_TREEFILLER(MetFiltersFiller);

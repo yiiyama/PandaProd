@@ -282,7 +282,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outPhoton.pfPt = matchedPF->pt();
 
     if (inSmearedPhotons) {
-      for (auto& smeared : inSmearedPhotons) {
+      for (auto& smeared : *inSmearedPhotons) {
         if (smeared.superCluster() == scRef) {
           outPhoton.smearedPt = smeared.pt();
           break;

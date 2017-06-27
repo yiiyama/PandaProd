@@ -238,7 +238,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       outElectron.pfPt = matchedPF->pt();
 
     if (inSmearedElectrons) {
-      for (auto& smeared : inSmearedElectrons) {
+      for (auto& smeared : *inSmearedElectrons) {
         if (smeared.superCluster() == scRef) {
           outElectron.smearedPt = smeared.pt();
           break;

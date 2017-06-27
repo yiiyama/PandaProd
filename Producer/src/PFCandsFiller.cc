@@ -6,7 +6,8 @@
 #include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
 
 PFCandsFiller::PFCandsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  useExistingWeights_(getParameter_<bool>(_cfg, "useExistingWeights", true))
 {
   getToken_(candidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(puppiMapToken_, _cfg, _coll, "puppiMap", false);
@@ -30,19 +31,19 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& inCands(getProduct_(_inEvent, candidatesToken_, &candsHandle));
   auto& inVertices(getProduct_(_inEvent, verticesToken_));
 
+  // connect inCands and the puppi candidates by references to the base collection
+  // PuppiProducer produces a ValueMap<CandidatePtr> (ref to input -> puppi candidate)
+  // If the input to PuppiProducer is itself a ref collection (e.g. PtrVector), we need
+  // to map the refs down to the orignal collection.
+  // In more practical terms:
+  //   edm::Ref<View>(viewHandle, iview) maps to a puppi candidate via puppiMap
+  //   View::refAt(iview).key() is the index of the PF candidate in the original collection
+
+  std::map<reco::CandidatePtr, reco::Candidate const*> inCandsMap;
+
   std::map<reco::Candidate const*, reco::CandidatePtr> puppiPtrMap;
-  std::map<reco::Candidate const*, reco::CandidatePtr> puppiNoLepPtrMap;
 
-  if (!puppiMapToken_.second.isUninitialized() && !puppiNoLepMapToken_.second.isUninitialized()) {
-    // connect inCands and the puppi candidates by references to the base collection
-    // PuppiProducer produces a ValueMap<CandidatePtr> (ref to input -> puppi candidate)
-    // If the input to PuppiProducer is itself a ref collection (e.g. PtrVector), we need
-    // to map the refs down to the orignal collection.
-    // In more practical terms:
-    //   edm::Ref<View>(viewHandle, iview) maps to a puppi candidate via puppiMap
-    //   View::refAt(iview).key() is the index of the PF candidate in the original collection
-
-    std::map<reco::CandidatePtr, reco::Candidate const*> inCandsMap;
+  if (!puppiMapToken_.second.isUninitialized()) {
     for (unsigned iC(0); iC != inCands.size(); ++iC) {
       auto ptrToPF(inCands.ptrAt(iC)); // returns a pointer to the original collection (as opposed to Ref<CandidateView> ref(candsHandle, iC));
       inCandsMap[ptrToPF] = &inCands.at(iC);
@@ -65,6 +66,17 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       }
 
       puppiPtrMap[inCandsItr->second] = puppiPtr;
+    }
+  }
+
+  std::map<reco::Candidate const*, reco::CandidatePtr> puppiNoLepPtrMap;
+
+  if (!puppiNoLepMapToken_.second.isUninitialized()) {
+    if (inCandsMap.empty()) {
+      for (unsigned iC(0); iC != inCands.size(); ++iC) {
+        auto ptrToPF(inCands.ptrAt(iC)); // returns a pointer to the original collection (as opposed to Ref<CandidateView> ref(candsHandle, iC));
+        inCandsMap[ptrToPF] = &inCands.at(iC);
+      }
     }
 
     auto& puppiNoLepMap(getProduct_(_inEvent, puppiNoLepMapToken_));
@@ -104,10 +116,10 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outCand.packedEta = exposer.packedEta();
       outCand.packedPhi = exposer.packedPhi();
       outCand.packedM = exposer.packedM();
-      if (puppiPtrMap.empty())
+      if (useExistingWeights_) {
         outCand.packedPuppiW = exposer.packedPuppiweight();
-      if (puppiNoLepPtrMap.empty())
         outCand.packedPuppiWNoLepDiff = exposer.packedPuppiweightNoLepDiff();
+      }
 
       auto vtxRef(inPacked->vertexRef());
       if (vtxRef.isNonnull())
@@ -121,19 +133,23 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     }
 
     // if puppi collection is given, use its weight
-    if (!puppiPtrMap.empty() && !puppiNoLepPtrMap.empty()) {
-      auto& puppiCand(puppiPtrMap[&inCand]);
-      auto& puppiNoLepCand(puppiNoLepPtrMap[&inCand]);
+    if (!useExistingWeights_) {
+      double puppiW(-1.);
+      double puppiWNoLep(-1.);
 
-      double puppiW(puppiCand.isNonnull() ? puppiCand->pt() / inCand.pt() : 0.);
-      double puppiNoLepW(puppiNoLepCand.isNonnull() ? puppiNoLepCand->pt() / inCand.pt() : 0.);
+      if (!puppiPtrMap.empty()) {
+        auto&& ppItr(puppiPtrMap.find(&inCand));
+        if (ppItr != puppiPtrMap.end() && ppItr->second.isNonnull())
+          puppiW = ppItr->second->pt() / inCand.pt();
+      }
 
-      // if (puppiCand.isNull())
-      //   std::cerr << "puppi not found for key " << iP << std::endl;
-      // if (puppiNoLepCand.isNull())
-      //   std::cerr << "puppiNoLep not found for key " << iP << std::endl;
-      
-      outCand.setPuppiW(puppiW, puppiNoLepW);
+      if (!puppiNoLepPtrMap.empty()) {
+        auto&& ppItr(puppiNoLepPtrMap.find(&inCand));
+        if (ppItr != puppiNoLepPtrMap.end() && ppItr->second.isNonnull())
+          puppiWNoLep = ppItr->second->pt() / inCand.pt();
+      }
+
+      outCand.setPuppiW(puppiW, puppiWNoLep);
     }
 
     outCand.ptype = panda::PFCand::X;
@@ -170,9 +186,10 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     unsigned idx(originalIndices[iP]);
     auto& ptr(ptrList[idx]);
     objectMap.add(ptr, outCand);
-    auto& puppiPtr(puppiPtrMap[ptr.get()]);
-    if (puppiPtr.isNonnull())
-      puppiMap.add(puppiPtr, outCand);
+
+    auto&& ppItr(puppiPtrMap.find(ptr.get()));
+    if (ppItr != puppiPtrMap.end() && ppItr->second.isNonnull())
+      puppiMap.add(ppItr->second, outCand);
 
     // add track information for charged hadrons
     // track order matters; track ref from PFCand are set during Event::getEntry relying on the order

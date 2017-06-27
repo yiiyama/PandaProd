@@ -1,7 +1,7 @@
 from FWCore.ParameterSet.VarParsing import VarParsing
 
 options = VarParsing('analysis')
-options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, 03Feb2017, 23Sep2016, Spring16, Summer16')
+options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
@@ -15,11 +15,13 @@ options._tagOrder.remove('numEvent%d')
 options.parseArguments()
 
 # True -> run JEC
-jetRecorrection = True
+jetRecorrection = False
 # True -> clean bad muons
 muFix = False
+# True -> run EGM regression (needed for 80X)
+egRegression = False
 # True -> run PUPPI & PUPPIMET
-puppiRecompute = True
+puppiRecompute = False
 # EGM object energy smearing type to apply
 egmSmearingType = 'Moriond2017_JEC'
 
@@ -27,14 +29,16 @@ egmSmearingType = 'Moriond2017_JEC'
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_2017_data_taking
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
 
-if options.config == 'Prompt17':
-    jetRecorrection = False
-    egRegression = False
-    puppiRecompute = False
+if options.config == 'Prompt2017':
     options.isData = True
     options.globaltag = '92X_dataRun2_Prompt_v4'
+elif options.config == '18Apr2017':
+    options.isData = True
+    options.globaltag = '80X_dataRun2_2016LegacyRepro_v3'
 elif options.config == 'Summer16':
+    jetRecorrection = True
     muFix = True
+    puppiRecompute = True
     options.isData = False
     options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
 elif options.config:
@@ -75,7 +79,10 @@ if options.lumilist != '':
 ## SERVICES ##
 ##############
 
-process.load('Configuration.Geometry.GeometryIdeal_cff') 
+if options.isData:
+    process.load('Configuration.Geometry.GeometryRecoDB_cff') 
+else:
+    process.load('Configuration.Geometry.GeometrySimDB_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 
@@ -105,6 +112,38 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
+if egRegression:
+    ### EGAMMA CORRECTIONS
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMRegression
+
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
+    from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
+    regressionWeights(process)
+    process.regressionElectrons = regressionElectrons
+    process.regressionPhotons = regressionPhotons
+
+    process.selectedElectrons = cms.EDFilter('PATElectronSelector',
+        src = cms.InputTag('regressionElectrons'),
+        cut = cms.string('pt > 5 && abs(eta) < 2.5')
+    )
+
+    ## Set names of EG objects
+    electronsName = 'selectedElectrons'
+    photonsName = 'regressionPhotons'
+
+    egmCorrectionSequence = cms.Sequence(
+        process.regressionElectrons +
+        process.regressionPhotons +
+        process.selectedElectrons
+    )
+
+else:
+    electronsName = 'slimmedElectrons'
+    photonsName = 'slimmedPhotons'
+
+    egmCorrectionSequence = cms.Sequence()
+
 ### EGAMMA SMEARING
 # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
 # Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
@@ -113,12 +152,12 @@ import PandaProd.Producer.utils.egmidconf as egmidconf
 
 from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
 process.smearedElectrons = calibratedPatElectrons.clone(
-    electrons = 'slimmedElectrons',
+    electrons = electronsName,
     isMC = (not options.isData),
     correctionFile = egmidconf.electronSmearingData[egmSmearingType]
 )
 process.smearedPhotons = calibratedPatPhotons.clone(
-    photons = 'slimmedPhotons',
+    photons = photonsName,
     isMC = (not options.isData),
     correctionFile = egmidconf.photonSmearingData[egmSmearingType]
 )   
@@ -410,8 +449,16 @@ if muFix:
 else:
     process.panda.fillers.pfMet.met = 'slimmedMETs'
 
+if puppiRecompute:
+    process.panda.fillers.pfCandidates.puppiNoLepMap = cms.untracked.string('puppiNoLep')
+    process.panda.fillers.pfCandidates.puppiNoLepInput = cms.untracked.string('pfNoLepPUPPI')
+    process.panda.fillers.pfCandidates.useExistingWeights = False
+
 del process.panda.fillers.electrons.regressionElectrons
 del process.panda.fillers.photons.regressionPhotons
+
+if options.config == 'Summer16':
+    process.panda.fillers.common.triggerObjects = 'selectedPatTrigger'
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

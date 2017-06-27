@@ -63,8 +63,6 @@ private:
 
   std::string outputName_;
   bool useTrigger_;
-  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
-  std::vector<VString> triggerObjectNames_;
   unsigned printLevel_;
 
   std::vector<SClock::duration> timers_;
@@ -239,30 +237,35 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   for (auto& mm : objectMaps_)
     mm.second.clearMaps();
 
+  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
+  std::vector<VString> triggerObjectNames;
+
   if (useTrigger_) {
     // Unpack trigger object names
     edm::Handle<edm::TriggerResults> triggerResultsHandle;
     _event.getByToken(hltResultsToken_, triggerResultsHandle);
-    auto& triggerNames(_event.triggerNames(*triggerResultsHandle));
+    auto& triggerResults(*triggerResultsHandle);
+    auto& triggerNames(_event.triggerNames(triggerResults));
 
     edm::Handle<TriggerObjectView> triggerObjectsHandle;
     _event.getByToken(triggerObjectsToken_, triggerObjectsHandle);
     auto& triggerObjects(*triggerObjectsHandle);
 
     auto& objMap(objectMaps_["global"].get<pat::TriggerObjectStandAlone, VString>());
-    triggerObjectNames_.assign(triggerObjects.size(), VString());
+    triggerObjectNames.assign(triggerObjects.size(), VString());
 
     unsigned iObj(0);
     for (auto& obj : triggerObjects) {
       // need to create a copy to perform the non-const action of unpacking
       pat::TriggerObjectStandAlone copy(obj);
+      copy.unpackFilterLabels(_event, triggerResults);
       copy.unpackPathNames(triggerNames);
       
-      for (auto& label : obj.filterLabels())
-        triggerObjectNames_[iObj].push_back(label);
+      for (auto& label : copy.filterLabels())
+        triggerObjectNames[iObj].push_back(label);
 
       // link the pat trigger object to the list of labels
-      objMap.add(triggerObjects.ptrAt(iObj), triggerObjectNames_[iObj]);
+      objMap.add(triggerObjects.ptrAt(iObj), triggerObjectNames[iObj]);
       ++iObj;
     }
   }

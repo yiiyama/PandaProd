@@ -37,7 +37,6 @@ class ElectronsFiller : public FillerBase {
   NamedToken<GsfElectronView> electronsToken_;
   NamedToken<GsfElectronView> smearedElectronsToken_;
   NamedToken<GsfElectronView> regressionElectronsToken_;
-  NamedToken<GsfElectronView> gsUnfixedElectronsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<PhotonView> photonsToken_;
   NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
@@ -65,8 +64,6 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phPhIsoEA_;
 
   std::set<std::string> triggerObjects_[panda::Electron::nTriggerObjects];
-  double minPt_{-1.};
-  double maxEta_{10.};
 };
 
 #endif

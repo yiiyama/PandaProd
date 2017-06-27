@@ -20,14 +20,11 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   hcalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "hcalIsoEA").fullPath()),
   phCHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "chIsoEA").fullPath()),
   phNHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "nhIsoEA").fullPath()),
-  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath()),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons");
   getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
-  getToken_(gsUnfixedElectronsToken_, _cfg, _coll, "gsUnfixedElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
@@ -73,8 +70,6 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
     _eventBranches.emplace_back("!electrons.matchedGen_");
   if (!useTrigger_)
     _eventBranches.emplace_back("!electrons.triggerMatch");
-  if (gsUnfixedElectronsToken_.second.isUninitialized())
-    _eventBranches.emplace_back("!electrons.originalPt");
 }
 
 void
@@ -83,7 +78,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
   auto& inSmearedElectrons(getProduct_(_inEvent, smearedElectronsToken_));
   auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
-  auto* gsUnfixedElectrons(getProductSafe_(_inEvent, gsUnfixedElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
@@ -146,29 +140,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
 
-  // See below
-  // std::map<uint32_t, reco::GsfElectron const*> gsFixMap;
-  // if (gsUnfixedElectrons) {
-  //   for (auto& ele : *gsUnfixedElectrons) {
-  //     auto&& scRef(ele.superCluster());
-  //     if (scRef.isNull())
-  //       continue;
-  //     auto&& bcRef(scRef->seed());
-  //     if (bcRef.isNull())
-  //       continue;
-
-  //     gsFixMap[bcRef->seed().rawId()] = &ele;
-  //   }
-  // }
-
   unsigned iEl(-1);
   for (auto& inElectron : inElectrons) {
     ++iEl;
-    if (inElectron.pt() < minPt_)
-      continue;
-    if (std::abs(inElectron.eta()) > maxEta_)
-      continue;
-
     auto&& inRef(inElectrons.refAt(iEl));
 
     bool veto(vetoId[inRef]);
@@ -195,16 +169,22 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
     outElectron.hOverE = inElectron.hadronicOverEm();
 
-    auto gsftrack = inElectron.gsfTrack();
-    if (vertices.size()>0) {
-      auto& pv = vertices.at(0);
-      auto pos = pv.position();
-      outElectron.dxy = fabs(gsftrack->dxy(pos));
-      outElectron.dz = fabs(gsftrack->dz(pos));
-    } else {
-      outElectron.dxy = gsftrack->dxy();
-      outElectron.dz = gsftrack->dz();
+    auto gsfTrack(inElectron.gsfTrack());
+    if (vertices.size() != 0) {
+      auto& pv(vertices.at(0));
+      auto pos(pv.position());
+      outElectron.dxy = std::abs(gsfTrack->dxy(pos));
+      outElectron.dz = std::abs(gsfTrack->dz(pos));
     }
+    else {
+      outElectron.dxy = std::abs(gsfTrack->dxy());
+      outElectron.dz = std::abs(gsfTrack->dz());
+    }
+
+    auto&& chargeInfo(inElectron.chargeInfo());
+    outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
+
+    outElectron.noMissingHits = (gsfTrack->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS) == 0);
 
     double scEta(std::abs(sc.eta()));
 
@@ -228,6 +208,8 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
         throw edm::Exception(edm::errors::Configuration, "HCAL PF cluster iso missing");
       outElectron.hcalIso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
     }
+
+    outElectron.trackIso = inElectron.dr03TkSumPt();
 
     auto&& seedRef(sc.seed());
     if (seedRef.isNonnull()) {
@@ -266,21 +248,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       for (auto& reg : *inRegressionElectrons) {
         if (reg.superCluster() == scRef) {
           outElectron.regPt = reg.pt();
-          break;
-        }
-      }
-    }
-
-    // if (gsUnfixedElectrons && seedRef.isNonnull()) {
-    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-    //   if (eItr != gsFixMap.end())
-    //     outElectron.originalPt = eItr->second->pt();
-    // }
-    // Following MET POG and doing the most simplistic match
-    if (gsUnfixedElectrons) {
-      for (auto& el : *gsUnfixedElectrons) {
-        if (reco::deltaR(el, inElectron) < 0.01) {
-          outElectron.originalPt = el.pt();
           break;
         }
       }
@@ -361,7 +328,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>("gen"));
+    auto& genEleMap(objectMap_->get<reco::Candidate, panda::Electron>("gen"));
 
     auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 

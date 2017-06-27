@@ -9,9 +9,7 @@
 #include "DataFormats/Common/interface/RefToPtr.h"
 
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  FillerBase(_name, _cfg)
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
@@ -58,12 +56,6 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   unsigned iMu(-1);
   for (auto& inMuon : inMuons) {
     ++iMu;
-
-    if (inMuon.pt() < minPt_)
-      continue;
-    if (std::abs(inMuon.eta()) > maxEta_)
-      continue;
-
     auto& outMuon(outMuons.create_back());
 
     fillP4(outMuon, inMuon);
@@ -76,12 +68,13 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.nhIso = pfIso.sumNeutralHadronEt;
     outMuon.phIso = pfIso.sumPhotonEt;
     outMuon.puIso = pfIso.sumPUPt;
+    outMuon.r03Iso = inMuon.isolationR03().sumPt;
 
-    if (dynamic_cast<pat::Muon const*>(&inMuon)) {
-      auto& patMuon(static_cast<pat::Muon const&>(inMuon));
+    auto* patMuon(dynamic_cast<pat::Muon const*>(&inMuon));
 
-      outMuon.loose = patMuon.isLooseMuon();
-      outMuon.medium = patMuon.isMediumMuon();
+    if (patMuon) {
+      outMuon.loose = patMuon->isLooseMuon();
+      outMuon.medium = patMuon->isMediumMuon();
       // Following the "short-term instruction for Moriond 2017" given in https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideMuonIdRun2#MediumID2016_to_be_used_with_Run
       // Valid only for runs B-F
       outMuon.mediumBtoF = outMuon.loose && inMuon.innerTrack()->validFraction() > 0.49 &&
@@ -92,18 +85,48 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
           muon::segmentCompatibility(inMuon) > 0.303) ||
          muon::segmentCompatibility(inMuon) > 0.451);
           
-      if (vertices.size() == 0)
+      if (vertices.size() == 0) {
         outMuon.tight = false;
-      else
-        outMuon.tight = patMuon.isTightMuon(vertices.at(0));
+        outMuon.soft = false;
+      }
+      else {
+        outMuon.tight = patMuon->isTightMuon(vertices.at(0));
+        outMuon.soft = patMuon->isSoftMuon(vertices.at(0));
+      }
     }
     else {
       outMuon.loose = muon::isLooseMuon(inMuon);
       outMuon.medium = muon::isMediumMuon(inMuon);
-      if (vertices.size() == 0)
+      if (vertices.size() == 0) {
         outMuon.tight = false;
-      else
+        outMuon.soft = false;
+      }
+      else {
         outMuon.tight = muon::isTightMuon(inMuon, vertices.at(0));
+        outMuon.soft = muon::isSoftMuon(inMuon, vertices.at(0));
+      }
+    }
+
+    outMuon.hltsafe = outMuon.combIso() / outMuon.pt() < 0.4 && outMuon.r03Iso / outMuon.pt() < 0.4;
+
+    auto bestTrack(inMuon.muonBestTrack());
+    if (vertices.size() != 0) {
+      auto& pv(vertices.at(0));
+      auto pos(pv.position());
+      if (patMuon)
+        outMuon.dxy = patMuon->dB(); // probably gives identical value as bestTrack->dxy()
+      else
+        outMuon.dxy = std::abs(bestTrack->dxy(pos));
+
+      outMuon.dz = std::abs(bestTrack->dz(pos));
+    }
+    else {
+      if (patMuon)
+        outMuon.dxy = patMuon->dB(); // probably gives identical value as bestTrack->dxy()
+      else
+        outMuon.dxy = std::abs(bestTrack->dxy());
+
+      outMuon.dz = std::abs(bestTrack->dz());
     }
 
     outMuon.pfPt = inMuon.pfP4().pt();

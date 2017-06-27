@@ -84,7 +84,7 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
     auto&& combQuality(inMuon.combinedQuality());
     outMuon.chi2LocalPosition = combQuality.chi2LocalPosition;
-    outMuon.trkKink = combQuality.chi2LocalPosition;
+    outMuon.trkKink = combQuality.trkKink;
 
     outMuon.segmentCompatibility = muon::segmentCompatibility(inMuon);
 

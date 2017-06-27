@@ -29,7 +29,6 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
     auto&& filterNames(_inEvent.triggerNames(*inFilterResults));
     for (unsigned iF(0); iF != filterNames.size(); ++iF) {
       auto& name(filterNames.triggerName(iF));
-      std::cout << name << " " << inFilterResults->accept(iF) << std::endl;
     
       if (name == "Flag_HBHENoiseFilter")
         outMetFilters.hbhe = !inFilterResults->accept(iF);

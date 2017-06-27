@@ -12,8 +12,6 @@ MetFiller::MetFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
     outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.puppiMet; };
   else if (_name == "metMuOnlyFix")
     outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.metMuOnlyFix; };
-  else if (_name == "metNoFix")
-    outputSelector_ = [](panda::Event& _event)->panda::RecoMet& { return _event.metNoFix; };
   else
     throw edm::Exception(edm::errors::Configuration, "Unknown MET output");
 

@@ -24,8 +24,6 @@ class MuonsFiller : public FillerBase {
   NamedToken<reco::VertexCollection> verticesToken_;
 
   std::set<std::string> triggerObjects_[panda::Muon::nTriggerObjects];
-  double minPt_{-1.};
-  double maxEta_{10.};
 };
 
 #endif

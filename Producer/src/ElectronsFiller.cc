@@ -23,7 +23,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
-  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons");
+  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons", false);
   getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
@@ -76,7 +76,7 @@ void
 ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
-  auto& inSmearedElectrons(getProduct_(_inEvent, smearedElectronsToken_));
+  auto* inSmearedElectrons(getProductSafe_(_inEvent, smearedElectronsToken_));
   auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
@@ -237,10 +237,12 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
-    for (auto& smeared : inSmearedElectrons) {
-      if (smeared.superCluster() == scRef) {
-        outElectron.smearedPt = smeared.pt();
-        break;
+    if (inSmearedElectrons) {
+      for (auto& smeared : inSmearedElectrons) {
+        if (smeared.superCluster() == scRef) {
+          outElectron.smearedPt = smeared.pt();
+          break;
+        }
       }
     }
 

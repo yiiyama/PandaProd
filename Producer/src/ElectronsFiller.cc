@@ -2,10 +2,12 @@
 
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
+#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
+#include "DataFormats/EgammaCandidates/interface/Conversion.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/HepMCCandidate/interface/GenStatusFlags.h"
@@ -23,12 +25,14 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
-  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons");
+  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons", false);
   getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
+  getToken_(conversionsToken_, _cfg, _coll, "common", "conversions");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
+  getToken_(beamSpotToken_, _cfg, _coll, "common", "beamSpot");
   getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
@@ -76,12 +80,13 @@ void
 ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
-  auto& inSmearedElectrons(getProduct_(_inEvent, smearedElectronsToken_));
+  auto* inSmearedElectrons(getProductSafe_(_inEvent, smearedElectronsToken_));
   auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
+  auto& beamSpot(getProduct_(_inEvent, beamSpotToken_));
   auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
@@ -99,6 +104,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     hcalIso = &getProduct_(_inEvent, hcalIsoToken_);
   double rho(getProduct_(_inEvent, rhoToken_));
   double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
+
+  edm::Handle<reco::ConversionCollection> conversionsHandle;
+  getProduct_(_inEvent, conversionsToken_, &conversionsHandle);
 
   auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
       EcalRecHitCollection const* hits(0);
@@ -168,23 +176,28 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
     outElectron.hOverE = inElectron.hadronicOverEm();
-
-    auto gsfTrack(inElectron.gsfTrack());
+    outElectron.dPhiIn = inElectron.deltaPhiSuperClusterTrackAtVtx();
+    outElectron.ecalE = inElectron.ecalEnergy();
+    outElectron.trackP = inElectron.ecalEnergy() / inElectron.eSuperClusterOverP();
+   
+    auto& gsfTrack(*inElectron.gsfTrack());
     if (vertices.size() != 0) {
       auto& pv(vertices.at(0));
       auto pos(pv.position());
-      outElectron.dxy = std::abs(gsfTrack->dxy(pos));
-      outElectron.dz = std::abs(gsfTrack->dz(pos));
+      outElectron.dxy = std::abs(gsfTrack.dxy(pos));
+      outElectron.dz = std::abs(gsfTrack.dz(pos));
     }
     else {
-      outElectron.dxy = std::abs(gsfTrack->dxy());
-      outElectron.dz = std::abs(gsfTrack->dz());
+      outElectron.dxy = std::abs(gsfTrack.dxy());
+      outElectron.dz = std::abs(gsfTrack.dz());
     }
+
+    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+
+    outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
 
     auto&& chargeInfo(inElectron.chargeInfo());
     outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
-
-    outElectron.noMissingHits = (gsfTrack->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS) == 0);
 
     double scEta(std::abs(sc.eta()));
 
@@ -218,9 +231,11 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       auto* seedHit(findHit(seed.seed()));
       if (seedHit)
         outElectron.eseed = seedHit->energy();
-      else
-        outElectron.eseed = 0.;
+
+      outElectron.dEtaInSeed = inElectron.deltaEtaSuperClusterTrackAtVtx() - sc.eta() + seed.eta();
     }
+    else
+      outElectron.dEtaInSeed = std::numeric_limits<float>::max();
 
     unsigned iPh(0);
     for (auto& photon : photons) {
@@ -237,10 +252,12 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
-    for (auto& smeared : inSmearedElectrons) {
-      if (smeared.superCluster() == scRef) {
-        outElectron.smearedPt = smeared.pt();
-        break;
+    if (inSmearedElectrons) {
+      for (auto& smeared : *inSmearedElectrons) {
+        if (smeared.superCluster() == scRef) {
+          outElectron.smearedPt = smeared.pt();
+          break;
+        }
       }
     }
 

@@ -60,6 +60,34 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
     fillP4(outMuon, inMuon);
 
+    outMuon.global = inMuon.isGlobalMuon();
+    outMuon.tracker = inMuon.isTrackerMuon();
+    outMuon.pf = inMuon.isPFMuon();
+    
+    auto&& innerTrack(inMuon.innerTrack());
+    if (innerTrack.isNonnull()) {
+      outMuon.validFraction = innerTrack->validFraction();
+      auto&& hitPattern(innerTrack->hitPattern());
+      outMuon.trkLayersWithMmt = hitPattern.trackerLayersWithMeasurement();
+      outMuon.pixLayersWithMmt = hitPattern.pixelLayersWithMeasurement();
+      outMuon.nValidPixel = hitPattern.numberOfValidPixelHits();
+    }
+
+    auto&& globalTrack(inMuon.globalTrack());
+    if (globalTrack.isNonnull()) {
+      outMuon.normChi2 = globalTrack->normalizedChi2();
+      auto&& hitPattern(globalTrack->hitPattern());
+      outMuon.nValidMuon = hitPattern.numberOfValidMuonHits();
+    }
+
+    outMuon.nMatched = inMuon.numberOfMatchedStations();
+
+    auto&& combQuality(inMuon.combinedQuality());
+    outMuon.chi2LocalPosition = combQuality.chi2LocalPosition;
+    outMuon.trkKink = combQuality.trkKink;
+
+    outMuon.segmentCompatibility = muon::segmentCompatibility(inMuon);
+
     outMuon.charge = inMuon.charge();
 
     auto& pfIso(inMuon.pfIsolationR04());

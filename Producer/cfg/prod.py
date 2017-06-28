@@ -88,28 +88,40 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
-### EGAMMA SMEARING
-# https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
-# Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
+if options.isData:
+    ### EGAMMA SCALING
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
+    # Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
 
-import PandaProd.Producer.utils.egmidconf as egmidconf
+    # Will use the same modules as EGM smearing (internally the modules switch between scaling (data)
+    # and smearing (MC)). Scaling parameters are run-dependent and not defined for 2017 data yet.
 
-from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
-process.smearedElectrons = calibratedPatElectrons.clone(
-    electrons = 'slimmedElectrons',
-    isMC = (not options.isData),
-    correctionFile = egmidconf.electronSmearingData[egmSmearingType]
-)
-process.smearedPhotons = calibratedPatPhotons.clone(
-    photons = 'slimmedPhotons',
-    isMC = (not options.isData),
-    correctionFile = egmidconf.photonSmearingData[egmSmearingType]
-)   
+    egmCorrectionSequence = cms.Sequence()
 
-egmCorrectionSequence = cms.Sequence(
-    process.smearedElectrons +
-    process.smearedPhotons
-)
+else:
+    ### EGAMMA SMEARING
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
+    # Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
+    
+    import PandaProd.Producer.utils.egmidconf as egmidconf
+    
+    from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
+    process.smearedElectrons = calibratedPatElectrons.clone(
+        electrons = 'slimmedElectrons',
+        isMC = (not options.isData),
+        correctionFile = egmidconf.electronSmearingData[egmSmearingType]
+    )
+    process.smearedPhotons = calibratedPatPhotons.clone(
+        photons = 'slimmedPhotons',
+        isMC = (not options.isData),
+        correctionFile = egmidconf.photonSmearingData[egmSmearingType]
+    )   
+    
+    egmCorrectionSequence = cms.Sequence(
+        process.smearedElectrons +
+        process.smearedPhotons
+    )
+
 
 ### Vanilla MET
 # this is the most basic MET one can find
@@ -276,6 +288,8 @@ if options.isData:
     process.panda.fillers.ak4GenJets.enabled = False
     process.panda.fillers.ak8GenJets.enabled = False
     process.panda.fillers.ca15GenJets.enabled = False
+    del process.panda.fillers.electrons.smearedElectrons
+    del process.panda.fillers.photons.smearedPhotons
 
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False

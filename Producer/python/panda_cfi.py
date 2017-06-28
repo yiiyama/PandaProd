@@ -16,8 +16,10 @@ panda = cms.EDAnalyzer('PandaProducer',
             genParticles = cms.untracked.string('prunedGenParticles'),
             pfCandidates = cms.untracked.string('packedPFCandidates'),
             vertices = cms.untracked.string('offlineSlimmedPrimaryVertices'),
+            beamSpot = cms.untracked.string('offlineBeamSpot'),
             ebHits = cms.untracked.string('reducedEgamma:reducedEBRecHits'),
-            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits')
+            eeHits = cms.untracked.string('reducedEgamma:reducedEERecHits'),
+            conversions = cms.untracked.string('reducedEgamma:reducedConversions')
         ),
         chsAK4Jets = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

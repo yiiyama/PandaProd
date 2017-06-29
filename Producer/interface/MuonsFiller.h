@@ -23,7 +23,7 @@ class MuonsFiller : public FillerBase {
   NamedToken<MuonView> muonsToken_;
   NamedToken<reco::VertexCollection> verticesToken_;
 
-  std::set<std::string> triggerObjects_[panda::Muon::nTriggerObjects];
+  std::set<std::string> triggerObjectNames_[panda::Muon::nTriggerObjects];
 };
 
 #endif

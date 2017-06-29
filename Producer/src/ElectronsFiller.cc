@@ -51,7 +51,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
     for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
       std::string name(panda::Electron::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjects_[iT].insert(filters.begin(), filters.end());
+      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
     }
   }
 }
@@ -360,19 +360,18 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
+    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
+    std::vector<panda::HLTObject const*> triggerObjects[panda::Electron::nTriggerObjects];
 
-    // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
-      // loop over all trigger objects (and their associated filter names)
-      for (auto& objAndNames : objMap) { // (TO ptr, VString)
-        VString const& names(*objAndNames.second);
-        // loop over the associated filter names
-        for (auto& name : names) {
-          if (triggerObjects_[iT].find(name) != triggerObjects_[iT].end()) {
-            triggerObjects[iT].push_back(&*objAndNames.first);
+    // loop over all trigger objects
+    for (auto& mapEntry : objMap) { // (pat object, panda object)
+      // loop over the trigger filters we are interested in
+      for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
+        // each triggerObjectNames_[] can have multiple filters
+        for (auto& name : triggerObjectNames_[iT]) {
+          if (mapEntry.first->hasFilterLabel(name)) {
+            triggerObjects[iT].push_back(mapEntry.second);
             break;
           }
         }
@@ -382,12 +381,11 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>().fwdMap);
 
     for (auto& link : eleEleMap) { // edm -> panda
-      auto& inElectron(*link.first);
       auto& outElectron(*link.second);
 
       for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(inElectron, *obj) < 0.3) {
+          if (obj->dR2(outElectron) < 0.09) {
             outElectron.triggerMatch[iT] = true;
             break;
           }

@@ -29,11 +29,6 @@ class HLTFiller : public FillerBase {
   TTree* hltTree_{0};
   std::vector<TString>* filters_;
 
-  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
-  // Fillers with trigger matching will use object map pat::TriggerObjectStandAlone -> set of filter names
-  // ObjectMap will point to entries in this vector
-  std::vector<VString> filterNamesList_;
-
   // Map of filter name to the index in the stored filters vector
   std::map<std::string, unsigned> filterIndices_;
 };

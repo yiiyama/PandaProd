@@ -90,8 +90,8 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
       outHLT.set(iF);
   }
 
-  auto& filterMap(objectMap_->get<pat::TriggerObjectStandAlone, VString>());
-  filterNamesList_.clear();
+  // We don't really need an object map in other modules, but rather just a list of pat trigger objects.
+  auto& objMap(objectMap_->get<pat::TriggerObjectStandAlone, panda::HLTObject>());
 
   unsigned iObj(-1);
   for (auto& inObj : inTriggerObjects) {
@@ -103,8 +103,7 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     for (auto& label : inObj.filterLabels())
       outObj.filters->push_back(filterIndices_.at(label));
 
-    filterNamesList_.emplace_back(inObj.filterLabels());
-    filterMap.add(inTriggerObjects.ptrAt(iObj), filterNamesList_.back());
+    objMap.add(inTriggerObjects.ptrAt(iObj), outObj);
   }
 
   _outEvent.triggerObjects.makeMap(*filters_);

@@ -31,6 +31,15 @@ class HLTFiller : public FillerBase {
 
   // Map of filter name to the index in the stored filters vector
   std::map<std::string, unsigned> filterIndices_;
+
+  // This filler exports a map of trigger object -> list of associated HLT filters
+  // In CMSSW 9 series, filter names are packed and cannot be accessed from the trigger object
+  // without passing an Event and TriggerResults object.
+  // Since fillers with trigger matching will not have access to these information in their
+  // setRef() functions, this is the only solution.
+  // The vector needs to be a member data of this class to ensure validity of the pointer in
+  // the objectMaps.
+  std::vector<VString> filterNames_;
 };
 
 #endif

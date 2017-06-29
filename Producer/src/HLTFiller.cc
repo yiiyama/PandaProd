@@ -41,16 +41,29 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
   TString menu(hltConfig_.tableName());
 
   // _outRun.hlt is not reset at each init() call
-  if (!configChanged && menu != *_outRun.hlt.menu)
-    throw edm::Exception(edm::errors::Configuration, "HLTFiller")
-      << "HLTConfigProvider claims nothing is changed, but the menu name did.";
+  if (!configChanged) {
+    if (menu != *_outRun.hlt.menu)
+      throw edm::Exception(edm::errors::Configuration, "HLTFiller")
+        << "HLTConfigProvider claims nothing is changed, but the menu name did.";
+
+    return;
+  }
 
   *_outRun.hlt.menu = menu;
   auto menuItr(menuMap_.find(menu));
 
+  filters_ = _outRun.hlt.filters; // just need to do this once
+
+  filterIndices_.clear();
+
   if (menuItr != menuMap_.end()) {
     _outRun.hltMenu = menuItr->second;
     hltTree_->GetEntry(_outRun.hltMenu);
+    
+    unsigned iF(0);
+    for (TString& filter : *_outRun.hlt.filters)
+      filterIndices_.emplace(filter.Data(), iF++);
+
     return;
   }
 
@@ -59,11 +72,14 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
 
   _outRun.hlt.paths->clear();
   _outRun.hlt.filters->clear();
-  filterIndices_.clear();
+
   for (unsigned iP(0); iP != hltConfig_.size(); ++iP) {
     _outRun.hlt.paths->push_back(hltConfig_.triggerName(iP));
 
-    for (std::string const& filter : hltConfig_.saveTagsModules(iP)) {
+    for (std::string filter : hltConfig_.saveTagsModules(iP)) {
+      if (filter[0] == '-' || filter[0] == ' ')
+        filter = filter.substr(1);
+
       if (filterIndices_.count(filter) == 0) {
         filterIndices_.emplace(filter, _outRun.hlt.filters->size());
         _outRun.hlt.filters->emplace_back(filter);
@@ -72,8 +88,6 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
   }
 
   hltTree_->Fill();
-
-  filters_ = _outRun.hlt.filters;
 }
 
 void

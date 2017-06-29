@@ -10,7 +10,6 @@ panda = cms.EDAnalyzer('PandaProducer',
     printLevel = cms.untracked.uint32(0),
     fillers = cms.untracked.PSet(
         common = cms.untracked.PSet(
-            triggerObjects = cms.untracked.string('slimmedPatTrigger'),
             genEventInfo = cms.untracked.string('generator'),
             finalStateParticles = cms.untracked.string('packedGenParticles'),
             genParticles = cms.untracked.string('prunedGenParticles'),
@@ -309,7 +308,8 @@ panda = cms.EDAnalyzer('PandaProducer',
         hlt = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('HLT'),
-            triggerResults = cms.untracked.string('TriggerResults::HLT')
+            triggerResults = cms.untracked.string('TriggerResults::HLT'),
+            triggerObjects = cms.untracked.string('slimmedPatTrigger')
         ),
         weights = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

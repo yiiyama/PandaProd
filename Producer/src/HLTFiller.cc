@@ -100,8 +100,11 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
 
     fillP4(outObj, inObj);
 
-    for (auto& label : inObj.filterLabels())
-      outObj.filters->push_back(filterIndices_.at(label));
+    for (auto& label : inObj.filterLabels()) {
+      auto itr(filterIndices_.find(label));
+      if (itr != filterIndices_.end())
+        outObj.filters->push_back(itr->second);
+    }
 
     objMap.add(inTriggerObjects.ptrAt(iObj), outObj);
   }

@@ -360,7 +360,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
+    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
     std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
 

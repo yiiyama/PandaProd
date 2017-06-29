@@ -4,6 +4,7 @@
 #include "FillerBase.h"
 
 #include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 
 class HLTFiller : public FillerBase {
@@ -17,12 +18,24 @@ class HLTFiller : public FillerBase {
   void fillBeginRun(panda::Run&, edm::Run const&, edm::EventSetup const&) override;
 
  protected:
+  typedef edm::View<pat::TriggerObjectStandAlone> TriggerObjectView;
+
   NamedToken<edm::TriggerResults> triggerResultsToken_;
+  NamedToken<TriggerObjectView> triggerObjectsToken_;
 
   HLTConfigProvider hltConfig_;
   std::map<TString, unsigned> menuMap_{};
 
   TTree* hltTree_{0};
+  std::vector<TString>* filters_;
+
+  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
+  // Fillers with trigger matching will use object map pat::TriggerObjectStandAlone -> set of filter names
+  // ObjectMap will point to entries in this vector
+  std::vector<VString> filterNamesList_;
+
+  // Map of filter name to the index in the stored filters vector
+  std::map<std::string, unsigned> filterIndices_;
 };
 
 #endif

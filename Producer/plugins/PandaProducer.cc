@@ -8,7 +8,6 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/Common/interface/Handle.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 
 #include "PandaTree/Objects/interface/Event.h"
 
@@ -34,8 +33,6 @@ public:
   ~PandaProducer();
 
 private:
-  typedef edm::View<pat::TriggerObjectStandAlone> TriggerObjectView;
-
   void analyze(edm::Event const&, edm::EventSetup const&) override;
   void beginRun(edm::Run const&, edm::EventSetup const&) override;
   void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -49,8 +46,6 @@ private:
 
   VString selectEvents_;
   edm::EDGetTokenT<edm::TriggerResults> skimResultsToken_;
-  edm::EDGetTokenT<edm::TriggerResults> hltResultsToken_;
-  edm::EDGetTokenT<TriggerObjectView> triggerObjectsToken_;
 
   TFile* outputFile_{0};
   TTree* eventTree_{0};
@@ -63,8 +58,6 @@ private:
 
   std::string outputName_;
   bool useTrigger_;
-  // [[filter0, filter1, ...], ...] outer index runs over trigger objects
-  std::vector<VString> triggerObjectNames_;
   unsigned printLevel_;
 
   std::vector<SClock::duration> timers_;
@@ -75,7 +68,6 @@ private:
 PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
   selectEvents_(_cfg.getUntrackedParameter<VString>("SelectEvents")),
   skimResultsToken_(consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"))), // no process name -> pick up the trigger results from the current process
-  triggerObjectsToken_(),
   outEvent_(),
   nEventsInLumi_(0),
   outputName_(_cfg.getUntrackedParameter<std::string>("outputFile", "panda.root")),
@@ -126,11 +118,6 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
                                      << ex.what() << std::endl;
       throw;
     }
-  }
-
-  if (useTrigger_) {
-    hltResultsToken_ = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults", "", "HLT"));
-    triggerObjectsToken_ = consumes<TriggerObjectView>(edm::InputTag(fillersCfg.getUntrackedParameterSet("common").getUntrackedParameter<std::string>("triggerObjects")));
   }
 
   if (printLevel_ >= 1) {
@@ -240,31 +227,7 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
     mm.second.clearMaps();
 
   if (useTrigger_) {
-    // Unpack trigger object names
-    edm::Handle<edm::TriggerResults> triggerResultsHandle;
-    _event.getByToken(hltResultsToken_, triggerResultsHandle);
-    auto& triggerNames(_event.triggerNames(*triggerResultsHandle));
 
-    edm::Handle<TriggerObjectView> triggerObjectsHandle;
-    _event.getByToken(triggerObjectsToken_, triggerObjectsHandle);
-    auto& triggerObjects(*triggerObjectsHandle);
-
-    auto& objMap(objectMaps_["global"].get<pat::TriggerObjectStandAlone, VString>());
-    triggerObjectNames_.assign(triggerObjects.size(), VString());
-
-    unsigned iObj(0);
-    for (auto& obj : triggerObjects) {
-      // need to create a copy to perform the non-const action of unpacking
-      pat::TriggerObjectStandAlone copy(obj);
-      copy.unpackPathNames(triggerNames);
-      
-      for (auto& label : obj.filterLabels())
-        triggerObjectNames_[iObj].push_back(label);
-
-      // link the pat trigger object to the list of labels
-      objMap.add(triggerObjects.ptrAt(iObj), triggerObjectNames_[iObj]);
-      ++iObj;
-    }
   }
 
   outEvent_.runNumber = _event.id().run();
@@ -432,15 +395,15 @@ PandaProducer::beginJob()
   lumiSummaryTree_->Branch("lumiNumber", &outEvent_.lumiNumber, "lumiNumber/i");
   lumiSummaryTree_->Branch("nEvents", &nEventsInLumi_, "nEventsInLumi_/i");
 
-  for (auto* filler : fillers_) {
+  for (auto* filler : fillers_)
     filler->addOutput(*outputFile_);
-  }
 
   if (useTrigger_ && outputFile_->Get("hlt")) {
     outEvent_.run.hlt.create();
     auto& hltTree(*static_cast<TTree*>(outputFile_->Get("hlt")));
     hltTree.Branch("menu", "TString", &outEvent_.run.hlt.menu);
     hltTree.Branch("paths", "std::vector<TString>", &outEvent_.run.hlt.paths, 32000, 0);
+    hltTree.Branch("filters", "std::vector<TString>", &outEvent_.run.hlt.filters, 32000, 0);
   }
 
   eventCounter_ = new TH1D("eventcounter", "", 2, 0., 2.);

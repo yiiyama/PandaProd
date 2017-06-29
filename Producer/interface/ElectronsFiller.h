@@ -67,7 +67,7 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phNHIsoEA_;
   EffectiveAreas phPhIsoEA_;
 
-  std::set<std::string> triggerObjects_[panda::Electron::nTriggerObjects];
+  std::set<std::string> triggerObjectNames_[panda::Electron::nTriggerObjects];
 };
 
 #endif

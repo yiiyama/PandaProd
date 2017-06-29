@@ -243,18 +243,19 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
+    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<panda::HLTObject const*> triggerObjects[panda::Muon::nTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Muon::nTriggerObjects];
 
     // loop over all trigger objects
-    for (auto& mapEntry : objMap) { // (pat object, panda object)
+    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
       // loop over the trigger filters we are interested in
       for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
         // each triggerObjectNames_[] can have multiple filters
         for (auto& name : triggerObjectNames_[iT]) {
-          if (mapEntry.first->hasFilterLabel(name)) {
-            triggerObjects[iT].push_back(mapEntry.second);
+          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
+          if (nItr != mapEntry.second->end()) {
+            triggerObjects[iT].push_back(mapEntry.first.get());
             break;
           }
         }
@@ -264,11 +265,12 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>().fwdMap);
 
     for (auto& link : muMuMap) { // edm -> panda
+      auto& inMuon(*link.first);
       auto& outMuon(*link.second);
 
       for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (obj->dR2(outMuon) < 0.09) {
+          if (reco::deltaR(*obj, inMuon) < 0.3) {
             outMuon.triggerMatch[iT] = true;
             break;
           }

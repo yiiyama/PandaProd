@@ -226,10 +226,6 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   for (auto& mm : objectMaps_)
     mm.second.clearMaps();
 
-  if (useTrigger_) {
-
-  }
-
   outEvent_.runNumber = _event.id().run();
   outEvent_.lumiNumber = _event.luminosityBlock();
   outEvent_.eventNumber = _event.id().event();

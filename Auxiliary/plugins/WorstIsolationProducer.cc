@@ -117,11 +117,11 @@ WorstIsolationProducer::produce(edm::Event& _event, edm::EventSetup const&)
 
   // Write function
   auto writeProduct([&_event, &photonsHandle, &worstIsolations] {
-      std::auto_ptr<FloatMap> valueMap(new FloatMap());
+      auto valueMap = std::make_unique<FloatMap>();
       FloatMap::Filler filler(*valueMap);
       filler.insert(photonsHandle, worstIsolations.begin(), worstIsolations.end());
       filler.fill();
-      _event.put(valueMap);
+      _event.put(std::move(valueMap));
     });
 
   // Inputs

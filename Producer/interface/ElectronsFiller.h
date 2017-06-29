@@ -8,9 +8,11 @@
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
+#include "DataFormats/EgammaCandidates/interface/ConversionFwd.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/EgammaReco/interface/SuperClusterFwd.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
 
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 
@@ -37,11 +39,12 @@ class ElectronsFiller : public FillerBase {
   NamedToken<GsfElectronView> electronsToken_;
   NamedToken<GsfElectronView> smearedElectronsToken_;
   NamedToken<GsfElectronView> regressionElectronsToken_;
-  NamedToken<GsfElectronView> gsUnfixedElectronsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<PhotonView> photonsToken_;
+  NamedToken<reco::ConversionCollection> conversionsToken_;
   NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
+  NamedToken<reco::BeamSpot> beamSpotToken_;
   NamedToken<BoolMap> vetoIdToken_;
   NamedToken<BoolMap> looseIdToken_;
   NamedToken<BoolMap> mediumIdToken_;
@@ -64,9 +67,7 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phNHIsoEA_;
   EffectiveAreas phPhIsoEA_;
 
-  std::set<std::string> triggerObjects_[panda::Electron::nTriggerObjects];
-  double minPt_{-1.};
-  double maxEta_{10.};
+  std::set<std::string> triggerObjectNames_[panda::Electron::nTriggerObjects];
 };
 
 #endif

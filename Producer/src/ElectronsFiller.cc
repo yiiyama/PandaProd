@@ -152,11 +152,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   for (auto& inElectron : inElectrons) {
     ++iEl;
     auto&& inRef(inElectrons.refAt(iEl));
-
-    bool veto(vetoId[inRef]);
-
-    if (!veto)
-      continue;
     
     auto&& scRef(inElectron.superCluster());
     auto& sc(*scRef);
@@ -165,7 +160,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
     fillP4(outElectron, inElectron);
 
-    outElectron.veto = veto;
+    outElectron.veto = vetoId[inRef];
     outElectron.loose = looseId[inRef];
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];

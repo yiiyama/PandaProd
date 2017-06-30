@@ -22,9 +22,6 @@ class TausFiller : public FillerBase {
 
   NamedToken<TauView> tausToken_;
   NamedToken<GenParticleView> genParticlesToken_;
-
-  double minPt_;
-  double maxEta_;
 };
 
 #endif

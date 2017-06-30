@@ -191,9 +191,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         taus = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Taus'),
-            taus = cms.untracked.string('slimmedTaus'),
-            minPt = cms.untracked.double(15.),
-            maxEta = cms.untracked.double(10.)
+            taus = cms.untracked.string('slimmedTaus')
         ),
         photons = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

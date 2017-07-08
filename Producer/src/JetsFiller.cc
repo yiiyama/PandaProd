@@ -296,10 +296,12 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
               break;
             }
             else {
-              if (p->sourceCandidatePtr(0).isNull())
-                throw std::runtime_error("Constituent candidate not found in PF map");
-
               p = p->sourceCandidatePtr(0);
+              if (p.isNull()) {
+                // throw std::runtime_error("Constituent candidate not found in PF map");
+                // With bad muon cleaning for 80, we need to allow missing constituents.
+                break;
+              }
             }
           }
         });

@@ -6,9 +6,7 @@
 #include "DataFormats/Common/interface/RefToPtr.h"
 
 TausFiller::TausFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  FillerBase(_name, _cfg)
 {
   getToken_(tausToken_, _cfg, _coll, "taus");
   if (!isRealData_)
@@ -36,11 +34,6 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   unsigned iTau(-1);
   for (auto& inTau : inTaus) {
     ++iTau;
-    if (inTau.pt() < minPt_)
-      continue;
-    if (std::abs(inTau.eta()) > maxEta_)
-      continue;
-
     auto& outTau(outTaus.create_back());
 
     fillP4(outTau, inTau);

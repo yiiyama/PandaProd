@@ -373,18 +373,19 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
+    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<panda::HLTObject const*> triggerObjects[panda::Photon::nTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Photon::nTriggerObjects];
 
     // loop over all trigger objects
-    for (auto& mapEntry : objMap) { // (pat object, panda object)
+    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
       // loop over the trigger filters we are interested in
       for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
         // each triggerObjectNames_[] can have multiple filters
         for (auto& name : triggerObjectNames_[iT]) {
-          if (mapEntry.first->hasFilterLabel(name)) {
-            triggerObjects[iT].push_back(mapEntry.second);
+          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
+          if (nItr != mapEntry.second->end()) {
+            triggerObjects[iT].push_back(mapEntry.first.get());
             break;
           }
         }
@@ -394,11 +395,12 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>().fwdMap);
 
     for (auto& link : phoPhoMap) { // edm -> panda
+      auto& inPhoton(*link.first);
       auto& outPhoton(*link.second);
 
       for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (obj->dR2(outPhoton) < 0.09) {
+          if (reco::deltaR(*obj, inPhoton) < 0.3) {
             outPhoton.triggerMatch[iT] = true;
             break;
           }

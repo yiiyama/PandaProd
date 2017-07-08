@@ -105,23 +105,36 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
   }
 
   auto& objMap(objectMap_->get<pat::TriggerObjectStandAlone, panda::HLTObject>());
+  // This is used in trigger object matching
+  auto& nameMap(objectMap_->get<pat::TriggerObjectStandAlone, VString>());
+
+  // Resize first so that the pointers don't become in the loop
+  filterNames_.resize(inTriggerObjects.size());
 
   outObjects.reserve(inTriggerObjects.size());
 
   unsigned iObj(-1);
-  for (auto& inObj : inTriggerObjects) {
+  for (auto inObj : inTriggerObjects) { // cloning input objects to unpack
     ++iObj;
     auto& outObj(outObjects.create_back());
 
     fillP4(outObj, inObj);
 
+    inObj.unpackFilterLabels(_inEvent, inTriggerResults);
+
+    filterNames_[iObj].clear();
+
     for (auto& label : inObj.filterLabels()) {
       auto itr(filterIndices_.find(label));
       if (itr != filterIndices_.end())
         outObj.filters->push_back(itr->second);
+
+      filterNames_[iObj].push_back(label);
     }
 
-    objMap.add(inTriggerObjects.ptrAt(iObj), outObj);
+    auto ptr(inTriggerObjects.ptrAt(iObj));
+    objMap.add(ptr, outObj);
+    nameMap.add(ptr, filterNames_[iObj]);
   }
 
   _outEvent.triggerObjects.makeMap(*filters_);

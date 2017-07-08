@@ -104,8 +104,9 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
       outHLT.set(iF);
   }
 
-  // We don't really need an object map in other modules, but rather just a list of pat trigger objects.
   auto& objMap(objectMap_->get<pat::TriggerObjectStandAlone, panda::HLTObject>());
+
+  outObjects.reserve(inTriggerObjects.size());
 
   unsigned iObj(-1);
   for (auto& inObj : inTriggerObjects) {

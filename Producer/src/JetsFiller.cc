@@ -29,7 +29,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
   fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false)),
-  subjetsOffset_(getParameter<unsigned>(_cfg, "subjetsOffset", 0))
+  subjetsOffset_(getParameter_<unsigned>(_cfg, "subjetsOffset", 0))
 {
   if (_name == "chsAK4Jets")
     outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsAK4Jets; };

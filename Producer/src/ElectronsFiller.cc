@@ -2,10 +2,12 @@
 
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
+#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
+#include "DataFormats/EgammaCandidates/interface/Conversion.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/HepMCCandidate/interface/GenStatusFlags.h"
@@ -20,18 +22,17 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   hcalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "hcalIsoEA").fullPath()),
   phCHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "chIsoEA").fullPath()),
   phNHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "nhIsoEA").fullPath()),
-  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath()),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
-  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons");
-  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons");
-  getToken_(gsUnfixedElectronsToken_, _cfg, _coll, "gsUnfixedElectrons", false);
+  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons", false);
+  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
+  getToken_(conversionsToken_, _cfg, _coll, "common", "conversions");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
+  getToken_(beamSpotToken_, _cfg, _coll, "common", "beamSpot");
   getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
@@ -50,7 +51,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
     for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
       std::string name(panda::Electron::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjects_[iT].insert(filters.begin(), filters.end());
+      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
     }
   }
 }
@@ -73,21 +74,19 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
     _eventBranches.emplace_back("!electrons.matchedGen_");
   if (!useTrigger_)
     _eventBranches.emplace_back("!electrons.triggerMatch");
-  if (gsUnfixedElectronsToken_.second.isUninitialized())
-    _eventBranches.emplace_back("!electrons.originalPt");
 }
 
 void
 ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
-  auto& inSmearedElectrons(getProduct_(_inEvent, smearedElectronsToken_));
-  auto& inRegressionElectrons(getProduct_(_inEvent, regressionElectronsToken_));
-  auto* gsUnfixedElectrons(getProductSafe_(_inEvent, gsUnfixedElectronsToken_));
+  auto* inSmearedElectrons(getProductSafe_(_inEvent, smearedElectronsToken_));
+  auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
+  auto& beamSpot(getProduct_(_inEvent, beamSpotToken_));
   auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
@@ -105,6 +104,9 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     hcalIso = &getProduct_(_inEvent, hcalIsoToken_);
   double rho(getProduct_(_inEvent, rhoToken_));
   double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
+
+  edm::Handle<reco::ConversionCollection> conversionsHandle;
+  getProduct_(_inEvent, conversionsToken_, &conversionsHandle);
 
   auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
       EcalRecHitCollection const* hits(0);
@@ -146,35 +148,10 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
   std::vector<edm::Ptr<reco::GsfElectron>> ptrList;
 
-  // See below
-  // std::map<uint32_t, reco::GsfElectron const*> gsFixMap;
-  // if (gsUnfixedElectrons) {
-  //   for (auto& ele : *gsUnfixedElectrons) {
-  //     auto&& scRef(ele.superCluster());
-  //     if (scRef.isNull())
-  //       continue;
-  //     auto&& bcRef(scRef->seed());
-  //     if (bcRef.isNull())
-  //       continue;
-
-  //     gsFixMap[bcRef->seed().rawId()] = &ele;
-  //   }
-  // }
-
   unsigned iEl(-1);
   for (auto& inElectron : inElectrons) {
     ++iEl;
-    if (inElectron.pt() < minPt_)
-      continue;
-    if (std::abs(inElectron.eta()) > maxEta_)
-      continue;
-
     auto&& inRef(inElectrons.refAt(iEl));
-
-    bool veto(vetoId[inRef]);
-
-    if (!veto)
-      continue;
     
     auto&& scRef(inElectron.superCluster());
     auto& sc(*scRef);
@@ -183,7 +160,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
     fillP4(outElectron, inElectron);
 
-    outElectron.veto = veto;
+    outElectron.veto = vetoId[inRef];
     outElectron.loose = looseId[inRef];
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];
@@ -194,17 +171,28 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
     outElectron.hOverE = inElectron.hadronicOverEm();
-
-    auto gsftrack = inElectron.gsfTrack();
-    if (vertices.size()>0) {
-      auto& pv = vertices.at(0);
-      auto pos = pv.position();
-      outElectron.dxy = fabs(gsftrack->dxy(pos));
-      outElectron.dz = fabs(gsftrack->dz(pos));
-    } else {
-      outElectron.dxy = gsftrack->dxy();
-      outElectron.dz = gsftrack->dz();
+    outElectron.dPhiIn = inElectron.deltaPhiSuperClusterTrackAtVtx();
+    outElectron.ecalE = inElectron.ecalEnergy();
+    outElectron.trackP = inElectron.ecalEnergy() / inElectron.eSuperClusterOverP();
+   
+    auto& gsfTrack(*inElectron.gsfTrack());
+    if (vertices.size() != 0) {
+      auto& pv(vertices.at(0));
+      auto pos(pv.position());
+      outElectron.dxy = std::abs(gsfTrack.dxy(pos));
+      outElectron.dz = std::abs(gsfTrack.dz(pos));
     }
+    else {
+      outElectron.dxy = std::abs(gsfTrack.dxy());
+      outElectron.dz = std::abs(gsfTrack.dz());
+    }
+
+    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+
+    outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
+
+    auto&& chargeInfo(inElectron.chargeInfo());
+    outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
 
     double scEta(std::abs(sc.eta()));
 
@@ -229,6 +217,8 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       outElectron.hcalIso = (*hcalIso)[inRef] - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
     }
 
+    outElectron.trackIso = inElectron.dr03TkSumPt();
+
     auto&& seedRef(sc.seed());
     if (seedRef.isNonnull()) {
       auto& seed(*seedRef);
@@ -236,9 +226,11 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       auto* seedHit(findHit(seed.seed()));
       if (seedHit)
         outElectron.eseed = seedHit->energy();
-      else
-        outElectron.eseed = 0.;
+
+      outElectron.dEtaInSeed = inElectron.deltaEtaSuperClusterTrackAtVtx() - sc.eta() + seed.eta();
     }
+    else
+      outElectron.dEtaInSeed = std::numeric_limits<float>::max();
 
     unsigned iPh(0);
     for (auto& photon : photons) {
@@ -255,30 +247,19 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
-    for (auto& smeared : inSmearedElectrons) {
-      if (smeared.superCluster() == scRef) {
-        outElectron.smearedPt = smeared.pt();
-        break;
+    if (inSmearedElectrons) {
+      for (auto& smeared : *inSmearedElectrons) {
+        if (smeared.superCluster() == scRef) {
+          outElectron.smearedPt = smeared.pt();
+          break;
+        }
       }
     }
 
-    for (auto& reg : inRegressionElectrons) {
-      if (reg.superCluster() == scRef) {
-        outElectron.regPt = reg.pt();
-        break;
-      }
-    }
-
-    // if (gsUnfixedElectrons && seedRef.isNonnull()) {
-    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-    //   if (eItr != gsFixMap.end())
-    //     outElectron.originalPt = eItr->second->pt();
-    // }
-    // Following MET POG and doing the most simplistic match
-    if (gsUnfixedElectrons) {
-      for (auto& el : *gsUnfixedElectrons) {
-        if (reco::deltaR(el, inElectron) < 0.01) {
-          outElectron.originalPt = el.pt();
+    if (inRegressionElectrons) {
+      for (auto& reg : *inRegressionElectrons) {
+        if (reg.superCluster() == scRef) {
+          outElectron.regPt = reg.pt();
           break;
         }
       }
@@ -359,7 +340,7 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (!isRealData_) {
-    auto& genEleMap(objectMap_->get<reco::GenParticle, panda::Electron>("gen"));
+    auto& genEleMap(objectMap_->get<reco::Candidate, panda::Electron>("gen"));
 
     auto& genMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
 
@@ -374,19 +355,18 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
+    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
+    std::vector<panda::HLTObject const*> triggerObjects[panda::Electron::nTriggerObjects];
 
-    // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
-      // loop over all trigger objects (and their associated filter names)
-      for (auto& objAndNames : objMap) { // (TO ptr, VString)
-        VString const& names(*objAndNames.second);
-        // loop over the associated filter names
-        for (auto& name : names) {
-          if (triggerObjects_[iT].find(name) != triggerObjects_[iT].end()) {
-            triggerObjects[iT].push_back(&*objAndNames.first);
+    // loop over all trigger objects
+    for (auto& mapEntry : objMap) { // (pat object, panda object)
+      // loop over the trigger filters we are interested in
+      for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
+        // each triggerObjectNames_[] can have multiple filters
+        for (auto& name : triggerObjectNames_[iT]) {
+          if (mapEntry.first->hasFilterLabel(name)) {
+            triggerObjects[iT].push_back(mapEntry.second);
             break;
           }
         }
@@ -396,12 +376,11 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>().fwdMap);
 
     for (auto& link : eleEleMap) { // edm -> panda
-      auto& inElectron(*link.first);
       auto& outElectron(*link.second);
 
       for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(inElectron, *obj) < 0.3) {
+          if (obj->dR2(outElectron) < 0.09) {
             outElectron.triggerMatch[iT] = true;
             break;
           }

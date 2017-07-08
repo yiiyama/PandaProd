@@ -34,7 +34,6 @@ class PhotonsFiller : public FillerBase {
   NamedToken<PhotonView> photonsToken_;
   NamedToken<PhotonView> smearedPhotonsToken_;
   NamedToken<PhotonView> regressionPhotonsToken_;
-  NamedToken<PhotonView> gsUnfixedPhotonsToken_; // temporary for 03Feb2017 Re-MINIAOD
   NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
@@ -56,9 +55,7 @@ class PhotonsFiller : public FillerBase {
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
 
-  std::set<std::string> triggerObjects_[panda::Photon::nTriggerObjects];
-  double minPt_;
-  double maxEta_;
+  std::set<std::string> triggerObjectNames_[panda::Photon::nTriggerObjects];
 };
 
 #endif

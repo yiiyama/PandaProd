@@ -16,14 +16,11 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   FillerBase(_name, _cfg),
   chIsoEA_(getParameter_<edm::FileInPath>(_cfg, "chIsoEA").fullPath()),
   nhIsoEA_(getParameter_<edm::FileInPath>(_cfg, "nhIsoEA").fullPath()),
-  phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath()),
-  minPt_(getParameter_<double>(_cfg, "minPt", -1.)),
-  maxEta_(getParameter_<double>(_cfg, "maxEta", 10.))
+  phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath())
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons");
-  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons");
-  getToken_(gsUnfixedPhotonsToken_, _cfg, _coll, "gsUnfixedPhotons", false);
+  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons", false);
+  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
@@ -42,7 +39,7 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
     for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
       std::string name(panda::Photon::TriggerObjectName[iT]); // "f<trigger filter name>"
       auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjects_[iT].insert(filters.begin(), filters.end());
+      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
     }
   }
 
@@ -63,8 +60,6 @@ PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
     _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
   if (!useTrigger_)
     _eventBranches.emplace_back("!photons.triggerMatch");
-  if (gsUnfixedPhotonsToken_.second.isUninitialized())
-    _eventBranches.emplace_back("!photons.originalPt");
 }
 
 void
@@ -80,9 +75,8 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
-  auto& inSmearedPhotons(getProduct_(_inEvent, smearedPhotonsToken_));
-  auto& inRegressionPhotons(getProduct_(_inEvent, regressionPhotonsToken_));
-  auto* gsUnfixedPhotons(getProductSafe_(_inEvent, gsUnfixedPhotonsToken_));
+  auto* inSmearedPhotons(getProductSafe_(_inEvent, smearedPhotonsToken_));
+  auto* inRegressionPhotons(getProductSafe_(_inEvent, regressionPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
@@ -141,29 +135,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
   std::vector<edm::Ptr<reco::Photon>> ptrList;
 
-  // See below
-  // std::map<uint32_t, reco::Photon const*> gsFixMap;
-  // if (gsUnfixedPhotons) {
-  //   for (auto& ph : *gsUnfixedPhotons) {
-  //     auto&& scRef(ph.superCluster());
-  //     if (scRef.isNull())
-  //       continue;
-  //     auto&& bcRef(scRef->seed());
-  //     if (bcRef.isNull())
-  //       continue;
-
-  //     gsFixMap[bcRef->seed().rawId()] = &ph;
-  //   }
-  // }
-
   unsigned iPh(-1);
   for (auto& inPhoton : inPhotons) {
     ++iPh;
-    if (inPhoton.pt() < minPt_)
-      continue;
-    if (inPhoton.eta() > maxEta_)
-      continue;
-
     auto&& inRef(inPhotons.refAt(iPh));
 
     bool isPAT(dynamic_cast<pat::Photon const*>(&inPhoton));
@@ -307,30 +281,19 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
-    for (auto& smeared : inSmearedPhotons) {
-      if (smeared.superCluster() == scRef) {
-        outPhoton.smearedPt = smeared.pt();
-        break;
+    if (inSmearedPhotons) {
+      for (auto& smeared : *inSmearedPhotons) {
+        if (smeared.superCluster() == scRef) {
+          outPhoton.smearedPt = smeared.pt();
+          break;
+        }
       }
     }
 
-    for (auto& reg : inRegressionPhotons) {
-      if (reg.superCluster() == scRef) {
-        outPhoton.regPt = reg.pt();
-        break;
-      }
-    }
-
-    // if (gsUnfixedPhotons && seedRef.isNonnull()) {
-    //   auto eItr(gsFixMap.find(seedRef->seed().rawId()));
-    //   if (eItr != gsFixMap.end())
-    //     outPhoton.originalPt = eItr->second->pt();
-    // }
-    // Following MET POG and doing the most simplistic match
-    if (gsUnfixedPhotons) {
-      for (auto& ph : *gsUnfixedPhotons) {
-        if (reco::deltaR(ph, inPhoton) < 0.01) {
-          outPhoton.originalPt = ph.pt();
+    if (inRegressionPhotons) {
+      for (auto& reg : *inRegressionPhotons) {
+        if (reg.superCluster() == scRef) {
+          outPhoton.regPt = reg.pt();
           break;
         }
       }
@@ -410,19 +373,18 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("global").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
+    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
 
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Photon::nTriggerObjects];
+    std::vector<panda::HLTObject const*> triggerObjects[panda::Photon::nTriggerObjects];
 
-    // loop over the trigger filters we are interested in
-    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
-      // loop over all trigger objects (and their associated filter names)
-      for (auto& objAndNames : objMap) { // (TO ptr, VString)
-        VString const& names(*objAndNames.second);
-        // loop over the associated filter names
-        for (auto& name : names) {
-          if (triggerObjects_[iT].find(name) != triggerObjects_[iT].end()) {
-            triggerObjects[iT].push_back(&*objAndNames.first);
+    // loop over all trigger objects
+    for (auto& mapEntry : objMap) { // (pat object, panda object)
+      // loop over the trigger filters we are interested in
+      for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
+        // each triggerObjectNames_[] can have multiple filters
+        for (auto& name : triggerObjectNames_[iT]) {
+          if (mapEntry.first->hasFilterLabel(name)) {
+            triggerObjects[iT].push_back(mapEntry.second);
             break;
           }
         }
@@ -432,12 +394,11 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>().fwdMap);
 
     for (auto& link : phoPhoMap) { // edm -> panda
-      auto& inPhoton(*link.first);
       auto& outPhoton(*link.second);
 
       for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(inPhoton, *obj) < 0.3) {
+          if (obj->dR2(outPhoton) < 0.09) {
             outPhoton.triggerMatch[iT] = true;
             break;
           }

@@ -104,13 +104,14 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
       outHLT.set(iF);
   }
 
-  // We don't really need an object map in other modules
   auto& objMap(objectMap_->get<pat::TriggerObjectStandAlone, panda::HLTObject>());
   // This is used in trigger object matching
   auto& nameMap(objectMap_->get<pat::TriggerObjectStandAlone, VString>());
 
   // Resize first so that the pointers don't become in the loop
   filterNames_.resize(inTriggerObjects.size());
+
+  outObjects.reserve(inTriggerObjects.size());
 
   unsigned iObj(-1);
   for (auto inObj : inTriggerObjects) { // cloning input objects to unpack

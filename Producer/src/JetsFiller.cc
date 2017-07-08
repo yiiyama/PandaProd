@@ -28,7 +28,8 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   R_(getParameter_<double>(_cfg, "R", 0.4)),
   minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
-  fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false))
+  fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false)),
+  subjetsOffset_(getParameter<unsigned>(_cfg, "subjetsOffset", 0))
 {
   if (_name == "chsAK4Jets")
     outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsAK4Jets; };
@@ -237,6 +238,8 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       outJet.area = inJet.jetArea();
       outJet.nhf = nhf;
       outJet.chf = chf;
+      outJet.nef = nef;
+      outJet.cef = cef;
       if (!puidTag_.empty())
         outJet.puid = patJet.userFloat(puidTag_);
       outJet.loose = loose;
@@ -284,13 +287,39 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inJet(*link.first);
       auto& outJet(*link.second);
 
-      for (auto&& ptr : inJet.getJetConstituents()) {
-        reco::CandidatePtr p(ptr);
-        while (p->sourceCandidatePtr(0).isNonnull())
-          p = p->sourceCandidatePtr(0);
+      auto addPFRef([&outJet, &pfMap](reco::CandidatePtr const& _ptr) {
+          reco::CandidatePtr p(_ptr);
+          while (true) {
+            auto&& mItr(pfMap.find(p));
+            if (mItr != pfMap.end()) {
+              outJet.constituents.addRef(mItr->second);
+              break;
+            }
+            else {
+              if (p->sourceCandidatePtr(0).isNull())
+                throw std::runtime_error("Constituent candidate not found in PF map");
 
-        outJet.constituents.addRef(pfMap.at(p));
+              p = p->sourceCandidatePtr(0);
+            }
+          }
+        });
+
+      auto&& constituents(inJet.getJetConstituents());
+
+      unsigned iConst(0);
+      
+      for (; iConst != subjetsOffset_ && iConst != constituents.size(); ++iConst) {
+        // constituents up to subjetsOffset are actually subjets
+        auto* subjet(dynamic_cast<reco::Jet const*>(constituents[iConst].get()));
+        if (!subjet)
+          throw std::runtime_error(TString::Format("Constituent %d is not a subjet", iConst).Data());
+
+        for (auto&& ptr : subjet->getJetConstituents())
+          addPFRef(ptr);
       }
+
+      for (; iConst != constituents.size(); ++iConst)
+        addPFRef(constituents[iConst]);
     }
   }
 

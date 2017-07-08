@@ -51,6 +51,7 @@ class JetsFiller : public FillerBase {
   double maxEta_{4.7};
 
   bool fillConstituents_{false};
+  unsigned subjetsOffset_{0}; // first N constituents are actually subjets (happens when fixDaughters = True in JetSubstructurePacker)
 };
 
 #endif

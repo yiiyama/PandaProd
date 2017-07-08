@@ -15,13 +15,17 @@ fi
 CD=$(pwd)
 cd $CMSSW_BASE/src
 
+# REMOTE: github user/organization account
 REMOTE=$1
+# BRANCH: branch
 BRANCH=$2
 
+# MASTER is the default branch for this release - comes at the top of branch list (yes I know this is not a reliable solution)
 MASTER=$(git branch | head -n 1 | sed 's/^[* ] \([^ ]*\)/\1/')
 
 if ! git remote | grep -q $REMOTE
 then
+  # Check the repo out
   git remote add $REMOTE https://github.com/$REMOTE/cmssw.git
 fi
 
@@ -34,23 +38,20 @@ else
   git checkout -t $REMOTE/$BRANCH
 fi
 
-FIRST_AFTER_BRANCH=$(git rev-list --first-parent $BRANCH ^$MASTER | tail -n 1)
-if ! [ $FIRST_AFTER_BRANCH ]
+# Check if the branch is already merged
+NDIFF=$(git rev-list --first-parent $BRANCH ^$MASTER | wc -l)
+if [ $NDIFF -eq 0 ]
 then
   echo "Branch $BRANCH of $REMOTE seems to have been merged to $MASTER already."
   exit 0
 fi
 
-LAST_BEFORE_BRANCH=$(git rev-list --first-parent --max-count 2 $FIRST_AFTER_BRANCH | tail -n 1)
-echo ""
-echo "$REMOTE/$BRANCH branched off from master ($MASTER) at"
-git show $LAST_BEFORE_BRANCH
-
-echo "Commits since branch-off:"
-git rev-list $LAST_BEFORE_BRANCH..HEAD
-echo ""
+# If not, merge BRANCH into a test branch and show the diff
+git checkout $MASTER
+git checkout -b merge-${REMOTE}-${BRANCH}
+git merge $REMOTE/$BRANCH -m "test merge"
 
 echo "Files changed:"
-git diff --name-only $LAST_BEFORE_BRANCH..HEAD
+git diff --name-only ${MASTER}..HEAD
 
 cd $CD

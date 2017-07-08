@@ -33,6 +33,8 @@
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
 
+#include "PandaProd/Auxiliary/interface/getProduct.h"
+
 #include <memory>
 #include <vector>
 
@@ -41,25 +43,6 @@ typedef edm::View<reco::Candidate> CandidateView;
 typedef std::vector<reco::PFCandidateRef> Footprint;
 typedef edm::ValueMap<Footprint> FootprintMap;
 typedef edm::ValueMap<float> FloatMap;
-
-// Templated function for product retrieval
-template<class C>
-C const*
-getProduct(edm::Event const& _event, edm::EDGetTokenT<C> const& _token, edm::Handle<C>* _handle = 0)
-{
-  edm::Handle<C> handle;
-
-  edm::Handle<C>* handleP(0);
-  if (_handle)
-    handleP = _handle;
-  else
-    handleP = &handle;
-
-  if (!_event.getByToken(_token, *handleP))
-    throw cms::Exception("ProductNotFound") << typeid(C).name();
-
-  return handleP->product();
-}
 
 // Templated isolation calculator (for different types of footprint collections)
 template<class F>
@@ -117,11 +100,11 @@ WorstIsolationProducer::produce(edm::Event& _event, edm::EventSetup const&)
 
   // Write function
   auto writeProduct([&_event, &photonsHandle, &worstIsolations] {
-      std::auto_ptr<FloatMap> valueMap(new FloatMap());
+      auto valueMap = std::make_unique<FloatMap>();
       FloatMap::Filler filler(*valueMap);
       filler.insert(photonsHandle, worstIsolations.begin(), worstIsolations.end());
       filler.fill();
-      _event.put(valueMap);
+      _event.put(std::move(valueMap));
     });
 
   // Inputs

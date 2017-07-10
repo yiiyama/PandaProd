@@ -1,4 +1,4 @@
-P#!/bin/bash
+#!/bin/bash
 
 # Use PandaProd/Producer/scripts/cms-git-diff to find out which packages should be checked out from each branch.
 

@@ -98,7 +98,8 @@ def makeIpTagInfos(jetCollectionName, vsuffix, deltaR = 0.4):
         jets = jetCollectionName,
         candidates = vertexingConfig[vsuffix][0],
         primaryVertex = vertexingConfig[vsuffix][1],
-        maxDeltaR = deltaR
+        maxDeltaR = deltaR,
+        computeGhostTrack = False
     )
 
 def makeIvfTagInfos(ipTagInfosName, vsuffix, deltaR = 0.3):

@@ -209,6 +209,7 @@ ca15PuppiSequence = makeFatJets(
 )
 
 from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
+# initBTag is already being called in makeFatJets() but we call it here again to eliminate implicit dependence between parts of config
 initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
 ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
 ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')

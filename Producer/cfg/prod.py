@@ -22,7 +22,7 @@ egmSmearingType = 'Moriond2017_JEC'
 
 if options.config == 'Prompt2017':
     options.isData = True
-    options.globaltag = '92X_dataRun2_Prompt_v4'
+    options.globaltag = '92X_dataRun2_Prompt_v6'
 
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)

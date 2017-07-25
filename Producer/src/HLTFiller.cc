@@ -7,7 +7,9 @@ HLTFiller::HLTFiller(std::string const& _name, edm::ParameterSet const& _cfg, ed
   FillerBase(_name, _cfg)
 {
   getToken_(triggerResultsToken_, _cfg, _coll, "triggerResults");
-  getToken_(triggerObjectsToken_, _cfg, _coll, "triggerObjects");
+  // Trigger object collection name was different in 2017A PromptReco
+  // Using notifyNewProduct() to dynamically find the tag
+  triggerObjectsToken_.first = "triggerObjects";
 }
 
 HLTFiller::~HLTFiller()
@@ -138,6 +140,15 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
   }
 
   _outEvent.triggerObjects.makeMap(*filters_);
+}
+
+void
+HLTFiller::notifyNewProduct(edm::BranchDescription const& _bdesc, edm::ConsumesCollector& _coll)
+{
+  if (_bdesc.unwrappedTypeID() == edm::TypeID(typeid(std::vector<pat::TriggerObjectStandAlone>))) {
+    edm::InputTag tag(_bdesc.moduleLabel(), _bdesc.productInstanceName(), _bdesc.processName());
+    triggerObjectsToken_.second = _coll.consumes<TriggerObjectView>(tag);
+  }
 }
 
 DEFINE_TREEFILLER(HLTFiller);

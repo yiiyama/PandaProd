@@ -22,7 +22,7 @@ egmSmearingType = 'Moriond2017_JEC'
 
 if options.config == 'Prompt2017':
     options.isData = True
-    options.globaltag = '92X_dataRun2_Prompt_v4'
+    options.globaltag = '92X_dataRun2_Prompt_v6'
 
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
@@ -209,6 +209,7 @@ ca15PuppiSequence = makeFatJets(
 )
 
 from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
+# initBTag is already being called in makeFatJets() but we call it here again to eliminate implicit dependence between parts of config
 initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
 ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
 ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')

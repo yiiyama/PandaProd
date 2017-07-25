@@ -306,8 +306,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         hlt = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('HLT'),
-            triggerResults = cms.untracked.string('TriggerResults::HLT'),
-            triggerObjects = cms.untracked.string('slimmedPatTrigger')
+            triggerResults = cms.untracked.string('TriggerResults::HLT')
         ),
         weights = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

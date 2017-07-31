@@ -171,7 +171,7 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
 {
   getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
   // this is miniaod-specific
-  getToken_(finalStateParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
+  getToken_(finalStateParticlesToken_, _cfg, _coll, "common", "finalStateParticles", false);
 
   if (furtherPrune_) {
     // Using a non-default function to accommodate the case where important decay trees are truncated by CMSSW pruning
@@ -201,7 +201,9 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
 {
   auto& inParticles(getProduct_(_inEvent, genParticlesToken_));
   // this is miniaod-specific - modify if we need to run on AOD for some reason
-  auto& inFinalStates(getProduct_(_inEvent, finalStateParticlesToken_)); 
+  PackedGenParticleView const* inFinalStates(0);
+  if (!finalStateParticlesToken_.second.isUninitialized())
+    inFinalStates = &getProduct_(_inEvent, finalStateParticlesToken_);
 
   std::map<reco::CandidatePtr, PNodeWithPtr*> nodeMap;
   std::vector<PNodeWithPtr*> rootNodes;
@@ -212,15 +214,24 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (inCand.motherRefVector().size() == 0)
       rootNodes.push_back(new PNodeWithPtr(inParticles.ptrAt(iP), nodeMap));
   }
-
-  for (unsigned iP(0); iP != inFinalStates.size(); ++iP) {
-    auto* finalState(new PNodeWithPtr(inFinalStates.ptrAt(iP), nodeMap));
-    if (!finalState->mother)
-      orphans.push_back(finalState);
+  
+  if (inFinalStates) {
+    for (unsigned iP(0); iP != inFinalStates->size(); ++iP) {
+      auto* finalState(new PNodeWithPtr(inFinalStates->ptrAt(iP), nodeMap));
+      if (!finalState->mother)
+        orphans.push_back(finalState);
+    }
   }
 
   auto& outParticles(_outEvent.genParticles);
-  outParticles.reserve(inParticles.size() + inFinalStates.size());
+
+  // important to reserve enough space on the output collection
+  // otherwise collection reallocates in the middle of fill and refs become invalid
+  unsigned totalSize(inParticles.size());
+  if (inFinalStates)
+    totalSize += inFinalStates->size();
+
+  outParticles.reserve(totalSize);
   
   auto& objectMap(objectMap_->get<reco::Candidate, panda::GenParticle>());
 

@@ -89,6 +89,9 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
 
     auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
     try {
+      if (!fillerPSet.getUntrackedParameter<bool>("enabled"))
+        continue;
+
       auto className(fillerPSet.getUntrackedParameter<std::string>("filler") + "Filler");
 
       if (printLevel_ >= 1) {
@@ -102,8 +105,7 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
       fillers_.push_back(filler);
 
-      if (filler->enabled())
-        filler->setObjectMap(objectMaps_[fillerName]);
+      filler->setObjectMap(objectMaps_[fillerName]);
 
       if (printLevel_ >= 1) {
         timers_.push_back(SClock::duration::zero());
@@ -169,10 +171,6 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   // Fill "all events" information
   for (unsigned iF(0); iF != fillers_.size(); ++iF) {
     auto* filler(fillers_[iF]);
-
-    if (!filler->enabled())
-      continue;
-
     try {
       if (printLevel_ >= 1) {
         start = SClock::now();
@@ -233,10 +231,6 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
 
   for (unsigned iF(0); iF != fillers_.size(); ++iF) {
     auto* filler(fillers_[iF]);
-
-    if (!filler->enabled())
-      continue;
-
     try {
       if (printLevel_ >= 1) {
         if (printLevel_ >= 2)
@@ -268,10 +262,6 @@ PandaProducer::analyze(edm::Event const& _event, edm::EventSetup const& _setup)
   // Set inter-branch references
   for (unsigned iF(0); iF != fillers_.size(); ++iF) {
     auto* filler(fillers_[iF]);
-
-    if (!filler->enabled())
-      continue;
-
     try {
       if (printLevel_ >= 1) {
         if (printLevel_ >= 2)
@@ -313,9 +303,6 @@ PandaProducer::beginRun(edm::Run const& _run, edm::EventSetup const& _setup)
   outEvent_.run.runNumber = _run.run();
 
   for (auto* filler : fillers_) {
-    if (!filler->enabled())
-      continue;
-
     try {
       if (printLevel_ >= 2)
         std::cout << "[PandaProducer::beginRun] " 
@@ -335,9 +322,6 @@ void
 PandaProducer::endRun(edm::Run const& _run, edm::EventSetup const& _setup)
 {
   for (auto* filler : fillers_) {
-    if (!filler->enabled())
-      continue;
-
     try {
       if (printLevel_ >= 2) 
         std::cout << "[PandaProducer::endRun] " 
@@ -379,10 +363,8 @@ PandaProducer::beginJob()
 
   panda::utils::BranchList eventBranches = {"runNumber", "lumiNumber", "eventNumber", "isData"};
   panda::utils::BranchList runBranches = {"runNumber"};
-  for (auto* filler : fillers_) {
-    if (filler->enabled())
-      filler->branchNames(eventBranches, runBranches);
-  }
+  for (auto* filler : fillers_)
+    filler->branchNames(eventBranches, runBranches);
 
   outEvent_.book(*eventTree_, eventBranches);
   outEvent_.run.book(*runTree_, runBranches);

@@ -249,7 +249,8 @@ panda = cms.EDAnalyzer('PandaProducer',
         genParticles = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('GenParticles'),
-            prune = cms.untracked.bool(False) # Attempted further pruning during the development of version 003, but we could not come up with an effective algorithm.
+            prune = cms.untracked.bool(False), # Attempted further pruning during the development of version 003, but we could not come up with an effective algorithm.
+            outputMode = cms.untracked.uint32(0) # 0 -> fill normal genParticles (packed), 1 -> fill unpacked genParticlesU, 2 -> fill both
         ),
         ak4GenJets = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

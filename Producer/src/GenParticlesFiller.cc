@@ -163,6 +163,21 @@ struct PNodeWithPtr : public PNode {
     for (auto* d : daughters)
       static_cast<PNodeWithPtr*>(d)->fillPanda(_outParticles, _map, myidx);
   }
+
+  void fillPanda(panda::UnpackedGenParticleCollection& _outParticles, int parentIdx = -1) const {
+    auto& outParticle(_outParticles.create_back());
+    int myidx(_outParticles.size() - 1);
+
+    fillP4(outParticle, *candPtr);
+
+    outParticle.pdgid = pdgId;
+    outParticle.finalState = (status == 1);
+    outParticle.statusFlags = statusBits.to_ulong();
+    outParticle.parent.idx() = parentIdx;
+
+    for (auto* d : daughters)
+      static_cast<PNodeWithPtr*>(d)->fillPanda(_outParticles, myidx);
+  }
 };
 
 GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
@@ -188,12 +203,44 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
       node.isLightDecayingToLight();
     };
   }
+
+  unsigned outputMode(getParameter_<unsigned>(_cfg, "outputMode", 0));
+  switch (outputMode) {
+  case 0:
+    fillPacked_ = true;
+    fillUnpacked_ = false;
+    break;
+  case 1:
+    fillPacked_ = false;
+    fillUnpacked_ = true;
+    break;
+  case 2:
+    fillPacked_ = true;
+    fillUnpacked_ = true;
+    break;
+  default:
+    throw std::runtime_error("Unknown output mode in GenParticlesFiller");
+  }
 }
 
 void
 GenParticlesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  _eventBranches.emplace_back("genParticles");
+  if (fillPacked_)
+    _eventBranches.emplace_back("genParticles");
+}
+
+void
+GenParticlesFiller::addOutput(TFile& _outputFile)
+{
+  if (fillUnpacked_) {
+    auto* eventTree(static_cast<TTree*>(_outputFile.Get("events")));
+    if (!eventTree) // something is wrong
+      return;
+
+    outUnpacked.book(*eventTree);
+    outputTree_ = eventTree;
+  }
 }
 
 void
@@ -223,7 +270,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     }
   }
 
-  auto& outParticles(_outEvent.genParticles);
+  auto& outPacked(_outEvent.genParticles);
 
   // important to reserve enough space on the output collection
   // otherwise collection reallocates in the middle of fill and refs become invalid
@@ -231,7 +278,10 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   if (inFinalStates)
     totalSize += inFinalStates->size();
 
-  outParticles.reserve(totalSize);
+  if (fillPacked_)
+    outPacked.reserve(totalSize);
+  if (fillUnpacked_)
+    outUnpacked.reserve(totalSize);
   
   auto& objectMap(objectMap_->get<reco::Candidate, panda::GenParticle>());
 
@@ -239,17 +289,26 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (furtherPrune_)
       rootNode->pruneDaughters();
 
-    rootNode->fillPanda(outParticles, objectMap);
+    if (fillPacked_)
+      rootNode->fillPanda(outPacked, objectMap);
+    if (fillUnpacked_)
+      rootNode->fillPanda(outUnpacked);
   }
 
   // fill the orphans
   for (auto* orphan : orphans) {
-    orphan->fillPanda(outParticles, objectMap);
+    if (fillPacked_)
+      orphan->fillPanda(outPacked, objectMap);
+    if (fillUnpacked_)
+      orphan->fillPanda(outUnpacked);
   }
 
   // ownDaughter is false; need to clean up pnodes
   for (auto& node : nodeMap)
     delete node.second;
+
+  if (fillUnpacked_)
+    outUnpacked.prepareFill(*outputTree_);
 }
 
 DEFINE_TREEFILLER(GenParticlesFiller);

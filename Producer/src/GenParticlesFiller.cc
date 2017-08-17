@@ -271,6 +271,8 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   }
 
   auto& outPacked(_outEvent.genParticles);
+  if (fillUnpacked_)
+    outUnpacked.init();
 
   // important to reserve enough space on the output collection
   // otherwise collection reallocates in the middle of fill and refs become invalid

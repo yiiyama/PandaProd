@@ -17,6 +17,8 @@
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "JetMETCorrections/Modules/interface/JetResolution.h"
 
+#include <cmath>
+
 JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
   jecName_(getParameter_<std::string>(_cfg, "jec", "")),
@@ -85,6 +87,8 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
 
   if (qglToken_.second.isUninitialized())
     _eventBranches.emplace_back("!" + getName() + ".qgl");
+
+  //// @TODO: REMEMBER TO DISABLE BRANCHES THAT ARE NEW FOR B TAGGING AND REGRESSION ////
 
   if (!fillConstituents_)
     _eventBranches.emplace_back("!" + getName() + ".constituents_");
@@ -231,8 +235,10 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         }
       }
 
-      if (!csvTag_.empty())
+      if (!csvTag_.empty()) {
         outJet.csv = patJet.bDiscriminator(csvTag_);
+        fillHbbVars_(outJet, patJet);
+      }
       if (inQGL)
         outJet.qgl = (*inQGL)[inRef];
       outJet.area = inJet.jetArea();
@@ -325,6 +331,11 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     }
   }
 
+  // Set the references to the secondary vertices
+  if (!csvTag_.empty()) {
+
+  }
+
   if (!isRealData_ && !outGenJets_.empty()) {
     auto& genJetMap(objectMap_->get<reco::GenJet, panda::Jet>().fwdMap);
 
@@ -339,6 +350,45 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       outJet.matchedGenJet.setRef(genMap.at(genPtr));
     }
   }
+}
+
+void
+JetsFiller::fillHbbVars_(panda::MicroJet& outJet, pat::Jet const& inJet)
+{
+
+  outJet.leptonPt = 0;
+  outJet.leptonDR = 0;
+  outJet.leptonPtRel = 0;
+
+  for (auto iCand : inJet.getPFConstituents()) {
+    reco::PFCandidate::ParticleType type = iCand->particleId();
+    if (type == reco::PFCandidate::ParticleType::e ||
+        type == reco::PFCandidate::ParticleType::mu) {
+
+      outJet.leptonPt = iCand->pt();
+      outJet.leptonDR = reco::deltaR(inJet, *iCand);
+
+      // Get "ptRel": https://github.com/vhbb/cmssw/blob/81148c34bb3b546425be61af523c4a7847253484/VHbbAnalysis/Heppy/python/vhbbobj.py#L610-L613
+      TLorentzVector leptonvec;     // TLorentzVector has functions that LorentzVector<PxPyPzE> doesn't have
+      auto leptonp4 = iCand->p4();
+      leptonvec.SetPxPyPzE(leptonp4.px(), leptonp4.py(), leptonp4.pz(), leptonp4.e());
+
+      TVector3 jetvec;
+      auto jetp4 = inJet.p4();
+      jetvec.SetXYZ(jetp4.px(), jetp4.py(), jetp4.pz());
+
+      outJet.leptonPtRel = leptonvec.Perp(jetvec);
+
+      break;
+    }
+  }
+
+  // outJet.vtx3DVal = inJet.userFloat("vtx3DVal");
+  // outJet.vtx3DValOverSig = (inJet.userFloat("vtx3DSig") > 0) ?
+  //   outJet.vtx3DVal/inJet.userFloat("vtx3DSig") : 0;
+
+  // outJet.cmva =
+
 }
 
 DEFINE_TREEFILLER(JetsFiller);

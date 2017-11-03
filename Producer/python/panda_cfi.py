@@ -7,7 +7,7 @@ panda = cms.EDAnalyzer('PandaProducer',
     outputFile = cms.untracked.string('panda.root'),
     useTrigger = cms.untracked.bool(True),
     SelectEvents = cms.untracked.vstring(),
-    printLevel = cms.untracked.uint32(0),
+    printLevel = cms.untracked.uint32(2),
     fillers = cms.untracked.PSet(
         common = cms.untracked.PSet(
             genEventInfo = cms.untracked.string('generator'),
@@ -323,6 +323,16 @@ panda = cms.EDAnalyzer('PandaProducer',
             filler = cms.untracked.string('Recoil'),
             categories = cms.untracked.string('MonoXFilter:categories'),
             max = cms.untracked.string('MonoXFilter:max')
-        )
+        ),
+        softTrackJets = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('P4'),
+            source = cms.untracked.string('slimmedJets')
+            ),
+        secondaryVertices = cms.untracked.PSet(
+            enabled = cms.untracked.bool(True),
+            filler = cms.untracked.string('SecondaryVertices'),
+            source = cms.untracked.string('slimmedSecondaryVertices')
+            )
     )
 )

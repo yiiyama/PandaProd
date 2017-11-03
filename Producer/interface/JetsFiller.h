@@ -7,6 +7,7 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 
 #include <functional>
 
@@ -23,6 +24,9 @@ class JetsFiller : public FillerBase {
 
  protected:
   virtual void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) {}
+
+  //! Fills the training variables for b-tagging and regression
+  void fillHbbVars_(panda::MicroJet& outJet, pat::Jet const& inJet);
 
   typedef edm::View<reco::Jet> JetView;
   typedef edm::View<reco::GenJet> GenJetView;

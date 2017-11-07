@@ -39,6 +39,7 @@ class JetsFiller : public FillerBase {
   std::string jecName_;
   std::string jerName_;
   std::string csvTag_;
+  std::string cmvaTag_;
   std::string puidTag_;
 
   JetCorrectionUncertainty* jecUncertainty_{0};

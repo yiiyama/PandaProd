@@ -29,6 +29,8 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   jerName_(getParameter_<std::string>(_cfg, "jer", "")),
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   cmvaTag_(getParameter_<std::string>(_cfg, "cmva", "")),
+  deepCsvTag_(getParameter_<std::string>(_cfg, "deepCsv", "")),
+  deepCmvaTag_(getParameter_<std::string>(_cfg, "deepCmva", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
   outGenJets_(getParameter_<std::string>(_cfg, "pandaGenJets", "")),
   constituentsLabel_(getParameter_<std::string>(_cfg, "constituents", "")),
@@ -92,6 +94,12 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
 
   if (cmvaTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".cmva");
+
+  if (deepCsvTag_.empty())
+    _eventBranches.emplace_back("!" + getName() + ".deepCsv");
+
+  if (deepCmvaTag_.empty())
+    _eventBranches.emplace_back("!" + getName() + ".deepCmva");
 
   if (qglToken_.second.isUninitialized())
     _eventBranches.emplace_back("!" + getName() + ".qgl");
@@ -245,6 +253,10 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         outJet.csv = patJet.bDiscriminator(csvTag_);
       if (!cmvaTag_.empty())
         outJet.cmva = patJet.bDiscriminator(cmvaTag_);
+      if (!deepCsvTag_.empty())
+        outJet.deepCsv = patJet.bDiscriminator(deepCsvTag_);
+      if (!deepCmvaTag_.empty())
+        outJet.deepCmva = patJet.bDiscriminator(deepCmvaTag_);
 
       if (inQGL)
         outJet.qgl = (*inQGL)[inRef];

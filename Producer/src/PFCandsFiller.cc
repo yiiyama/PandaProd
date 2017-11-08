@@ -147,6 +147,8 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       ++ptype;
     }
 
+    outCand.hCalFrac = inPacked->hcalFraction();
+
     ptrList.push_back(inCands.ptrAt(iP));
   }
 

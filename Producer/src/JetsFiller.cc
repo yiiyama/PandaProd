@@ -29,8 +29,6 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   jerName_(getParameter_<std::string>(_cfg, "jer", "")),
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   cmvaTag_(getParameter_<std::string>(_cfg, "cmva", "")),
-  deepCsvTag_(getParameter_<std::string>(_cfg, "deepCsv", "")),
-  deepCmvaTag_(getParameter_<std::string>(_cfg, "deepCmva", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
   outGenJets_(getParameter_<std::string>(_cfg, "pandaGenJets", "")),
   constituentsLabel_(getParameter_<std::string>(_cfg, "constituents", "")),
@@ -60,6 +58,11 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   if (!isRealData_) {
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
     getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
+  }
+
+  for (auto prob : probs) {
+    deepCsvTags_[prob] = getParameter_<std::string>(_cfg, "deepCSV" + prob, "");
+    deepCmvaTags_[prob] = getParameter_<std::string>(_cfg, "deepCMVA" + prob, "");
   }
 }
 
@@ -95,11 +98,12 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
   if (cmvaTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".cmva");
 
-  if (deepCsvTag_.empty())
-    _eventBranches.emplace_back("!" + getName() + ".deepCsv");
-
-  if (deepCmvaTag_.empty())
-    _eventBranches.emplace_back("!" + getName() + ".deepCmva");
+  for (auto prob : probs) {
+    if (deepCsvTags_.at(prob).empty())
+      _eventBranches.emplace_back("!" + getName() + ".deepCSV" + prob);
+    if (deepCmvaTags_.at(prob).empty())
+      _eventBranches.emplace_back("!" + getName() + ".deepCMVA" + prob);
+  }
 
   if (qglToken_.second.isUninitialized())
     _eventBranches.emplace_back("!" + getName() + ".qgl");
@@ -253,10 +257,28 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         outJet.csv = patJet.bDiscriminator(csvTag_);
       if (!cmvaTag_.empty())
         outJet.cmva = patJet.bDiscriminator(cmvaTag_);
-      if (!deepCsvTag_.empty())
-        outJet.deepCsv = patJet.bDiscriminator(deepCsvTag_);
-      if (!deepCmvaTag_.empty())
-        outJet.deepCmva = patJet.bDiscriminator(deepCmvaTag_);
+
+      if (!deepCsvTags_.at("udsg").empty())
+        outJet.deepCSVudsg = patJet.bDiscriminator(deepCsvTags_.at("udsg"));
+      if (!deepCsvTags_.at("b").empty())
+        outJet.deepCSVb = patJet.bDiscriminator(deepCsvTags_.at("b"));
+      if (!deepCsvTags_.at("c").empty())
+        outJet.deepCSVc = patJet.bDiscriminator(deepCsvTags_.at("c"));
+      if (!deepCsvTags_.at("bb").empty())
+        outJet.deepCSVbb = patJet.bDiscriminator(deepCsvTags_.at("bb"));
+      if (!deepCsvTags_.at("cc").empty())
+        outJet.deepCSVcc = patJet.bDiscriminator(deepCsvTags_.at("cc"));
+
+      if (!deepCmvaTags_.at("udsg").empty())
+        outJet.deepCMVAudsg = patJet.bDiscriminator(deepCmvaTags_.at("udsg"));
+      if (!deepCmvaTags_.at("b").empty())
+        outJet.deepCMVAb = patJet.bDiscriminator(deepCmvaTags_.at("b"));
+      if (!deepCmvaTags_.at("c").empty())
+        outJet.deepCMVAc = patJet.bDiscriminator(deepCmvaTags_.at("c"));
+      if (!deepCmvaTags_.at("bb").empty())
+        outJet.deepCMVAbb = patJet.bDiscriminator(deepCmvaTags_.at("bb"));
+      if (!deepCmvaTags_.at("cc").empty())
+        outJet.deepCMVAcc = patJet.bDiscriminator(deepCmvaTags_.at("cc"));
 
       if (inQGL)
         outJet.qgl = (*inQGL)[inRef];

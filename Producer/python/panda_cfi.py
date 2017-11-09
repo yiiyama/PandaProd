@@ -346,11 +346,6 @@ panda = cms.EDAnalyzer('PandaProducer',
             categories = cms.untracked.string('MonoXFilter:categories'),
             max = cms.untracked.string('MonoXFilter:max')
         ),
-        softTrackJets = cms.untracked.PSet(
-            enabled = cms.untracked.bool(False),
-            filler = cms.untracked.string('P4'),
-            source = cms.untracked.string('slimmedJets')
-            ),
         secondaryVertices = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('SecondaryVertices'),

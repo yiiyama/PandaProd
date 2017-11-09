@@ -61,6 +61,8 @@ def makeJets(process, isData, label, candidates, suffix):
         tags = [
             'pfCombinedInclusiveSecondaryVertexV2BJetTags',
             'pfCombinedMVAV2BJetTags',
+            'pfDeepCSVJetTags',
+            'pfDeepCMVAJetTags'
             ]
     )
 
@@ -79,8 +81,14 @@ def makeJets(process, isData, label, candidates, suffix):
             addJetCorrFactors = True,
             jetCorrFactorsSource = [jetCorrFactors],
             addBTagInfo = True,
-            discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix),
-                                    cms.InputTag('pfCombinedMVAV2BJetTags' + suffix)],
+            discriminatorSources = [
+                cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix),
+                cms.InputTag('pfCombinedMVAV2BJetTags' + suffix),
+                ] + \
+                sum([[cms.InputTag('pfDeepCSVJetTags%s:prob%s' % (suffix, prob)),
+                      cms.InputTag('pfDeepCMVAJetTags%s:prob%s' % (suffix, prob))]
+                     for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                    []),
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,

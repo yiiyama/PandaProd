@@ -154,11 +154,13 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         trackIPTagInfos = ipTagInfosName
     )
     pfDeepCSVTagInfos = btag.pfDeepCSVTagInfos.clone(
-        svTagInfos = ivfTagInfosName
+        svTagInfos = ivfTagInfosName,
     )
     pfDeepCMVATagInfos = btag.pfDeepCMVATagInfos.clone(
         deepNNTagInfos = deepCSVInfosName,
-        ipInfoSrc = ipTagInfosName
+        ipInfoSrc = ipTagInfosName,
+        elInfoSrc = seTagInfosName,
+        muInfoSrc = smTagInfosName
     )
 
     # impact parameter b-tags
@@ -265,7 +267,7 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         smTagInfosName: (softPFMuonsTagInfos, []),
         seTagInfosName: (softPFElectronsTagInfos, []),
         deepCSVInfosName: (pfDeepCSVTagInfos, [ivfTagInfosName]),
-        deepCMVAInfosName: (pfDeepCMVATagInfos, [ipTagInfosName, deepCSVInfosName])
+        deepCMVAInfosName: (pfDeepCMVATagInfos, [ipTagInfosName, deepCSVInfosName, seTagInfosName, smTagInfosName])
     }
 
     def addTagInfo(name, sequence):

@@ -58,7 +58,10 @@ def makeJets(process, isData, label, candidates, suffix):
         vsuffix = '',
         muons = muons,
         electrons = electrons,
-        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
+        tags = [
+            'pfCombinedInclusiveSecondaryVertexV2BJetTags',
+            'pfCombinedMVAV2BJetTags',
+            ]
     )
 
     if not isData:
@@ -76,7 +79,8 @@ def makeJets(process, isData, label, candidates, suffix):
             addJetCorrFactors = True,
             jetCorrFactorsSource = [jetCorrFactors],
             addBTagInfo = True,
-            discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix)],
+            discriminatorSources = [cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix),
+                                    cms.InputTag('pfCombinedMVAV2BJetTags' + suffix)],
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,

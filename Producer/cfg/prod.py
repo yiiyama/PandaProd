@@ -307,29 +307,6 @@ egmIdSequence = cms.Sequence(
 process.load('RecoJets.JetProducers.QGTagger_cfi')
 process.QGTagger.srcJets = 'slimmedJets'
 
-### Deep CSV and Deep CMVA Tagging
-# https://twiki.cern.ch/twiki/bin/view/CMS/DeepFlavour
-# https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideCMSDataAnalysisSchoolBTaggingExercise#Part_II_Remaking_b_tag_discrimin
-
-from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
-
-# updateJetCollection(
-#     process,
-#     jetSource = cms.InputTag('slimmedJets'),
-#     btagDiscriminators = [
-#         'pfDeepCSVJetTags:probudsg',
-#         'pfDeepCSVJetTags:probb',
-#         'pfDeepCSVJetTags:probc',
-#         'pfDeepCSVJetTags:probbb',
-#         'pfDeepCSVJetTags:probcc',
-#         'pfDeepCMVAJetTags:probudsg',
-#         'pfDeepCMVAJetTags:probb',
-#         'pfDeepCMVAJetTags:probc',
-#         'pfDeepCMVAJetTags:probbb',
-#         'pfDeepCMVAJetTags:probcc'
-#         ]
-# )
-
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets

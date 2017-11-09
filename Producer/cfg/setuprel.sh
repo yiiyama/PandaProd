@@ -15,5 +15,5 @@ sed -i 's/badGlobalMuonTagger\.clone/badGlobalMuonTaggerMAOD.clone/' $CMSSW_BASE
 $INSTALL yiiyama puppiphoton_filteredpf CommonTools/PileupAlgos
 $INSTALL ikrav egm_id_80X_v3_photons PhysicsTools/SelectorUtils RecoEgamma/PhotonIdentification RecoEgamma/EgammaIsolationAlgos
 
-# This is just a merged topic from cms-met
+# Merged topic from cms-met, Deep Flavor Data and force recompile RecoBTagCombinedPlugins.so
 $INSTALL dabercro panda-008 PhysicsTools/PatAlgos RecoBTag/Combined

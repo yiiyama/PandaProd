@@ -18,6 +18,7 @@ options.config = '18Apr2017'
 
 jetRecorrection = False
 muFix = False
+egFix = False
 egmSmearingType = 'Moriond2017_JEC'
 
 # Global tags
@@ -25,6 +26,10 @@ egmSmearingType = 'Moriond2017_JEC'
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
 
 if options.config == '18Apr2017':
+    options.isData = True
+    options.globaltag = '80X_dataRun2_2016SeptRepro_v7' # this is wrong
+elif options.config == '03Feb2017':
+    egFix = True
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
 elif options.config == 'Summer16':
@@ -195,6 +200,89 @@ process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPupp
 
 metSequence += process.fullPatMetSequencePuppi
 
+if egFix:
+    ### RE-EG-CORRECT METs
+
+    # First create the MET sequence
+    # Creates process.fullPatMetSequence which includes slimmedMETs
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        recoMetFromPFCs = muFix, # no config has egFix = True & muFix = True at the moment
+        postfix = 'MuEGReClean',
+    )
+
+    # see above
+    process.fullPatMetSequenceMuEGReClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGReClean)
+
+    # metSequence += process.fullPatMetSequence
+
+    # THIS FUNCTION IS BUGGY
+    # from PhysicsTools.PatUtils.tools.eGammaCorrection import eGammaCorrection
+    from PandaProd.Producer.utils.eGammaCorrection import eGammaCorrection
+
+    # Postfix is appended to all MET collection names within the eGammaCorrection function
+    metCollections = [
+        'patPFMetRaw',
+        'patPFMetT1',
+        'patPFMetT0pcT1',
+        'patPFMetT1Smear',
+        'patPFMetT1Txy',
+        'patPFMetTxy'
+    ]
+    variations = ['Up', 'Down']
+    for var in variations:
+        metCollections.extend([
+            'patPFMetT1JetEn' + var,
+            'patPFMetT1JetRes' + var,
+            'patPFMetT1SmearJetRes' + var,
+            'patPFMetT1ElectronEn' + var,
+            'patPFMetT1PhotonEn' + var,
+            'patPFMetT1MuonEn' + var,
+            'patPFMetT1TauEn' + var,
+            'patPFMetT1UnclusteredEn' + var,
+        ])
+
+    # Extracts correction from the differences between pre- and post-GSFix e/g collections
+    # and inserts them into various corrected MET objects
+    metEGCorrSequence = eGammaCorrection(
+        process, 
+        electronCollection = 'slimmedElectronsBeforeGSFix',
+        photonCollection = 'slimmedPhotonsBeforeGSFix',
+        corElectronCollection = 'slimmedElectrons',
+        corPhotonCollection = 'slimmedPhotons',
+        metCollections = metCollections,
+        pfCandMatching = False,
+        pfCandidateCollection = 'packedPFCandidates',
+        postfix = 'MuEGReClean'
+    )
+
+    # set to patPFMet due to the way metEGCorrSequence is implemented
+    process.slimmedMETsMuEGReClean.rawVariation = 'patPFMetRawMuEGReClean'
+
+    # insert right after pat met production
+    process.fullPatMetSequenceMuEGReClean.insert(process.fullPatMetSequenceMuEGReClean.index(process.patMetModuleSequenceMuEGReClean) + 1, metEGCorrSequence)
+    metSequence += process.fullPatMetSequenceMuEGReClean
+
+
+    ## now correct puppi MET
+    puppiMETEGCorrSequence = eGammaCorrection(
+        process, 
+        electronCollection = 'slimmedElectronsBeforeGSFix',
+        photonCollection = 'slimmedPhotonsBeforeGSFix',
+        corElectronCollection = 'slimmedElectrons',
+        corPhotonCollection = 'slimmedPhotons',
+        metCollections = metCollections,
+        pfCandMatching = False,
+        pfCandidateCollection = 'packedPFCandidates',
+        postfix = 'Puppi'
+    )
+
+    process.slimmedMETsPuppi.rawVariation = 'patPFMetRawPuppi'
+
+    # insert right after pat puppi met production
+    process.fullPatMetSequencePuppi.insert(process.fullPatMetSequencePuppi.index(process.patMetModuleSequencePuppi) + 1, puppiMETEGCorrSequence)
+
 ### EGAMMA ID
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2 ???
 
@@ -216,10 +304,14 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
+### Deep B Tagging
+
+deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'packedPFCandidates', 'DeepFlavor')
+
 ### QG TAGGING
 
 process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJets'
+process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
 ### FAT JETS
 
@@ -307,7 +399,6 @@ else:
 
 if jetRecorrection:
     ### JET RE-CORRECTION
-    # ???
 
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 
@@ -355,6 +446,7 @@ process.reco = cms.Path(
     jetRecorrectionSequence +
     metSequence +
     process.MonoXFilter +
+    deepFlavorSequence +
     process.QGTagger +
     fatJetSequence +
     genJetFlavorSequence
@@ -380,6 +472,12 @@ if not options.useTrigger:
 
 if muFix:
     process.panda.fillers.pfMet.met = 'slimmedMetsMuonFixed'
+
+if egFix:
+    process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
+    process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
+        met = 'slimmedMETs'
+    )
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

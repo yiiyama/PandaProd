@@ -304,10 +304,14 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
+### Deep B Tagging
+
+deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'packedPFCandidates', 'DeepFlavor')
+
 ### QG TAGGING
 
 process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJets'
+process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
 ### FAT JETS
 
@@ -395,7 +399,6 @@ else:
 
 if jetRecorrection:
     ### JET RE-CORRECTION
-    # ???
 
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 
@@ -428,56 +431,6 @@ else:
 # However, repeated calls to the function overwrites the MET source of patCaloMet
 process.patCaloMet.metSource = 'metrawCalo'
 
-### Deep CSV and Deep CMVA Tagging
-# https://twiki.cern.ch/twiki/bin/view/CMS/DeepFlavour
-
-# I'm too stupid to update jet collections, but I hacked makeJets to work
-# Therefore, I will recluster for now
-deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeeplyFlavored')
-
-#from PandaProd.Producer.utils.setupBTag import setupBTag
-#
-#simpleBTag = setupBTag(
-#    process, 'slimmedJets', '', '',
-#    muons = 'slimmedMuons', electrons = 'slimmedElectrons',
-#    tags = [
-#        'pfCombinedInclusiveSecondaryVertexV2BJetTags',
-#        'pfCombinedMVAV2BJetTags',
-#        'pfDeepCSVJetTags',
-#        'pfDeepCMVAJetTags'
-#    ]
-#)
-#
-#
-#from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cfi import updatedPatJets
-#
-#process.deepFlavorJets = updatedPatJets.clone(
-#    jetSource = cms.InputTag('slimmedJets'),
-#    addJetCorrFactors = False,
-#    discriminatorSources = cms.VInputTag(
-#        cms.InputTag("pfDeepCSVJetTags", "probudsg"),
-#        cms.InputTag("pfDeepCMVAJetTags", "probudsg"),
-#        cms.InputTag("pfDeepCSVJetTags", "probb"), 
-#        cms.InputTag("pfDeepCMVAJetTags", "probb"),
-#        cms.InputTag("pfDeepCSVJetTags", "probc"),
-#        cms.InputTag("pfDeepCMVAJetTags", "probc"),
-#        cms.InputTag("pfDeepCSVJetTags", "probbb"),
-#        cms.InputTag("pfDeepCMVAJetTags", "probbb"),
-#        cms.InputTag("pfDeepCSVJetTags", "probcc"),
-#        cms.InputTag("pfDeepCMVAJetTags", "probcc")
-#    )
-#)
-#
-#deepFlavorSequence = cms.Sequence(
-#    simpleBTag +
-#    process.pfDeepFlavour +
-##    process.pfDeepCSVTagInfos +
-##    process.pfDeepCMVATagInfos +
-##    process.pfDeepCSVJetTags +
-##    process.pfDeepCMVAJetTags +
-#    process.deepFlavorJets
-#)
-
 ### MONOX FILTER
 
 process.load('PandaProd.Filters.MonoXFilter_cfi')
@@ -493,10 +446,10 @@ process.reco = cms.Path(
     jetRecorrectionSequence +
     metSequence +
     process.MonoXFilter +
+    deepFlavorSequence +
     process.QGTagger +
     fatJetSequence +
-    genJetFlavorSequence +
-    deepFlavorSequence
+    genJetFlavorSequence
 )
 
 #############

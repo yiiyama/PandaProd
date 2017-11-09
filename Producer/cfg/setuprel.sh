@@ -16,4 +16,4 @@ $INSTALL yiiyama puppiphoton_filteredpf CommonTools/PileupAlgos
 $INSTALL ikrav egm_id_80X_v3_photons PhysicsTools/SelectorUtils RecoEgamma/PhotonIdentification RecoEgamma/EgammaIsolationAlgos
 
 # This is just a merged topic from cms-met
-$INSTALL dabercro panda-008 PhysicsTools/PatAlgos
+$INSTALL dabercro panda-008 PhysicsTools/PatAlgos RecoBTag/Combined

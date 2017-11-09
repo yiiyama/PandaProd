@@ -25,6 +25,7 @@ def initBTag(process, vsuffix, candidates = 'particleFlow', primaryVertex = 'off
         process.load('RecoBTag.SecondaryVertex.secondaryVertex_EventSetup_cff')
         process.load('RecoBTag.Combined.combinedMVA_EventSetup_cff')
         process.load('RecoBTag.SoftLepton.softLepton_EventSetup_cff')
+        process.load('RecoBTag.Combined.deepFlavour_cff')
 
     vertexingConfig[vsuffix] = (candidates, primaryVertex)
 
@@ -127,6 +128,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     ivfTagInfosName = ivfTagInfosNameBase + suffix
     smTagInfosName = 'softPFMuonsTagInfos' + suffix
     seTagInfosName = 'softPFElectronsTagInfos' + suffix
+    deepCSVInfosName = 'pfDeepCSVTagInfos' + suffix
+    deepCMVAInfosName = 'pfDeepCMVATagInfos' + suffix
     # ctag info
     ivfcvslTagInfosName = 'pfInclusiveSecondaryVertexFinderCvsLTagInfos' + suffix
 
@@ -149,6 +152,13 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     inclusiveSecondaryVertexFinderCvsLTagInfos = btag.pfInclusiveSecondaryVertexFinderCvsLTagInfos.clone(
         extSVCollection = 'inclusiveCandidateSecondaryVerticesCvsL' + vsuffix,
         trackIPTagInfos = ipTagInfosName
+    )
+    pfDeepCSVTagInfos = btag.pfDeepCSVTagInfos.clone(
+        svTagInfos = ivfTagInfosName
+    )
+    pfDeepCMVATagInfos = btag.pfDeepCMVATagInfos.clone(
+        deepNNTagInfos = deepCSVInfosName,
+        ipInfoSrc = ipTagInfosName
     )
 
     # impact parameter b-tags
@@ -203,6 +213,14 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ]
     )
 
+    # deep flavor
+    pfDeepCSVJetTags = btag.pfDeepCSVJetTags.clone(
+        src = cms.InputTag(deepCSVInfosName)
+    )
+    pfDeepCMVAJetTags = btag.pfDeepCMVAJetTags.clone(
+        src = cms.InputTag(deepCMVAInfosName)
+    )
+
     # ctags
     combinedCvsLJetTags = ctag.pfCombinedCvsLJetTags.clone(
         tagInfos = [
@@ -230,6 +248,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         'pfCombinedSecondaryVertexV2BJetTags': (combinedSecondaryVertexV2BJetTags, [ipTagInfosName, svTagInfosName]),
         'pfSimpleInclusiveSecondaryVertexHighEffBJetTags': (simpleInclusiveSecondaryVertexHighEffBJetTags, [ipTagInfosName, ivfTagInfosName]),
         'pfCombinedInclusiveSecondaryVertexV2BJetTags': (combinedInclusiveSecondaryVertexV2BJetTags, [ipTagInfosName, ivfTagInfosName]),
+        'pfDeepCSVJetTags': (pfDeepCSVJetTags, [deepCSVInfosName]),
+        'pfDeepCMVAJetTags': (pfDeepCMVAJetTags, [deepCMVAInfosName]),
         'softPFMuonBJetTags': (softPFMuonBJetTags, [smTagInfosName]),
         'softPFElectronBJetTags': (softPFElectronBJetTags, [seTagInfosName]),
         'pfCombinedMVAV2BJetTags': (combinedMVAV2BJetTags, [ipTagInfosName, svTagInfosName, ivfTagInfosName, smTagInfosName, seTagInfosName]),
@@ -244,6 +264,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ivfcvslTagInfosName: (inclusiveSecondaryVertexFinderCvsLTagInfos, [ipTagInfosName]),
         smTagInfosName: (softPFMuonsTagInfos, []),
         seTagInfosName: (softPFElectronsTagInfos, []),
+        deepCSVInfosName: (pfDeepCSVTagInfos, [ivfTagInfosName]),
+        deepCMVAInfosName: (pfDeepCMVATagInfos, [ipTagInfosName, deepCSVInfosName])
     }
 
     def addTagInfo(name, sequence):

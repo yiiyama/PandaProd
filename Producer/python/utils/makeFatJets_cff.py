@@ -230,7 +230,11 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         jetCollection = subjets,
         suffix = label + 'Subjets',
         vsuffix = '',
-        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
+        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags',
+                'pfCombinedMVAV2BJetTags',
+                'pfDeepCSVJetTags',
+                'pfDeepCMVAJetTags'
+                ]
     )
     
     ########################################
@@ -329,7 +333,14 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
             jetSource = subjets,
             addJetCorrFactors = False,
             addBTagInfo = True,
-            discriminatorSources = ['pfCombinedInclusiveSecondaryVertexV2BJetTags' + label + 'Subjets'],
+            discriminatorSources = [
+                'pfCombinedInclusiveSecondaryVertexV2BJetTags' + label + 'Subjets',
+                'pfCombinedMVAV2BJetTags' + label + 'Subjets'
+                ] + \
+                sum([['pfDeepCSVJetTags%sSubjets:prob%s' % (label, prob),
+                      'pfDeepCMVAJetTags%sSubjets:prob%s' % (label, prob)]
+                      for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                     []),
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,

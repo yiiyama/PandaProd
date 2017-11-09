@@ -85,8 +85,8 @@ def makeJets(process, isData, label, candidates, suffix):
                 cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix),
                 cms.InputTag('pfCombinedMVAV2BJetTags' + suffix),
                 ] + \
-                sum([[cms.InputTag('pfDeepCSVJetTags%s:prob%s' % (suffix, prob)),
-                      cms.InputTag('pfDeepCMVAJetTags%s:prob%s' % (suffix, prob))]
+                sum([[cms.InputTag('pfDeepCSVJetTags' + suffix, 'prob' + prob),
+                      cms.InputTag('pfDeepCMVAJetTags' + suffix, 'prob' + prob)]
                      for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
                     []),
             addAssociatedTracks = False,

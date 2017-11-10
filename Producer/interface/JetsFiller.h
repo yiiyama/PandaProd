@@ -23,6 +23,7 @@ class JetsFiller : public FillerBase {
 
  protected:
   virtual void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) {}
+  void fillDeepBySwitch_(panda::MicroJet&, unsigned int const, float);
 
   typedef edm::View<reco::Jet> JetView;
   typedef edm::View<reco::GenJet> GenJetView;
@@ -37,16 +38,16 @@ class JetsFiller : public FillerBase {
   std::string csvTag_;
   std::string cmvaTag_;
 
-  std::vector<std::string> probs = {
-    "udsg",
-    "b",
-    "c",
-    "bb",
-    "cc"
+  const std::map<const std::string, const unsigned int> deepProbs = {
+    {"udsg", 0},
+    {"b", 1},
+    {"c", 2},
+    {"bb", 3},
+    {"cc", 4}
   };
 
-  std::map<std::string, std::string> deepCsvTags_;
-  std::map<std::string, std::string> deepCmvaTags_;
+  std::string deepCsvTag_;
+  std::string deepCmvaTag_;
 
   std::string puidTag_;
 

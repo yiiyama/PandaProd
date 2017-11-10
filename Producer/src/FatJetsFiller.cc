@@ -14,6 +14,8 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
   subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
   subjetCmvaTag_(getParameter_<std::string>(_cfg, "subjetCmva", "")),
+  subjetDeepCsvTag_(getParameter_<std::string>(_cfg, "subjetDeepCSV", "")),
+  subjetDeepCmvaTag_(getParameter_<std::string>(_cfg, "subjetDeepCMVA", "")),
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
@@ -68,11 +70,6 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
                                         maxM13Cut,rejectMinR);
 
     jetBoostedBtaggingMVACalc_.initialize("BDT", getParameter_<edm::FileInPath>(_cfg, "doubleBTagWeights").fullPath());
-  }
-
-  for (auto prob : probs) {
-    subjetDeepCsvTags_[prob] = getParameter_<std::string>(_cfg, "subjetDeepCSV" + prob, "");
-    subjetDeepCmvaTags_[prob] = getParameter_<std::string>(_cfg, "subjetDeepCMVA" + prob, "");
   }
 }
 
@@ -164,27 +161,17 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           if (!subjetQGLTag_.empty() && patSubjet.hasUserFloat(subjetQGLTag_))
             outSubjet.qgl = patSubjet.userFloat(subjetQGLTag_);
 
-          if (!subjetDeepCsvTags_.at("udsg").empty())
-            outSubjet.deepCSVudsg = patSubjet.bDiscriminator(subjetDeepCsvTags_.at("udsg"));
-          if (!subjetDeepCsvTags_.at("b").empty())
-            outSubjet.deepCSVb = patSubjet.bDiscriminator(subjetDeepCsvTags_.at("b"));
-          if (!subjetDeepCsvTags_.at("c").empty())
-            outSubjet.deepCSVc = patSubjet.bDiscriminator(subjetDeepCsvTags_.at("c"));
-          if (!subjetDeepCsvTags_.at("bb").empty())
-            outSubjet.deepCSVbb = patSubjet.bDiscriminator(subjetDeepCsvTags_.at("bb"));
-          if (!subjetDeepCsvTags_.at("cc").empty())
-            outSubjet.deepCSVcc = patSubjet.bDiscriminator(subjetDeepCsvTags_.at("cc"));
+          if (!subjetDeepCsvTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second, patSubjet.bDiscriminator(subjetDeepCsvTag_ + ":prob" + prob.first));
+            }
+          }
 
-          if (!subjetDeepCmvaTags_.at("udsg").empty())
-            outSubjet.deepCMVAudsg = patSubjet.bDiscriminator(subjetDeepCmvaTags_.at("udsg"));
-          if (!subjetDeepCmvaTags_.at("b").empty())
-            outSubjet.deepCMVAb = patSubjet.bDiscriminator(subjetDeepCmvaTags_.at("b"));
-          if (!subjetDeepCmvaTags_.at("c").empty())
-            outSubjet.deepCMVAc = patSubjet.bDiscriminator(subjetDeepCmvaTags_.at("c"));
-          if (!subjetDeepCmvaTags_.at("bb").empty())
-            outSubjet.deepCMVAbb = patSubjet.bDiscriminator(subjetDeepCmvaTags_.at("bb"));
-          if (!subjetDeepCmvaTags_.at("cc").empty())
-            outSubjet.deepCMVAcc = patSubjet.bDiscriminator(subjetDeepCmvaTags_.at("cc"));
+          if (!subjetDeepCmvaTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second + deepProbs.size(), patSubjet.bDiscriminator(subjetDeepCmvaTag_ + ":prob" + prob.first));
+            }
+          }
 
         }
 

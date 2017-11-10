@@ -38,12 +38,23 @@ class JetsFiller : public FillerBase {
   std::string csvTag_;
   std::string cmvaTag_;
 
-  const std::map<const std::string, const unsigned int> deepProbs = {
-    {"udsg", 0},
-    {"b", 1},
-    {"c", 2},
-    {"bb", 3},
-    {"cc", 4}
+  enum deepSuff {
+    udsg = 0,
+    b,
+    c,
+    bb,
+    cc,
+    DEEP_SIZE
+  };
+
+  // Add suffixes to maps
+#define ADD_TO_MAP(s) {#s, deepSuff::s}
+  const std::map<const std::string, deepSuff> deepProbs = {
+    ADD_TO_MAP(udsg),
+    ADD_TO_MAP(b),
+    ADD_TO_MAP(c),
+    ADD_TO_MAP(bb),
+    ADD_TO_MAP(cc)
   };
 
   std::string deepCsvTag_;

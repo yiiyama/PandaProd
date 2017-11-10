@@ -62,6 +62,9 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
     getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   }
+
+  // Check the enums and map
+  assert(deepProbs.size() == deepSuff::DEEP_SIZE);
 }
 
 JetsFiller::~JetsFiller()
@@ -264,7 +267,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
       if (!deepCmvaTag_.empty()) {
         for (auto prob : deepProbs) {
-          fillDeepBySwitch_(outJet, prob.second + deepProbs.size(), patJet.bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
+          fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, patJet.bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
         }
       }
 
@@ -435,47 +438,35 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 void
 JetsFiller::fillDeepBySwitch_(panda::MicroJet& outJet, const unsigned int key, float value)
 {
-  // Note this is far from ideal from a maintainability standpoint, but should be fast-ish
-  // C++ refuses to evaluate maps at compile time apparently
   switch(key) {
-  case 0:
-    assert(key == deepProbs.at("udsg"));
+  case deepSuff::udsg:
     outJet.deepCSVudsg = value;
     break;
-  case 1:
-    assert(key == deepProbs.at("b"));
+  case deepSuff::b:
     outJet.deepCSVb = value;
     break;
-  case 2:
-    assert(key == deepProbs.at("c"));
+  case deepSuff::c:
     outJet.deepCSVc = value;
     break;
-  case 3:
-    assert(key == deepProbs.at("bb"));
+  case deepSuff::bb:
     outJet.deepCSVbb = value;
     break;
-  case 4:
-    assert(key == deepProbs.at("cc"));
+  case deepSuff::cc:
     outJet.deepCSVcc = value;
     break;
-  case 5:
-    assert(key == deepProbs.at("udsg") + deepProbs.size());
+  case deepSuff::udsg + deepSuff::DEEP_SIZE:
     outJet.deepCMVAudsg = value;
     break;
-  case 6:
-    assert(key == deepProbs.at("b") + deepProbs.size());
+  case deepSuff::b + deepSuff::DEEP_SIZE:
     outJet.deepCMVAb = value;
     break;
-  case 7:
-    assert(key == deepProbs.at("c") + deepProbs.size());
+  case deepSuff::c + deepSuff::DEEP_SIZE:
     outJet.deepCMVAc = value;
     break;
-  case 8:
-    assert(key == deepProbs.at("bb") + deepProbs.size());
+  case deepSuff::bb + deepSuff::DEEP_SIZE:
     outJet.deepCMVAbb = value;
     break;
-  case 9:
-    assert(key == deepProbs.at("cc") + deepProbs.size());
+  case deepSuff::cc + deepSuff::DEEP_SIZE:
     outJet.deepCMVAcc = value;
     break;
   default:

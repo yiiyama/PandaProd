@@ -169,7 +169,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
           if (!subjetDeepCmvaTag_.empty()) {
             for (auto prob : deepProbs) {
-              fillDeepBySwitch_(outSubjet, prob.second + deepProbs.size(), patSubjet.bDiscriminator(subjetDeepCmvaTag_ + ":prob" + prob.first));
+              fillDeepBySwitch_(outSubjet, prob.second + deepSuff::DEEP_SIZE, patSubjet.bDiscriminator(subjetDeepCmvaTag_ + ":prob" + prob.first));
             }
           }
 

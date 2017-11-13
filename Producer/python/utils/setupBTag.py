@@ -115,7 +115,7 @@ def makeIvfTagInfos(ipTagInfosName, vsuffix, deltaR = 0.3):
 # Give the list of btag discriminators (see below for names) in tags to run only a part of the full menu.
 # vsuffix is the suffix given to initBTag that defines the secondary vertexing sequence.
 # The optional argument addedTagInfos can be used to retrieve back the TagInfo modules added in order to compute the specified btag discriminators.
-def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', electrons = 'slimmedElectrons', tags = [], addedTagInfos = []):
+def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electrons = 'gedGsfElectrons', tags = [], addedTagInfos = []):
     """
     Configure the BTag sequence for the given jet collection.
     The suffix will be appended to the CMSSW module names to

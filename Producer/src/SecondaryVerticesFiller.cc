@@ -45,4 +45,30 @@ SecondaryVerticesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEven
 
 }
 
+void
+SecondaryVerticesFiller::setRefs(ObjectMapStore const& _objectMaps)
+{
+
+  // Link to PFCandidates
+
+  auto& svMap(objectMap_->get<reco::VertexCompositePtrCandidate, panda::SecondaryVertex>().fwdMap);
+  auto& pfCandMap(_objectMaps.at("pfCandidates").get<reco::Candidate, panda::PFCand>().fwdMap);
+
+  for (auto& svLink : svMap) {
+    auto& inSV(*svLink.first);
+    auto& outSV(*svLink.second);
+    auto ndaughters(inSV.numberOfDaughters());
+
+    for (reco::Candidate::size_type iDaughter = 0; iDaughter < ndaughters; ++iDaughter) {
+
+      auto daughterPtr(inSV.daughterPtr(iDaughter));
+
+      auto&& outPFCand(pfCandMap.find(daughterPtr));
+      if (outPFCand != pfCandMap.end())
+        outSV.daughters.addRef(outPFCand->second);
+
+    }
+  }
+}
+
 DEFINE_TREEFILLER(SecondaryVerticesFiller);

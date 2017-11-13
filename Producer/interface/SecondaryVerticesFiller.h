@@ -11,6 +11,7 @@ class SecondaryVerticesFiller : public FillerBase {
 
   void branchNames(panda::utils::BranchList&, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
+  void setRefs(ObjectMapStore const&) override;
 
  protected:
 

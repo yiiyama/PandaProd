@@ -9,6 +9,6 @@ MonoXFilter = cms.EDFilter("MonoXFilter",
                              saveWlv = cms.bool(True),
                              saveZll = cms.bool(True),
                              savePho = cms.bool(True),
-                             minU = cms.double(0),
+                             minU = cms.double(175),
                              taggingMode = cms.bool(False)
                            )

@@ -1,7 +1,6 @@
 #include "../interface/PFCandsFiller.h"
 
 #include "DataFormats/Candidate/interface/Candidate.h"
-#include "DataFormats/Candidate/interface/VertexCompositePtrCandidate.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 
 #include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
@@ -236,27 +235,6 @@ PFCandsFiller::setRefs(ObjectMapStore const& _objectMaps)
   while (iVtx != nVtx) {
     vtxMap.at(orderedVertices_[iVtx])->pfRangeMax = iPF;
     ++iVtx;
-  }
-
-  // Secondary Vertices
-
-  auto& pfCandMap(objectMap_->get<reco::Candidate, panda::PFCand>().fwdMap);
-  auto& svMap(_objectMaps.at("secondaryVertices").get<reco::VertexCompositePtrCandidate, panda::SecondaryVertex>().fwdMap);
-
-  for (auto& svLink : svMap) {
-    auto& inSV(*svLink.first);
-    auto* outSV(svLink.second);
-    auto ndaughters(inSV.numberOfDaughters());
-
-    for (reco::Candidate::size_type iDaughter = 0; iDaughter < ndaughters; ++iDaughter) {
-
-      auto daughterPtr(inSV.daughterPtr(iDaughter));
-
-      auto&& outPFCand(pfCandMap.find(daughterPtr));
-      if (outPFCand != pfCandMap.end()) {
-        outPFCand->second->secondaryVertex.setRef(outSV);
-      }
-    }
   }
 }
 

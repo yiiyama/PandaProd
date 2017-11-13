@@ -311,6 +311,12 @@ deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'packedPFCand
 process.load('RecoJets.JetProducers.QGTagger_cfi')
 process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
+### Pileup ID
+
+process.load('RecoJets.JetProducers.PileupJetID_cfi')
+process.pileupJetId.jets = 'slimmedJetsDeepFlavor'
+process.pileupJetId.vertexes = 'offlineSlimmedPrimaryVertices'
+
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
@@ -446,6 +452,7 @@ process.reco = cms.Path(
     process.MonoXFilter +
     deepFlavorSequence +
     process.QGTagger +
+#    process.pileupJetId +
     fatJetSequence +
     genJetFlavorSequence
 )

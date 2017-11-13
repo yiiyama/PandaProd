@@ -7,6 +7,7 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 
 #include <functional>
 
@@ -30,6 +31,7 @@ class JetsFiller : public FillerBase {
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
+  NamedToken<edm::View<pat::Jet>> flavoredJetsToken_;
   NamedToken<GenJetView> genJetsToken_;
   NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;

@@ -57,6 +57,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
     throw edm::Exception(edm::errors::Configuration, "Unknown JetCollection output");    
 
   getToken_(jetsToken_, _cfg, _coll, "jets");
+  getToken_(flavoredJetsToken_, _cfg, _coll, "flavoredJets", false);
   getToken_(qglToken_, _cfg, _coll, "qgl", false);
   if (!isRealData_) {
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
@@ -149,6 +150,8 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   if (!qglToken_.second.isUninitialized())
     inQGL = &getProduct_(_inEvent, qglToken_);
 
+  auto* flavoredJets(flavoredJetsToken_.second.isUninitialized() ? nullptr : &getProduct_(_inEvent, flavoredJetsToken_));
+
   std::vector<edm::Ptr<reco::Jet>> ptrList;
   std::vector<edm::Ptr<reco::GenJet>> matchedGenJets;
 
@@ -168,6 +171,16 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     // Forking for MINIAOD jets (not that we have implementation for reco::PFJet though)
     if (dynamic_cast<pat::Jet const*>(&inJet)) {
       auto& patJet(static_cast<pat::Jet const&>(inJet));
+
+      const pat::Jet* flavoredJet(flavoredJets == nullptr ? &patJet : nullptr);
+      if (flavoredJet == nullptr) {
+        for (auto& inFlavored : *flavoredJets) {
+          if (reco::deltaR(patJet, inFlavored) < 0.2) {
+            flavoredJet = &inFlavored;
+            break;
+          }
+        }
+      }
 
       double nhf(patJet.neutralHadronEnergyFraction());
       double nef(patJet.neutralEmEnergyFraction());
@@ -259,15 +272,17 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       if (!cmvaTag_.empty())
         outJet.cmva = patJet.bDiscriminator(cmvaTag_);
 
-      if (!deepCsvTag_.empty()) {
-        for (auto prob : deepProbs) {
-          fillDeepBySwitch_(outJet, prob.second, patJet.bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
+      if (flavoredJet != nullptr) { // If hacky matching failed, don't try to fill deep flavor
+        if (!deepCsvTag_.empty()) {
+          for (auto prob : deepProbs) {
+            fillDeepBySwitch_(outJet, prob.second, flavoredJet->bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
+          }
         }
-      }
 
-      if (!deepCmvaTag_.empty()) {
-        for (auto prob : deepProbs) {
-          fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, patJet.bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
+        if (!deepCmvaTag_.empty()) {
+          for (auto prob : deepProbs) {
+            fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, flavoredJet->bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
+          }
         }
       }
 

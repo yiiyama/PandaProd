@@ -374,7 +374,7 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& svMap(_objectMaps.at("secondaryVertices").get<reco::VertexCompositePtrCandidate, panda::SecondaryVertex>());
     auto& pvMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>());
 
-    reco::Vertex pv;
+    edm::Ptr<reco::Vertex> pv;
 
     for (auto& vtxLink : pvMap.fwdMap) {
 
@@ -382,7 +382,7 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       if (outVtx.score > maxScore) {
 
         maxScore = outVtx.score;
-        pv = *vtxLink.first;
+        pv = vtxLink.first;
 
       }
     }
@@ -397,11 +397,11 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
         auto& inSV(*svLink.first);
         auto inLocation = inSV.vertex();
-        if (Geom::deltaR2(GlobalVector(inLocation.x() - pv.x(), inLocation.y() - pv.y(), inLocation.z() - pv.z()),
+        if (Geom::deltaR2(GlobalVector(inLocation.x() - pv->x(), inLocation.y() - pv->y(), inLocation.z() - pv->z()),
                           GlobalVector(inJet.px(), inJet.py(), inJet.pz())) < 0.09){
 
-          auto distance(vdist.distance(pv, VertexState(RecoVertex::convertPos(inSV.position()),
-                                                       RecoVertex::convertError(inSV.error())))
+          auto distance(vdist.distance(*pv, VertexState(RecoVertex::convertPos(inSV.position()),
+                                                        RecoVertex::convertError(inSV.error())))
                         );
 
           if (distance.significance() > maxSignificance) {

@@ -309,7 +309,7 @@ deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'packedPFCand
 ### QG TAGGING
 
 process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJets'
+process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
 ### Pileup ID
 

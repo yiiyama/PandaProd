@@ -57,7 +57,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
     throw edm::Exception(edm::errors::Configuration, "Unknown JetCollection output");    
 
   getToken_(jetsToken_, _cfg, _coll, "jets");
-  getToken_(flavoredJetsToken_, _cfg, _coll, "flavoredJets", false);
+  getToken_(puidJetsToken_, _cfg, _coll, "pileupJets", false);
   getToken_(qglToken_, _cfg, _coll, "qgl", false);
   if (!isRealData_) {
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
@@ -150,7 +150,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   if (!qglToken_.second.isUninitialized())
     inQGL = &getProduct_(_inEvent, qglToken_);
 
-  auto* flavoredJets(flavoredJetsToken_.second.isUninitialized() ? nullptr : &getProduct_(_inEvent, flavoredJetsToken_));
+  auto* puidJets(puidJetsToken_.second.isUninitialized() ? nullptr : &getProduct_(_inEvent, puidJetsToken_));
 
   std::vector<edm::Ptr<reco::Jet>> ptrList;
   std::vector<edm::Ptr<reco::GenJet>> matchedGenJets;
@@ -172,11 +172,11 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
     if (dynamic_cast<pat::Jet const*>(&inJet)) {
       auto& patJet(static_cast<pat::Jet const&>(inJet));
 
-      const pat::Jet* flavoredJet(flavoredJets == nullptr ? &patJet : nullptr);
-      if (flavoredJet == nullptr) {
-        for (auto& inFlavored : *flavoredJets) {
-          if (reco::deltaR(patJet, inFlavored) < 0.2) {
-            flavoredJet = &inFlavored;
+      const pat::Jet* puidJet(puidJets == nullptr ? &patJet : nullptr);
+      if (puidJet == nullptr) {
+        for (auto& inPuid : *puidJets) {
+          if (reco::deltaR(patJet, inPuid) < 0.2) {
+            puidJet = &inPuid;
             break;
           }
         }
@@ -275,14 +275,12 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       // Fill with -0.5 if we didn't match the jets
       if (!deepCsvTag_.empty()) {
         for (auto prob : deepProbs) {
-            fillDeepBySwitch_(outJet, prob.second,
-                              (flavoredJet != nullptr) ? flavoredJet->bDiscriminator(deepCsvTag_ + ":prob" + prob.first) : -0.5);
+            fillDeepBySwitch_(outJet, prob.second, patJet.bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
         }
       }
       if (!deepCmvaTag_.empty()) {
         for (auto prob : deepProbs) {
-          fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE,
-                            (flavoredJet != nullptr) ? flavoredJet->bDiscriminator(deepCmvaTag_ + ":prob" + prob.first) : -0.5);
+          fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, patJet.bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
         }
       }
 
@@ -294,7 +292,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       outJet.nef = nef;
       outJet.cef = cef;
       if (!puidTag_.empty())
-        outJet.puid = patJet.userFloat(puidTag_);
+        outJet.puid = (puidJet != nullptr) ? puidJet->userFloat(puidTag_) : -2.0;
       outJet.loose = loose;
       outJet.tight = tight;
       outJet.monojet = monojet;

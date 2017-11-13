@@ -31,7 +31,7 @@ class JetsFiller : public FillerBase {
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
-  NamedToken<edm::View<pat::Jet>> flavoredJetsToken_;
+  NamedToken<edm::View<pat::Jet>> puidJetsToken_;
   NamedToken<GenJetView> genJetsToken_;
   NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;

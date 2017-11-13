@@ -272,17 +272,17 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       if (!cmvaTag_.empty())
         outJet.cmva = patJet.bDiscriminator(cmvaTag_);
 
-      if (flavoredJet != nullptr) { // If hacky matching failed, don't try to fill deep flavor
-        if (!deepCsvTag_.empty()) {
-          for (auto prob : deepProbs) {
-            fillDeepBySwitch_(outJet, prob.second, flavoredJet->bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
-          }
+      // Fill with -0.5 if we didn't match the jets
+      if (!deepCsvTag_.empty()) {
+        for (auto prob : deepProbs) {
+            fillDeepBySwitch_(outJet, prob.second,
+                              (flavoredJet != nullptr) ? flavoredJet->bDiscriminator(deepCsvTag_ + ":prob" + prob.first) : -0.5);
         }
-
-        if (!deepCmvaTag_.empty()) {
-          for (auto prob : deepProbs) {
-            fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, flavoredJet->bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
-          }
+      }
+      if (!deepCmvaTag_.empty()) {
+        for (auto prob : deepProbs) {
+          fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE,
+                            (flavoredJet != nullptr) ? flavoredJet->bDiscriminator(deepCmvaTag_ + ":prob" + prob.first) : -0.5);
         }
       }
 

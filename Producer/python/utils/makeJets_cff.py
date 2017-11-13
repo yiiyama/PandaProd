@@ -104,7 +104,7 @@ def makeJets(process, isData, label, candidates, suffix):
     selectedJets = addattr('selectedJets',
         selectedPatJets.clone(
             src = allPatJets,
-            cut = 'pt > 15'
+            cut = 'pt > 10'
         )
     )
 

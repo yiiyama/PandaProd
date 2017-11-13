@@ -452,7 +452,6 @@ process.reco = cms.Path(
     process.MonoXFilter +
     deepFlavorSequence +
     process.QGTagger +
-#    process.pileupJetId +
     fatJetSequence +
     genJetFlavorSequence
 )

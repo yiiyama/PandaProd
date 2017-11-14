@@ -302,11 +302,15 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
+### CHS (adds pfCHS collection)
+from PandaProd.Producer.utils.candidates import chsSequence
+
+chsSequence(process, 'packedPFCandidates')
+
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-# pfCHS set up here
 fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
@@ -357,7 +361,7 @@ fatJetSequence = cms.Sequence(
 )
 
 ### Deep B Tagging
-# Uses pfCHS from the fatJetSequence, so make sure it's after
+
 deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
 
 ### QG TAGGING

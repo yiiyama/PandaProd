@@ -11,6 +11,7 @@ from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
 
 from PandaProd.Producer.utils.addattr import AddAttr
 from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
+from PandaProd.Producer.utils.candidates import chsSequence
 
 finalStateGenParticles = 'packedGenParticles'
 prunedGenParticles = 'prunedGenParticles'
@@ -88,13 +89,8 @@ def initFatJets(process, isData, labels):
                 )
             )
 
-    # Charged hadron subtraction
-    addattr('pfCHS',
-        cms.EDFilter("CandPtrSelector",
-            src = cms.InputTag(pfSource),
-            cut = cms.string("fromPV")
-        )
-    )
+    # Add PF CHS
+    sequence += chsSequence(process, pfSource, skipIfExists = True)
 
     # Initialize btag inputs
     sequence += initBTag(process, '', pfSource, pvSource)

@@ -7,13 +7,19 @@ class AddAttr(object):
         self.postfix = postfix
         self.last = None
 
-    def __call__(self, name, attr):
-        if hasattr(self.process, name + self.postfix):
-            raise RuntimeError('process already has an attribute named ' + name + self.postfix)
+    def __call__(self, name, attr, skipIfExists = False):
+        fullname = name + self.postfix
+        tag = cms.InputTag(fullname)
 
-        setattr(self.process, name + self.postfix, attr)
+        if hasattr(self.process, fullname):
+            if skipIfExists:
+                return tag
+            else:
+                raise RuntimeError('process already has an attribute named ' + fullname)
+
+        setattr(self.process, fullname, attr)
         self.sequence += attr
 
         self.last = attr
 
-        return cms.InputTag(name + self.postfix)
+        return tag

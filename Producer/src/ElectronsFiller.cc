@@ -170,6 +170,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
+    outElectron.r9 = inElectron.r9();
     outElectron.hOverE = inElectron.hadronicOverEm();
     outElectron.dPhiIn = inElectron.deltaPhiSuperClusterTrackAtVtx();
     outElectron.ecalE = inElectron.ecalEnergy();

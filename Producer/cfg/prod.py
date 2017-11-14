@@ -302,21 +302,6 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
-### Deep B Tagging
-
-deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'packedPFCandidates', 'DeepFlavor')
-
-### QG TAGGING
-
-process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
-
-### Pileup ID
-
-process.load('RecoJets.JetProducers.PileupJetID_cfi')
-process.pileupJetId.jets = 'slimmedJetsDeepFlavor'
-process.pileupJetId.vertexes = 'offlineSlimmedPrimaryVertices'
-
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
@@ -370,6 +355,15 @@ fatJetSequence = cms.Sequence(
     ca15CHSDoubleBTagSequence +
     ca15PuppiDoubleBTagSequence
 )
+
+### Deep B Tagging
+# Uses pfCHS from the fatJetSequence, so make sure it's after
+deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
+
+### QG TAGGING
+
+process.load('RecoJets.JetProducers.QGTagger_cfi')
+process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
 ### GEN JET FLAVORS
 if not options.isData:
@@ -450,9 +444,9 @@ process.reco = cms.Path(
     jetRecorrectionSequence +
     metSequence +
     process.MonoXFilter +
+    fatJetSequence +
     deepFlavorSequence +
     process.QGTagger +
-    fatJetSequence +
     genJetFlavorSequence
 )
 

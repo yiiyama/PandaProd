@@ -39,6 +39,10 @@ class FatJetsFiller : public JetsFiller {
   std::string subjetBtagTag_;
   std::string subjetQGLTag_;
 
+  std::string subjetCmvaTag_;
+  std::string subjetDeepCsvTag_;
+  std::string subjetDeepCmvaTag_;
+
   fastjet::GhostedAreaSpec activeArea_;
   fastjet::AreaDefinition areaDef_;
   fastjet::JetDefinition* jetDefCA_{0};

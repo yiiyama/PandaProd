@@ -45,7 +45,12 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     
     auto&& ptr(inJets.ptrAt(iJet));
 
-    outJet.pdgid = inFlavor[edm::Ptr<reco::Jet>(ptr)].getHadronFlavour();
+    auto& flavor(inFlavor[edm::Ptr<reco::Jet>(ptr)]);
+
+    outJet.pdgid = flavor.getHadronFlavour();
+    outJet.partonFlavor = flavor.getPartonFlavour();
+    outJet.numB = flavor.getbHadrons().size();
+    outJet.numC = flavor.getcHadrons().size();
 
     ptrList.push_back(ptr);
   }

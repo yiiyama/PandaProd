@@ -13,6 +13,9 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
   prunedKinematicsTag_(getParameter_<std::string>(_cfg, "prunedKinematics")),
   subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
   subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
+  subjetCmvaTag_(getParameter_<std::string>(_cfg, "subjetCmva", "")),
+  subjetDeepCsvTag_(getParameter_<std::string>(_cfg, "subjetDeepCSV", "")),
+  subjetDeepCmvaTag_(getParameter_<std::string>(_cfg, "subjetDeepCMVA", "")),
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
@@ -153,8 +156,23 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           auto& patSubjet(dynamic_cast<pat::Jet const&>(inSubjet));
           if (!subjetBtagTag_.empty())
             outSubjet.csv = patSubjet.bDiscriminator(subjetBtagTag_);
+          if (!subjetCmvaTag_.empty())
+            outSubjet.cmva = patSubjet.bDiscriminator(subjetCmvaTag_);
           if (!subjetQGLTag_.empty() && patSubjet.hasUserFloat(subjetQGLTag_))
             outSubjet.qgl = patSubjet.userFloat(subjetQGLTag_);
+
+          if (!subjetDeepCsvTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second, patSubjet.bDiscriminator(subjetDeepCsvTag_ + ":prob" + prob.first));
+            }
+          }
+
+          if (!subjetDeepCmvaTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second + deepSuff::DEEP_SIZE, patSubjet.bDiscriminator(subjetDeepCmvaTag_ + ":prob" + prob.first));
+            }
+          }
+
         }
 
         outJet.subjets.addRef(&outSubjet);

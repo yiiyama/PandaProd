@@ -25,6 +25,7 @@ def initBTag(process, vsuffix, candidates = 'particleFlow', primaryVertex = 'off
         process.load('RecoBTag.SecondaryVertex.secondaryVertex_EventSetup_cff')
         process.load('RecoBTag.Combined.combinedMVA_EventSetup_cff')
         process.load('RecoBTag.SoftLepton.softLepton_EventSetup_cff')
+        process.load('RecoBTag.Combined.deepFlavour_cff')
 
     vertexingConfig[vsuffix] = (candidates, primaryVertex)
 
@@ -114,7 +115,7 @@ def makeIvfTagInfos(ipTagInfosName, vsuffix, deltaR = 0.3):
 # Give the list of btag discriminators (see below for names) in tags to run only a part of the full menu.
 # vsuffix is the suffix given to initBTag that defines the secondary vertexing sequence.
 # The optional argument addedTagInfos can be used to retrieve back the TagInfo modules added in order to compute the specified btag discriminators.
-def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electrons = 'gedGsfElectrons', tags = [], addedTagInfos = []):
+def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', electrons = 'slimmedElectrons', tags = [], addedTagInfos = []):
     """
     Configure the BTag sequence for the given jet collection.
     The suffix will be appended to the CMSSW module names to
@@ -127,6 +128,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     ivfTagInfosName = ivfTagInfosNameBase + suffix
     smTagInfosName = 'softPFMuonsTagInfos' + suffix
     seTagInfosName = 'softPFElectronsTagInfos' + suffix
+    deepCSVInfosName = 'pfDeepCSVTagInfos' + suffix
+    deepCMVAInfosName = 'pfDeepCMVATagInfos' + suffix
     # ctag info
     ivfcvslTagInfosName = 'pfInclusiveSecondaryVertexFinderCvsLTagInfos' + suffix
 
@@ -149,6 +152,15 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     inclusiveSecondaryVertexFinderCvsLTagInfos = btag.pfInclusiveSecondaryVertexFinderCvsLTagInfos.clone(
         extSVCollection = 'inclusiveCandidateSecondaryVerticesCvsL' + vsuffix,
         trackIPTagInfos = ipTagInfosName
+    )
+    pfDeepCSVTagInfos = btag.pfDeepCSVTagInfos.clone(
+        svTagInfos = ivfTagInfosName,
+    )
+    pfDeepCMVATagInfos = btag.pfDeepCMVATagInfos.clone(
+        deepNNTagInfos = deepCSVInfosName,
+        ipInfoSrc = ipTagInfosName,
+        elInfoSrc = seTagInfosName,
+        muInfoSrc = smTagInfosName
     )
 
     # impact parameter b-tags
@@ -203,6 +215,14 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ]
     )
 
+    # deep flavor
+    pfDeepCSVJetTags = btag.pfDeepCSVJetTags.clone(
+        src = cms.InputTag(deepCSVInfosName)
+    )
+    pfDeepCMVAJetTags = btag.pfDeepCMVAJetTags.clone(
+        src = cms.InputTag(deepCMVAInfosName)
+    )
+
     # ctags
     combinedCvsLJetTags = ctag.pfCombinedCvsLJetTags.clone(
         tagInfos = [
@@ -230,6 +250,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         'pfCombinedSecondaryVertexV2BJetTags': (combinedSecondaryVertexV2BJetTags, [ipTagInfosName, svTagInfosName]),
         'pfSimpleInclusiveSecondaryVertexHighEffBJetTags': (simpleInclusiveSecondaryVertexHighEffBJetTags, [ipTagInfosName, ivfTagInfosName]),
         'pfCombinedInclusiveSecondaryVertexV2BJetTags': (combinedInclusiveSecondaryVertexV2BJetTags, [ipTagInfosName, ivfTagInfosName]),
+        'pfDeepCSVJetTags': (pfDeepCSVJetTags, [deepCSVInfosName]),
+        'pfDeepCMVAJetTags': (pfDeepCMVAJetTags, [deepCMVAInfosName]),
         'softPFMuonBJetTags': (softPFMuonBJetTags, [smTagInfosName]),
         'softPFElectronBJetTags': (softPFElectronBJetTags, [seTagInfosName]),
         'pfCombinedMVAV2BJetTags': (combinedMVAV2BJetTags, [ipTagInfosName, svTagInfosName, ivfTagInfosName, smTagInfosName, seTagInfosName]),
@@ -244,6 +266,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ivfcvslTagInfosName: (inclusiveSecondaryVertexFinderCvsLTagInfos, [ipTagInfosName]),
         smTagInfosName: (softPFMuonsTagInfos, []),
         seTagInfosName: (softPFElectronsTagInfos, []),
+        deepCSVInfosName: (pfDeepCSVTagInfos, [ivfTagInfosName]),
+        deepCMVAInfosName: (pfDeepCMVATagInfos, [ipTagInfosName, deepCSVInfosName, seTagInfosName, smTagInfosName])
     }
 
     def addTagInfo(name, sequence):

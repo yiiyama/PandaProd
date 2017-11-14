@@ -25,7 +25,7 @@ egmSmearingType = 'Moriond2017_JEC'
 
 if options.config == '18Apr2017':
     options.isData = True
-    options.globaltag = '80X_dataRun2_2016SeptRepro_v7' # this is wrong
+    options.globaltag = '80X_dataRun2_2016LegacyRepro_v4'
 elif options.config == '03Feb2017':
     egFix = True
     options.isData = True
@@ -302,11 +302,6 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
-### QG TAGGING
-
-process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJets'
-
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
@@ -361,6 +356,15 @@ fatJetSequence = cms.Sequence(
     ca15PuppiDoubleBTagSequence
 )
 
+### Deep B Tagging
+# Uses pfCHS from the fatJetSequence, so make sure it's after
+deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
+
+### QG TAGGING
+
+process.load('RecoJets.JetProducers.QGTagger_cfi')
+process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
+
 ### GEN JET FLAVORS
 if not options.isData:
     process.load('PhysicsTools.JetMCAlgos.HadronAndPartonSelector_cfi')
@@ -393,7 +397,6 @@ else:
 
 if jetRecorrection:
     ### JET RE-CORRECTION
-    # ???
 
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 
@@ -441,8 +444,9 @@ process.reco = cms.Path(
     jetRecorrectionSequence +
     metSequence +
     process.MonoXFilter +
-    process.QGTagger +
     fatJetSequence +
+    deepFlavorSequence +
+    process.QGTagger +
     genJetFlavorSequence
 )
 

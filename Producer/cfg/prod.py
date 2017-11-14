@@ -25,7 +25,7 @@ egmSmearingType = 'Moriond2017_JEC'
 
 if options.config == '18Apr2017':
     options.isData = True
-    options.globaltag = '80X_dataRun2_2016SeptRepro_v7' # this is wrong
+    options.globaltag = '80X_dataRun2_2016LegacyRepro_v4'
 elif options.config == '03Feb2017':
     egFix = True
     options.isData = True

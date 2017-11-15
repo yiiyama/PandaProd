@@ -103,7 +103,10 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
       }
 
       auto* filler(FillerFactoryStore::singleton()->makeFiller(className, fillerName, _cfg, coll));
-      fillers_.push_back(filler);
+      if (fillerPSet.getUntrackedParameter<bool>("forceFront", false))
+        fillers_.insert(fillers_.begin(), filler);
+      else
+        fillers_.push_back(filler);
 
       filler->setObjectMap(objectMaps_[fillerName]);
 

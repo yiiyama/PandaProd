@@ -1,3 +1,7 @@
+#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
+#include "RecoVertex/VertexPrimitives/interface/ConvertToFromReco.h"
+#include "RecoVertex/VertexPrimitives/interface/VertexState.h"
+
 #include "../interface/SecondaryVerticesFiller.h"
 
 SecondaryVerticesFiller::SecondaryVerticesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
@@ -69,6 +73,39 @@ SecondaryVerticesFiller::setRefs(ObjectMapStore const& _objectMaps)
 
     }
   }
+
+  // Select the primary vertex
+
+  float maxScore(0);
+  auto& pvMap(_objectMaps.at("vertices").get<reco::Vertex, panda::RecoVertex>());
+  edm::Ptr<reco::Vertex> pv;
+
+  for (auto& vtxLink : pvMap.fwdMap) {
+
+    auto outVtx(*vtxLink.second);
+    if (outVtx.score > maxScore) {
+
+      maxScore = outVtx.score;
+      pv = vtxLink.first;
+
+    }
+  }
+
+  // Fill Secondary Vertex values
+  VertexDistance3D vdist;
+
+  for (auto& svLink : svMap) {   // edm -> panda
+    auto& inSV(*svLink.first);
+    auto& outSV(*svLink.second);
+    auto distance(vdist.distance(*pv, VertexState(RecoVertex::convertPos(inSV.position()),
+                                                  RecoVertex::convertError(inSV.error())))
+                  );
+
+    outSV.significance = distance.significance();
+    outSV.vtx3DVal = distance.value();
+    outSV.vtx3DeVal = distance.error();
+  }
+
 }
 
 DEFINE_TREEFILLER(SecondaryVerticesFiller);

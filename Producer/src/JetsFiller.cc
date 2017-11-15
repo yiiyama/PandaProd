@@ -17,10 +17,6 @@
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "JetMETCorrections/Modules/interface/JetResolution.h"
 
-#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
-#include "RecoVertex/VertexPrimitives/interface/VertexState.h"
-#include "RecoVertex/VertexPrimitives/interface/ConvertToFromReco.h"
-
 #include <cmath>
 #include <stdexcept>
 
@@ -378,10 +374,6 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
   // Set the references to the secondary vertices
   if (!csvTag_.empty()) {
-    VertexDistance3D vdist;
-
-    float maxScore(0);
-    float maxSignificance(0);
 
     auto& jetMap(objectMap_->get<reco::Jet, panda::Jet>());
     auto& svMap(_objectMaps.at("secondaryVertices").get<reco::VertexCompositePtrCandidate, panda::SecondaryVertex>());
@@ -389,6 +381,7 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
     edm::Ptr<reco::Vertex> pv;
 
+    float maxScore(0);
     for (auto& vtxLink : pvMap.fwdMap) {
 
       auto outVtx(*vtxLink.second);
@@ -400,23 +393,9 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       }
     }
 
-    // Fill some Secondary Vertex information here
-    // to ensure it's available for setting Jet references
-
-    for (auto& svLink : svMap.fwdMap) {   // edm -> panda
-      auto& inSV(*svLink.first);
-      auto& outSV(*svLink.second);
-      auto distance(vdist.distance(*pv, VertexState(RecoVertex::convertPos(inSV.position()),
-                                                    RecoVertex::convertError(inSV.error())))
-                    );
-
-      outSV.significance = distance.significance();
-      outSV.vtx3DVal = distance.value();
-      outSV.vtx3DeVal = distance.error();
-
-    }
-
     for (auto& jetLink : jetMap.fwdMap) {   // edm -> panda
+      float maxSignificance(0);
+
       auto& inJet(*jetLink.first);
       auto& outJet(*jetLink.second);
 

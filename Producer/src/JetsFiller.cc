@@ -400,6 +400,22 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       }
     }
 
+    // Fill some Secondary Vertex information here
+    // to ensure it's available for setting Jet references
+
+    for (auto& svLink : svMap.fwdMap) {   // edm -> panda
+      auto& inSV(*svLink.first);
+      auto& outSV(*svLink.second);
+      auto distance(vdist.distance(*pv, VertexState(RecoVertex::convertPos(inSV.position()),
+                                                    RecoVertex::convertError(inSV.error())))
+                    );
+
+      outSV.significance = distance.significance();
+      outSV.vtx3DVal = distance.value();
+      outSV.vtx3DeVal = distance.error();
+
+    }
+
     for (auto& jetLink : jetMap.fwdMap) {   // edm -> panda
       auto& inJet(*jetLink.first);
       auto& outJet(*jetLink.second);
@@ -408,20 +424,15 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       for (auto& svLink : svMap.fwdMap) {   // edm -> panda
 
-        auto& inSV(*svLink.first);
-        auto inLocation = inSV.vertex();
+        auto inLocation = svLink.first->vertex();
         if (Geom::deltaR2(GlobalVector(inLocation.x() - pv->x(), inLocation.y() - pv->y(), inLocation.z() - pv->z()),
                           GlobalVector(inJet.px(), inJet.py(), inJet.pz())) < 0.09){
 
-          auto distance(vdist.distance(*pv, VertexState(RecoVertex::convertPos(inSV.position()),
-                                                        RecoVertex::convertError(inSV.error())))
-                        );
+          auto& outSV(*svLink.second);
 
-          if (distance.significance() > maxSignificance) {
-            maxSignificance = distance.significance();
+          if (outSV.significance > maxSignificance) {
+            maxSignificance = outSV.significance;
             matchedSV = svLink.second;
-            outJet.vtx3DVal = distance.value();
-            outJet.vtx3DeVal = distance.error();
           }
         }
       }

@@ -123,10 +123,12 @@ struct PNodeWithPtr : public PNode {
           // found a matching candidate, kick it out
           mother->daughters[iD] = this;
           replacedCandPtr = static_cast<PNodeWithPtr*>(d)->candPtr;
-          // this has to be a GenParticlePtr, but just to check
-          GenParticlePtr genP(replacedCandPtr);
-          if (replacedCandPtr.isNonnull())
-            statusBits = genP->statusFlags().flags_;
+
+          if (dynamic_cast<reco::GenParticle const*>(&*replacedCandPtr)) {
+            GenParticlePtr genP(replacedCandPtr);
+            if (replacedCandPtr.isNonnull())
+              statusBits = genP->statusFlags().flags_;
+          }
 
           delete d;
           _nodeMap.erase(replacedCandPtr);

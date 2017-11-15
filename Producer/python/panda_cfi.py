@@ -319,6 +319,7 @@ panda = cms.EDAnalyzer('PandaProducer',
         ),
         secondaryVertices = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
+            forceFront = cms.untracked.bool(True),
             filler = cms.untracked.string('SecondaryVertices'),
             source = cms.untracked.string('slimmedSecondaryVertices')
             )

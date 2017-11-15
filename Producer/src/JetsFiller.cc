@@ -90,8 +90,10 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
   if (puidTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".puid");
 
-  if (csvTag_.empty())
+  if (csvTag_.empty()) {
     _eventBranches.emplace_back("!" + getName() + ".csv");
+    _eventBranches.emplace_back("!" + getName() + ".secondaryVertex_");
+  }
 
   if (cmvaTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".cmva");

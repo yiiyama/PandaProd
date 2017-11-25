@@ -4,7 +4,7 @@
 
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
-$INSTALL cms-met METRecipe_8020 PhysicsTools/PatUtils RecoMET/METAlgorithms #CommonTools/PileupAlgos PhysicsTools/PatAlgos
+$INSTALL cms-met METRecipe_8020 RecoMET/METAlgorithms
 # Loosen the dR matching between GS-fixed and nonfixed photons
 $INSTALL cms-met METRecipe_80X_part2 PhysicsTools/PatUtils RecoMET/METProducers
 # Check out the METFilters in the release and patch it
@@ -17,3 +17,6 @@ $INSTALL ikrav egm_id_80X_v3_photons PhysicsTools/SelectorUtils RecoEgamma/Photo
 
 # Merged topic from cms-met, Deep Flavor Data and force recompile RecoBTagCombinedPlugins.so
 $INSTALL dabercro panda-008 PhysicsTools/PatAlgos RecoBTag/Combined
+
+# Store information about what is checked out so that the test server knows whether or not to run setuprel.sh
+$CMSSW_BASE/src/PandaProd/Producer/scripts/create-manifest $CMSSW_BASE/src/PandaProd/Producer/scripts/manifest.txt

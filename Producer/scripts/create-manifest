@@ -1,0 +1,24 @@
+#! /bin/bash
+
+# Save the output of the setuprel.sh so that we know whether or not to run this on test servers
+
+MANIFEST=$1
+
+if [ -f $MANIFEST ]
+then
+    rm $MANIFEST
+fi
+
+cd $CMSSW_BASE/src
+
+for PKG in *
+do
+
+    if [ "${PKG:0:5}" != "Panda" ]
+    then
+        find $PKG -type f -not -name "*.pyc" | sort | xargs sha1sum >> $MANIFEST
+    fi
+
+done
+
+cd -

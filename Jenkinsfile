@@ -1,6 +1,6 @@
 //// DEFINE THESE PLEASE ////
 
-def in_files = ['16F85498-2E38-E711-BDFE-5065F3815281', 'F6F880D2-ACBE-E611-B59D-0CC47A706D40']
+def in_files = ['16F85498-2E38-E711-BDFE-5065F3815281', '30B6B933-6AD4-E611-90A8-549F35AC7E2F', 'F6F880D2-ACBE-E611-B59D-0CC47A706D40']
 
 def cmssw_version = 'CMSSW_8_0_29'
 def panda_tree_user = 'dabercro'
@@ -33,7 +33,7 @@ def produce_panda(cmssw_version, do_src, base) {
         sh do_src + '''
            eval `scramv1 runtime -sh`
            BASE=''' + base + '''
-           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=1000
+           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=2500
            '''
       }
     }

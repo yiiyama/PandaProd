@@ -51,7 +51,7 @@ def run_test(cmssw_version, do_src, base) {
         sh do_src + '''
            eval `scramv1 runtime -sh`
            BASE=''' + base + '''
-           testpanda PandaProd/Producer/cfg/$BASE.root ${BUILD_TAG}_$(tail -n1 $HOME/miniaod/$BASE.txt)
+           testpanda PandaProd/Producer/cfg/$BASE.root ${JOB_NAME}/${BUILD_NUMBER}/$(tail -n1 $HOME/miniaod/$BASE.txt)
            '''
       }
     }
@@ -180,11 +180,6 @@ node {
       error ('Final steps failed')
     }
 
-    def begin_line = '\\n- http://t3serv001.mit.edu/~${USER}/relval/?d=${BUILD_TAG}_$(tail -n1 ${HOME}/miniaod/'
-    def end_line = '.txt)'
-    def file_string = in_files.join("${end_line}${begin_line}")
-    def result = 'Tests passed! See plots at:\\n' + begin_line + file_string + end_line
-
-    prComment(result)
+    prComment('Tests passed! See plots at:\\n\\n- http://t3serv001.mit.edu/~${USER}/relval/?d=${JOB_NAME}/${BUILD_NUMBER}')
   }
 }

@@ -8,7 +8,7 @@ def panda_tree_branch = 'jenkins-clean'
 
 //// Hopefully you don't need to change much of what follows
 
-def do_src = 'export SCRAM_ARCH=slc6_amd64_gcc530; source /cvmfs/cms.cern.ch/cmsset_default.sh'
+def do_src = 'set +x; export SCRAM_ARCH=slc6_amd64_gcc530; source /cvmfs/cms.cern.ch/cmsset_default.sh; set -x'
 
 def prComment(message) {
   withCredentials([usernameColonPassword(credentialsId: 'mitsidekick', variable: 'USERPASS')]) {
@@ -31,9 +31,18 @@ def produce_panda(cmssw_version, do_src, base) {
     try {
       dir ("${cmssw_version}/src/PandaProd/Producer/cfg") {
         sh do_src + '''
-           eval `scramv1 runtime -sh`
+           set +x; eval `scramv1 runtime -sh`; set -x
            BASE=''' + base + '''
-           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=2500
+           if grep data $HOME/miniaod/$BASE.txt
+           then
+               MAX=5000   # Data samples are fast
+           elif grep nlo $HOME/miniaod/$BASE.txt
+           then
+               MAX=1000   # NLO samples are super slow
+           else
+               MAX=2500
+           fi
+           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=$MAX
            '''
       }
     }
@@ -49,7 +58,7 @@ def run_test(cmssw_version, do_src, base) {
     try {
       dir ("${cmssw_version}/src") {
         sh do_src + '''
-           eval `scramv1 runtime -sh`
+           set +x; eval `scramv1 runtime -sh`; set -x
            BASE=''' + base + '''
            testpanda PandaProd/Producer/cfg/$BASE.root ${JOB_NAME}/${BUILD_NUMBER}/$(tail -n1 $HOME/miniaod/$BASE.txt)
            '''
@@ -105,7 +114,7 @@ node {
       // Install the other CMSSW packages, if needed
       dir ("${cmssw_version}/src") {
         sh do_src + '''
-           eval `scramv1 runtime -sh`
+           set +x; eval `scramv1 runtime -sh`; set -x
 
            PandaProd/Producer/scripts/create-manifest test.txt
            # Make sure the file is made, even for new repos
@@ -133,7 +142,7 @@ node {
     try {
       dir ("${cmssw_version}/src") {
         // Compile
-        sh "${do_src}; eval `scramv1 runtime -sh`; scram b -j4"
+        sh "${do_src}; set +x; eval `scramv1 runtime -sh`; set -x; scram b -j4"
       }
     }
     catch (all) {

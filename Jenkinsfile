@@ -1,6 +1,6 @@
 //// DEFINE THESE PLEASE ////
 
-def in_files = ['16F85498-2E38-E711-BDFE-5065F3815281', 'D2C1E754-BCDA-E611-B2C2-0025905A6118', 'F6F880D2-ACBE-E611-B59D-0CC47A706D40']
+def in_files = ['D2C1E754-BCDA-E611-B2C2-0025905A6118']
 
 def cmssw_version = 'CMSSW_8_0_29'
 def panda_tree_user = 'dabercro'
@@ -33,16 +33,8 @@ def produce_panda(cmssw_version, do_src, base) {
         sh do_src + '''
            set +x; eval `scramv1 runtime -sh`; set -x
            BASE=''' + base + '''
-           if grep data $HOME/miniaod/$BASE.txt
-           then
-               MAX=5000   # Data samples are fast
-           elif grep nlo $HOME/miniaod/$BASE.txt
-           then
-               MAX=1000   # NLO samples are super slow
-           else
-               MAX=2500
-           fi
-           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=$MAX
+           MAX=2500
+           cmsRun $(perl -ne '/(data|mc)/ && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=$MAX skipEvents=165000
            '''
       }
     }

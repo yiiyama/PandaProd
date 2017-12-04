@@ -34,7 +34,7 @@ def produce_panda(cmssw_version, do_src, base) {
            set +x; eval `scramv1 runtime -sh`; set -x
            BASE=''' + base + '''
            MAX=2500
-           cmsRun $(perl -ne '/^\/store\/(data|mc)\// && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=$MAX skipEvents=165000
+           cmsRun $(perl -ne '/^\\/store\\/(data|mc)\\// && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:''' + in_files_dir + '''/$BASE.root outputFile=$BASE.root maxEvents=$MAX skipEvents=165000
            '''
       }
     }
@@ -87,7 +87,7 @@ node {
            PANDA_USER=${panda_tree_user}
            PANDA_BRANCH=${panda_tree_branch}
            """ + '''
-           REMOTE_TAG=$(git ls-remote https://www.github.com/${PANDA_USER}/PandaTree.git | PB=$PANDA_BRANCH perl -ane '/\/$ENV{PB}$/ && print "$F[0]\n"')
+           REMOTE_TAG=$(git ls-remote https://www.github.com/${PANDA_USER}/PandaTree.git | PB=$PANDA_BRANCH perl -ane '/\\/$ENV{PB}$/ && print "$F[0]"')
            if [ -d PandaTree -a $REMOTE_TAG != $(cat PandaTree/.git/$(perl -ane 'print $F[1]' PandaTree/.git/HEAD)) ]
            then
                rm -rf PandaTree

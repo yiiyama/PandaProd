@@ -4,19 +4,19 @@
 
 MANIFEST=$1
 
+cd $CMSSW_BASE/src
+
 if [ -f $MANIFEST ]
 then
     rm $MANIFEST
 fi
-
-cd $CMSSW_BASE/src
 
 for PKG in *
 do
 
     if [ "${PKG:0:5}" != "Panda" ]
     then
-        find $PKG -type f -not -name "*.pyc" | sort | xargs sha1sum >> $MANIFEST
+        find $PKG -type f -not -name "*.pyc" | grep -v "__init__.py" | sort | xargs sha1sum >> $MANIFEST
     fi
 
 done

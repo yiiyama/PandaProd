@@ -301,6 +301,7 @@ process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
+    process.electronMVAValueMapProducer +
     process.egmGsfElectronIDs +
     process.worstIsolationProducer
 )

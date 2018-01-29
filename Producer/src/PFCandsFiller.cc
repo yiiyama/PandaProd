@@ -2,6 +2,7 @@
 
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/TrackReco/interface/TrackBase.h"
 
 #include "PandaProd/Auxiliary/interface/PackedValuesExposer.h"
 
@@ -190,8 +191,11 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         PackedPatCandidateExposer exposer(static_cast<pat::PackedCandidate const&>(*ptr));
 
         auto* bestTrack(ptr->bestTrack());
-        if (bestTrack)
+        if (bestTrack) {
           track.setPtError(bestTrack->ptError());
+          // Only highPurity is filled in miniAOD, see https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookTrackAnalysis
+          track.highPurity = bestTrack->quality(reco::TrackBase::highPurity);
+        }
         track.packedDxy = exposer.packedDxy();
         track.packedDz = exposer.packedDz();
         track.packedDPhi = exposer.packedDPhi();

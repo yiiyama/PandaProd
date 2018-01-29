@@ -74,6 +74,8 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     outMet.phiUnclUp = patMet->shiftedPhi(pat::MET::UnclusteredEnUp);
     outMet.ptUnclDown = patMet->shiftedPt(pat::MET::UnclusteredEnDown);
     outMet.phiUnclDown = patMet->shiftedPhi(pat::MET::UnclusteredEnDown);
+    
+    _outEvent.pfMetSignificance = patMet->metSignificance();
   }
 
   if (fillOthers_) {

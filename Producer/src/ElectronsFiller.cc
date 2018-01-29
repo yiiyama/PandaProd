@@ -176,7 +176,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.mvaWP90 = mvaWP90[inRef];
     outElectron.mvaWP80 = mvaWP80[inRef];
     outElectron.mvaVal = mvaValuesMap[inRef];
-    outElectron.mvaCategory = mvaCategoriesMap[inRef];
+    //outElectron.mvaCategory = mvaCategoriesMap[inRef];
     outElectron.charge = inElectron.charge();
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();

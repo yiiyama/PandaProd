@@ -26,9 +26,8 @@ void
 MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   _eventBranches.emplace_back(getName());
-
   if (fillOthers_)
-    _eventBranches += {"rawMet", "caloMet", "noMuMet", "noHFMet", "trkMet", "neutralMet", "photonMet", "hfMet"};
+    _eventBranches += {"rawMet", "caloMet", "noMuMet", "noHFMet", "trkMet", "neutralMet", "photonMet", "hfMet", "pfMetSignificance"};
 
   if (isRealData_) {
     char const* skipped[] = {

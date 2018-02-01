@@ -287,8 +287,9 @@ if egFix:
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
+electronIdModules = ['RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff','RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff','RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff']
+for idmod in electronIdModules:
+    setupAllVIDIdsInModule(process,idmod,setupVIDElectronSelection)
 
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
 setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
@@ -298,6 +299,7 @@ process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
+    process.electronMVAValueMapProducer +
     process.egmGsfElectronIDs +
     process.worstIsolationProducer
 )

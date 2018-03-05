@@ -34,6 +34,7 @@ TausFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
   unsigned iTau(-1);
   for (auto& inTau : inTaus) {
     ++iTau;
+
     auto& outTau(outTaus.create_back());
 
     fillP4(outTau, inTau);

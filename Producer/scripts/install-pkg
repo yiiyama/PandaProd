@@ -22,7 +22,7 @@ PKGS="$@"
 
 TEMP=$(mktemp -d)
 cd $TEMP
-git clone -n -b $REF https://github.com/$ACCOUNT/cmssw.git
+git clone --depth 1 -n -b $REF https://github.com/$ACCOUNT/cmssw.git
 cd cmssw
 
 git checkout HEAD -- $PKGS

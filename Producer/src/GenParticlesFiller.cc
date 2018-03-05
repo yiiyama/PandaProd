@@ -124,6 +124,12 @@ struct PNodeWithPtr : public PNode {
           mother->daughters[iD] = this;
           replacedCandPtr = static_cast<PNodeWithPtr*>(d)->candPtr;
 
+          if (dynamic_cast<reco::GenParticle const*>(&*replacedCandPtr)) {
+            GenParticlePtr genP(replacedCandPtr);
+            if (replacedCandPtr.isNonnull())
+              statusBits = genP->statusFlags().flags_;
+          }
+
           delete d;
           _nodeMap.erase(replacedCandPtr);
           break;
@@ -163,6 +169,21 @@ struct PNodeWithPtr : public PNode {
     for (auto* d : daughters)
       static_cast<PNodeWithPtr*>(d)->fillPanda(_outParticles, _map, myidx);
   }
+
+  void fillPanda(panda::UnpackedGenParticleCollection& _outParticles, int parentIdx = -1) const {
+    auto& outParticle(_outParticles.create_back());
+    int myidx(_outParticles.size() - 1);
+
+    fillP4(outParticle, *candPtr);
+
+    outParticle.pdgid = pdgId;
+    outParticle.finalState = (status == 1);
+    outParticle.statusFlags = statusBits.to_ulong();
+    outParticle.parent.idx() = parentIdx;
+
+    for (auto* d : daughters)
+      static_cast<PNodeWithPtr*>(d)->fillPanda(_outParticles, myidx);
+  }
 };
 
 GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
@@ -171,7 +192,7 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
 {
   getToken_(genParticlesToken_, _cfg, _coll, "common", "genParticles");
   // this is miniaod-specific
-  getToken_(finalStateParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
+  getToken_(finalStateParticlesToken_, _cfg, _coll, "common", "finalStateParticles", false);
 
   if (furtherPrune_) {
     // Using a non-default function to accommodate the case where important decay trees are truncated by CMSSW pruning
@@ -188,12 +209,44 @@ GenParticlesFiller::GenParticlesFiller(std::string const& _name, edm::ParameterS
       node.isLightDecayingToLight();
     };
   }
+
+  unsigned outputMode(getParameter_<unsigned>(_cfg, "outputMode", 0));
+  switch (outputMode) {
+  case 0:
+    fillPacked_ = true;
+    fillUnpacked_ = false;
+    break;
+  case 1:
+    fillPacked_ = false;
+    fillUnpacked_ = true;
+    break;
+  case 2:
+    fillPacked_ = true;
+    fillUnpacked_ = true;
+    break;
+  default:
+    throw std::runtime_error("Unknown output mode in GenParticlesFiller");
+  }
 }
 
 void
 GenParticlesFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
-  _eventBranches.emplace_back("genParticles");
+  if (fillPacked_)
+    _eventBranches.emplace_back("genParticles");
+}
+
+void
+GenParticlesFiller::addOutput(TFile& _outputFile)
+{
+  if (fillUnpacked_) {
+    auto* eventTree(static_cast<TTree*>(_outputFile.Get("events")));
+    if (!eventTree) // something is wrong
+      return;
+
+    outUnpacked.book(*eventTree);
+    outputTree_ = eventTree;
+  }
 }
 
 void
@@ -201,7 +254,9 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
 {
   auto& inParticles(getProduct_(_inEvent, genParticlesToken_));
   // this is miniaod-specific - modify if we need to run on AOD for some reason
-  auto& inFinalStates(getProduct_(_inEvent, finalStateParticlesToken_)); 
+  PackedGenParticleView const* inFinalStates(0);
+  if (!finalStateParticlesToken_.second.isUninitialized())
+    inFinalStates = &getProduct_(_inEvent, finalStateParticlesToken_);
 
   std::map<reco::CandidatePtr, PNodeWithPtr*> nodeMap;
   std::vector<PNodeWithPtr*> rootNodes;
@@ -212,15 +267,29 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (inCand.motherRefVector().size() == 0)
       rootNodes.push_back(new PNodeWithPtr(inParticles.ptrAt(iP), nodeMap));
   }
-
-  for (unsigned iP(0); iP != inFinalStates.size(); ++iP) {
-    auto* finalState(new PNodeWithPtr(inFinalStates.ptrAt(iP), nodeMap));
-    if (!finalState->mother)
-      orphans.push_back(finalState);
+  
+  if (inFinalStates) {
+    for (unsigned iP(0); iP != inFinalStates->size(); ++iP) {
+      auto* finalState(new PNodeWithPtr(inFinalStates->ptrAt(iP), nodeMap));
+      if (!finalState->mother)
+        orphans.push_back(finalState);
+    }
   }
 
-  auto& outParticles(_outEvent.genParticles);
-  outParticles.reserve(inParticles.size() + inFinalStates.size());
+  auto& outPacked(_outEvent.genParticles);
+  if (fillUnpacked_)
+    outUnpacked.init();
+
+  // important to reserve enough space on the output collection
+  // otherwise collection reallocates in the middle of fill and refs become invalid
+  unsigned totalSize(inParticles.size());
+  if (inFinalStates)
+    totalSize += inFinalStates->size();
+
+  if (fillPacked_)
+    outPacked.reserve(totalSize);
+  if (fillUnpacked_)
+    outUnpacked.reserve(totalSize);
   
   auto& objectMap(objectMap_->get<reco::Candidate, panda::GenParticle>());
 
@@ -228,17 +297,26 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
     if (furtherPrune_)
       rootNode->pruneDaughters();
 
-    rootNode->fillPanda(outParticles, objectMap);
+    if (fillPacked_)
+      rootNode->fillPanda(outPacked, objectMap);
+    if (fillUnpacked_)
+      rootNode->fillPanda(outUnpacked);
   }
 
   // fill the orphans
   for (auto* orphan : orphans) {
-    orphan->fillPanda(outParticles, objectMap);
+    if (fillPacked_)
+      orphan->fillPanda(outPacked, objectMap);
+    if (fillUnpacked_)
+      orphan->fillPanda(outUnpacked);
   }
 
   // ownDaughter is false; need to clean up pnodes
   for (auto& node : nodeMap)
     delete node.second;
+
+  if (fillUnpacked_)
+    outUnpacked.prepareFill(*outputTree_);
 }
 
 DEFINE_TREEFILLER(GenParticlesFiller);

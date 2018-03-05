@@ -23,6 +23,8 @@
 <use name="PandaTree/Framework"/>
 <use name="PandaTree/Utils"/>
 <use name="PandaProd/Utilities"/>
+<use name="RecoVertex/VertexTools"/>
+<use name="RecoVertex/VertexPrimitives"/>
 <use name="clhep"/>
 <use name="fastjet"/>
 <use name="fastjet-contrib"/>

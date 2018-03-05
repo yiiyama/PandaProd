@@ -38,6 +38,10 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
   getToken_(tightIdToken_, _cfg, _coll, "tightId");
   getToken_(hltIdToken_, _cfg, _coll, "hltId");
+  getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90");
+  getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80");
+  getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap");
+  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap");
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
@@ -92,6 +96,10 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
   auto& tightId(getProduct_(_inEvent, tightIdToken_));
   auto& hltId(getProduct_(_inEvent, hltIdToken_));
+  auto& mvaWP90(getProduct_(_inEvent, mvaWP90Token_));
+  auto& mvaWP80(getProduct_(_inEvent, mvaWP80Token_));
+  auto& mvaValuesMap(getProduct_(_inEvent, mvaValuesMapToken_));
+  auto& mvaCategoriesMap(getProduct_(_inEvent, mvaCategoriesMapToken_));
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
@@ -152,7 +160,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   for (auto& inElectron : inElectrons) {
     ++iEl;
     auto&& inRef(inElectrons.refAt(iEl));
-
     auto&& scRef(inElectron.superCluster());
     auto& sc(*scRef);
 
@@ -165,11 +172,15 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];
     outElectron.hltsafe = hltId[inRef];
-
+    outElectron.mvaWP90 = mvaWP90[inRef];
+    outElectron.mvaWP80 = mvaWP80[inRef];
+    outElectron.mvaVal = mvaValuesMap[inRef];
+    //outElectron.mvaCategory = mvaCategoriesMap[inRef];
     outElectron.charge = inElectron.charge();
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
     outElectron.sipip = inElectron.full5x5_sigmaIphiIphi();
+    outElectron.r9 = inElectron.r9();
     outElectron.hOverE = inElectron.hadronicOverEm();
     outElectron.dPhiIn = inElectron.deltaPhiSuperClusterTrackAtVtx();
     outElectron.ecalE = inElectron.ecalEnergy();

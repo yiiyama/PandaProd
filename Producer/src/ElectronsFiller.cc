@@ -41,7 +41,7 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90");
   getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80");
   getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap");
-  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap");
+  //  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap");
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
@@ -99,7 +99,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& mvaWP90(getProduct_(_inEvent, mvaWP90Token_));
   auto& mvaWP80(getProduct_(_inEvent, mvaWP80Token_));
   auto& mvaValuesMap(getProduct_(_inEvent, mvaValuesMapToken_));
-  auto& mvaCategoriesMap(getProduct_(_inEvent, mvaCategoriesMapToken_));
+  //  auto& mvaCategoriesMap(getProduct_(_inEvent, mvaCategoriesMapToken_));
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
@@ -198,7 +198,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       outElectron.dz = std::abs(gsfTrack.dz());
     }
 
-    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfAllHits(reco::HitPattern::MISSING_INNER_HITS);
 
     outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
 

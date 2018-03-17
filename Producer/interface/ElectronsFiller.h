@@ -54,7 +54,7 @@ class ElectronsFiller : public FillerBase {
   NamedToken<BoolMap> mvaWP90Token_;
   NamedToken<BoolMap> mvaWP80Token_;
   NamedToken<FloatMap> mvaValuesMapToken_;
-  NamedToken<IntMap> mvaCategoriesMapToken_;
+  //NamedToken<IntMap> mvaCategoriesMapToken_;
 
   NamedToken<FloatMap> phCHIsoToken_;
   NamedToken<FloatMap> phNHIsoToken_;

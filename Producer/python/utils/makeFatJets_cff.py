@@ -89,12 +89,13 @@ def initFatJets(process, isData, labels):
             )
 
     # Charged hadron subtraction
-    addattr('pfCHS',
-        cms.EDFilter("CandPtrSelector",
-            src = cms.InputTag(pfSource),
-            cut = cms.string("fromPV")
+    if not hasattr(process, 'pfCHS'):
+        addattr('pfCHS',
+            cms.EDFilter("CandPtrSelector",
+                src = cms.InputTag(pfSource),
+                cut = cms.string("fromPV")
+            )
         )
-    )
 
     # Initialize btag inputs
     sequence += initBTag(process, '', pfSource, pvSource)

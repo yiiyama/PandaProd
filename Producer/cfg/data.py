@@ -142,6 +142,8 @@ if options.release == '80X':
     electronSource = 'regressionElectrons'
     photonSource = 'regressionPhotons'
 
+    egmSmearingType = 'Moriond2017_JEC'
+
     electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-veto'
     electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-loose'
     electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-medium'
@@ -160,13 +162,23 @@ if options.release == '80X':
     photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased.txt'
     photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfPhotons_90percentBased.txt'
 
-    egmSmearingType = 'Moriond2017_JEC'
+    electronIdModules = [
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+    ]
+
+    photonIdModules = [
+        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff',
+    ]
     
 else:
     # for releases > 80X, regression is applied by default
 
     electronSource = 'slimmedElectrons'
     photonSource = 'slimmedPhotons'
+
+    egmSmearingType = 'Run2017_17Nov2017_v1'
 
     electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto'
     electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose'
@@ -188,7 +200,15 @@ else:
     photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt'
     photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
 
-    egmSmearingType = 'Run2017_17Nov2017_v1'
+    electronIdModules = [
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+    ]
+
+    photonIdModules = [
+        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
+    ]
     
 process.selectedElectrons = cms.EDFilter('PATElectronSelector',
     src = cms.InputTag(electronSource),
@@ -197,7 +217,8 @@ process.selectedElectrons = cms.EDFilter('PATElectronSelector',
 
 from EgammaAnalysis.ElectronTools.calibratedPatElectronsRun2_cfi import calibratedPatElectrons
 from EgammaAnalysis.ElectronTools.calibratedPatPhotonsRun2_cfi import calibratedPatPhotons
-import EgammaAnalysis.ElectronTools.calibrationTablesRun2.files as egmSmearingSource
+import EgammaAnalysis.ElectronTools.calibrationTablesRun2
+egmSmearingSource = EgammaAnalysis.ElectronTools.calibrationTablesRun2.files
 
 process.smearedElectrons = calibratedPatElectrons.clone(
     electrons = 'selectedElectrons',
@@ -368,20 +389,10 @@ else:
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-electronIdModules = [
-    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff'
-]
 for idmod in electronIdModules:
     setupAllVIDIdsInModule(process, idmod, setupVIDElectronSelection)
 
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
-photonIdModules = [
-    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff',
-    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff.py'
-]
 for idmod in photonIdModules:
     setupAllVIDIdsInModule(process, idmod, setupVIDPhotonSelection)
 

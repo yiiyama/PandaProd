@@ -73,54 +73,35 @@ node {
       prComment('Starting tests! You can follow along (if on T3).\\n\\n- Job: ${JOB_URL}\\n- Run steps: ${BUILD_URL}flowGraphTable')
 
       sh 'ls'
-      // Get CMSSW if needed
+      // Clear CMSSW and get new one
       sh """
-         if [ ! -d ${cmssw_version} ]
+         if [ -d ${cmssw_version} ]
          then
-             ${do_src}
-             scramv1 project CMSSW ${cmssw_version}
+             rm -rf ${cmssw_version}
          fi
+
+         ${do_src}
+         scramv1 project CMSSW ${cmssw_version}
          """
       dir ("${cmssw_version}/src") {
         sh 'ls'
 
         // Get PandaTree if not there or if has new commit hash
-        sh """
-           PANDA_USER=${panda_tree_user}
-           PANDA_BRANCH=${panda_tree_branch}
-           """ + '''
-           REMOTE_TAG=$(git ls-remote https://www.github.com/${PANDA_USER}/PandaTree.git | PB=$PANDA_BRANCH perl -ane '/\\/$ENV{PB}$/ && print "$F[0]"')
-           if [ -d PandaTree -a $REMOTE_TAG != $(cat PandaTree/.git/$(perl -ane 'print $F[1]' PandaTree/.git/HEAD)) ]
-           then
-               rm -rf PandaTree
-           fi
-           test -d PandaTree || ''' + "git clone -b ${panda_tree_branch} https://www.github.com/${panda_tree_user}/PandaTree.git"
+        sh "git clone -b ${panda_tree_branch} https://www.github.com/${panda_tree_user}/PandaTree.git"
 
         // Make PandaProd directory for us to recursively copy files into
-        sh '''
-           if [ -d PandaProd ]
-           then
-               rm -rf PandaProd
-           fi
-           mkdir PandaProd
-           '''
+        sh 'mkdir PandaProd'
       }
   
       // Copy all of the files, and the HEAD where we will get the git tag from
       sh "cp --parents `git ls-files` ${cmssw_version}/src/PandaProd"
       sh "cp --parents .git/HEAD ${cmssw_version}/src/PandaProd"
 
-      // Install the other CMSSW packages, if needed
+      // Install the other CMSSW packages
       dir ("${cmssw_version}/src") {
         sh do_src + '''
            set +x; eval `scramv1 runtime -sh`; set -x
-
-           PandaProd/Producer/scripts/create-manifest test.txt
-           # Make sure the file is made, even for new repos
-           touch test.txt
-
-           # Only install new packages if there's a difference between manifests
-           diff test.txt PandaProd/Producer/scripts/manifest.txt || ./PandaProd/Producer/cfg/setuprel.sh
+           ./PandaProd/Producer/cfg/setuprel.sh
            '''
       }
     }

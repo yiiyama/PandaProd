@@ -50,6 +50,8 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
         outMetFilters.badPFMuons = !inFilterResults->accept(iF);
       else if (name == "Flag_BadChargedCandidateFilter")
         outMetFilters.badChargedHadrons = !inFilterResults->accept(iF);
+      else if (name == "Flag_ecalBadCalibFilter")
+        outMetFilters.ecalBadCalib = !inFilterResults->accept(iF);
     }
   }
 }

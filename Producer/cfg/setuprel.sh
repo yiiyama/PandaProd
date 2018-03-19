@@ -5,8 +5,7 @@ SRC=$CMSSW_BASE/src
 
 # Use PandaProd/Producer/scripts/cms-git-diff to find out which packages should be checked out from each branch.
 
-#INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
-INSTALL=/home/yiiyama/cms/cmssw/dev/CMSSW_9_4_4/src/PandaProd/Producer/scripts/install-pkg
+INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
 # cut-based electron and photon ID
 $INSTALL lsoffi CMSSW_9_4_0_pre3_TnP RecoEgamma/ElectronIdentification RecoEgamma/PhotonIdentification

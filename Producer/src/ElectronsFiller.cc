@@ -17,12 +17,12 @@
 
 ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
-  combIsoEA_(getParameter_<edm::FileInPath>(_cfg, "combIsoEA").fullPath()),
-  ecalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "ecalIsoEA").fullPath()),
-  hcalIsoEA_(getParameter_<edm::FileInPath>(_cfg, "hcalIsoEA").fullPath()),
-  phCHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "chIsoEA").fullPath()),
-  phNHIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "nhIsoEA").fullPath()),
-  phPhIsoEA_(getFillerParameter_<edm::FileInPath>(_cfg, "photons", "phIsoEA").fullPath())
+  combIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "combIsoEA")).fullPath()),
+  ecalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "ecalIsoEA")).fullPath()),
+  hcalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "hcalIsoEA")).fullPath()),
+  phCHIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "chIsoEA")).fullPath()),
+  phNHIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "nhIsoEA")).fullPath()),
+  phPhIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "phIsoEA")).fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons", false);
@@ -37,11 +37,15 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
   getToken_(tightIdToken_, _cfg, _coll, "tightId");
-  getToken_(hltIdToken_, _cfg, _coll, "hltId");
-  getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90");
-  getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80");
-  getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap");
-  //  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap");
+  getToken_(hltIdToken_, _cfg, _coll, "hltId", false);
+  getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90", false);
+  getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80", false);
+  getToken_(mvaWPLooseToken_, _cfg, _coll, "mvaWPLoose", false);
+  getToken_(mvaIsoWP90Token_, _cfg, _coll, "mvaIsoWP90", false);
+  getToken_(mvaIsoWP80Token_, _cfg, _coll, "mvaIsoWP80", false);
+  getToken_(mvaIsoWPLooseToken_, _cfg, _coll, "mvaIsoWPLoose", false);
+  getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap", false);
+  //  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap", false);
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
@@ -95,21 +99,21 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& looseId(getProduct_(_inEvent, looseIdToken_));
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
   auto& tightId(getProduct_(_inEvent, tightIdToken_));
-  auto& hltId(getProduct_(_inEvent, hltIdToken_));
-  auto& mvaWP90(getProduct_(_inEvent, mvaWP90Token_));
-  auto& mvaWP80(getProduct_(_inEvent, mvaWP80Token_));
-  auto& mvaValuesMap(getProduct_(_inEvent, mvaValuesMapToken_));
-  //  auto& mvaCategoriesMap(getProduct_(_inEvent, mvaCategoriesMapToken_));
+  auto* hltId(getProductSafe_(_inEvent, hltIdToken_));
+  auto* mvaWP90(getProductSafe_(_inEvent, mvaWP90Token_));
+  auto* mvaWP80(getProductSafe_(_inEvent, mvaWP80Token_));
+  auto* mvaWPLoose(getProductSafe_(_inEvent, mvaWPLooseToken_));
+  auto* mvaIsoWP90(getProductSafe_(_inEvent, mvaIsoWP90Token_));
+  auto* mvaIsoWP80(getProductSafe_(_inEvent, mvaIsoWP80Token_));
+  auto* mvaIsoWPLoose(getProductSafe_(_inEvent, mvaIsoWPLooseToken_));
+  auto* mvaValuesMap(getProductSafe_(_inEvent, mvaValuesMapToken_));
+  //  auto* mvaCategoriesMap(getProductSafe_(_inEvent, mvaCategoriesMapToken_));
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
   auto& vertices(getProduct_(_inEvent, verticesToken_));
-  FloatMap const* ecalIso(0);
-  if (!ecalIsoToken_.second.isUninitialized())
-    ecalIso = &getProduct_(_inEvent, ecalIsoToken_);
-  FloatMap const* hcalIso(0);
-  if (!hcalIsoToken_.second.isUninitialized())
-    hcalIso = &getProduct_(_inEvent, hcalIsoToken_);
+  auto* ecalIso(getProductSafe_(_inEvent, ecalIsoToken_));
+  auto* hcalIso(getProductSafe_(_inEvent, hcalIsoToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
   double rhoCentralCalo(getProduct_(_inEvent, rhoCentralCaloToken_));
 
@@ -171,11 +175,24 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.loose = looseId[inRef];
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];
-    outElectron.hltsafe = hltId[inRef];
-    outElectron.mvaWP90 = mvaWP90[inRef];
-    outElectron.mvaWP80 = mvaWP80[inRef];
-    outElectron.mvaVal = mvaValuesMap[inRef];
-    //outElectron.mvaCategory = mvaCategoriesMap[inRef];
+
+    auto idBit([&inRef](BoolMap const* map)->bool {
+        if (map)
+          return (*map)[inRef];
+        else
+          return false;
+      });
+
+    outElectron.hltsafe = idBit(hltId);
+    outElectron.mvaWP90 = idBit(mvaWP90);
+    outElectron.mvaWP80 = idBit(mvaWP80);
+    outElectron.mvaWPLoose = idBit(mvaWPLoose);
+    outElectron.mvaIsoWP90 = idBit(mvaIsoWP90);
+    outElectron.mvaIsoWP80 = idBit(mvaIsoWP80);
+    outElectron.mvaIsoWPLoose = idBit(mvaIsoWPLoose);
+
+    outElectron.mvaVal = mvaValuesMap ? (*mvaValuesMap)[inRef] : 0.;
+    // outElectron.mvaCategory = mvaCategoriesMap ? (*mvaCategoriesMap)[inRef] : -1;
     outElectron.charge = inElectron.charge();
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();

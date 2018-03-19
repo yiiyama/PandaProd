@@ -45,17 +45,11 @@ WeightsFiller::addOutput(TFile& _outputFile)
   hSumW_->GetXaxis()->SetBinLabel(1, "Nominal");
 
   if (!isRealData_) {
-    char const* labels[] = {
-      "r1f2",
-      "r1f5",
-      "r2f1",
-      "r2f2",
-      "r5f1",
-      "r5f5",
-      "pdf"
-    };
+    std::vector<TString> labels{{"r1f2", "r1f5", "r2f1", "r2f2", "r5f1", "r5f5"}};
+    for (unsigned iP(1); iP != 101; ++iP)
+      labels.emplace_back(TString::Format("pdf%d", iP));
 
-    for (unsigned iL(0); iL != sizeof(labels) / sizeof(char const*); ++iL)
+    for (unsigned iL(0); iL != labels.size(); ++iL)
       hSumW_->GetXaxis()->SetBinLabel(iL + 2, labels[iL]);
 
     outputFile_ = &_outputFile;
@@ -81,13 +75,15 @@ WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
   auto& lheEvent(getProduct_(_inEvent, lheEventToken_));
   getLHEWeights_(lheEvent);
 
-  // PDF variation will always be greater than nominal by construction
-  for (unsigned iW(0); iW != 7; ++iW)
-    hSumW_->Fill(iW + 1.5, normQCDVariations_[iW] * central_);
+  for (unsigned iW(0); iW != 6; ++iW)
+    hSumW_->Fill(iW + 1.5, normScaleVariations_[iW] * central_);
+
+  for (unsigned iW(0); iW != 100; ++iW)
+    hSumW_->Fill(iW + 7.5, normPDFVariations_[iW] * central_);
 
   for (unsigned iS(0); iS != wids_.size(); ++iS) {
     if (genParam_[iS] >= 0.)
-      hSumW_->Fill(iS + 9.5, genParam_[iS] * central_);
+      hSumW_->Fill(iS + 107.5, genParam_[iS] * central_);
   }
 }
 
@@ -108,13 +104,14 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const&, edm::EventSetup 
 
   // Save the offset of normalized reweight factor from 1 for precision
   // (Normalized weights have values close to 1, and epsilon can be saved with higher precision than 1 + epsilon)
-  _outEvent.genReweight.r1f2DW = normQCDVariations_[0] - 1.;
-  _outEvent.genReweight.r1f5DW = normQCDVariations_[1] - 1.;
-  _outEvent.genReweight.r2f1DW = normQCDVariations_[2] - 1.;
-  _outEvent.genReweight.r2f2DW = normQCDVariations_[3] - 1.;
-  _outEvent.genReweight.r5f1DW = normQCDVariations_[4] - 1.;
-  _outEvent.genReweight.r5f5DW = normQCDVariations_[5] - 1.;
-  _outEvent.genReweight.pdfDW = normQCDVariations_[6] - 1.;
+  _outEvent.genReweight.r1f2DW = normScaleVariations_[0] - 1.;
+  _outEvent.genReweight.r1f5DW = normScaleVariations_[1] - 1.;
+  _outEvent.genReweight.r2f1DW = normScaleVariations_[2] - 1.;
+  _outEvent.genReweight.r2f2DW = normScaleVariations_[3] - 1.;
+  _outEvent.genReweight.r5f1DW = normScaleVariations_[4] - 1.;
+  _outEvent.genReweight.r5f5DW = normScaleVariations_[5] - 1.;
+  for (unsigned iW(0); iW != 100; ++iW)
+    _outEvent.genReweight.nnpdfAltDW[iW] = normPDFVariations_[iW] - 1.;
 
   // genParam branch is not filled from the outEvent object, but we copy the value here for consistence
   // (some other filler module may decide to use the values!)
@@ -150,7 +147,6 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
 {
   // Update this function if changing the set of weights to save
 
-  double sumd2(0.);
   unsigned iS(0);
   std::fill_n(genParam_, sizeof(genParam_) / sizeof(float), -1.);
 
@@ -211,19 +207,13 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
         continue; // r2f5 and r5f2 -> won't save
       }
 
-      normQCDVariations_[iV] = wgt.wgt / lheCentral;
+      normScaleVariations_[iV] = wgt.wgt / lheCentral;
     }
-    else if ((id >= 11 && id <= 110) || (id >= 2001 && id < 2100)) {
-      // We assume NNPDF-type MC uncertainties (as opposed to CTEQ-type fit correlation matrix eigenvalues)
-      // Reference: https://nnpdf.hepforge.org/html/tutorial.html
-      // sigma = sqrt[sum_{i=1..100}[(w_i - w_0)^2] / 99]
-      double d(wgt.wgt - lheCentral);
-      sumd2 += d * d;
-    }
+    else if (id >= 11 && id <= 110) // NNPDF
+      normPDFVariations_[id - 11] = wgt.wgt / lheCentral;
+    else if (id >= 2001 && id < 2100) // NNPDF in some alternative configuration
+      normPDFVariations_[id - 2001] = wgt.wgt / lheCentral;
   }
-
-  // We fill the sumW histogram with (1 + sigma / w_0), and save sigma / w_0 in the trees
-  normQCDVariations_[6] = std::sqrt(sumd2 / 99.) / lheCentral + 1.;
 
   if (bufferCounter_ < learningPhase) {
     // save the weights to the buffer

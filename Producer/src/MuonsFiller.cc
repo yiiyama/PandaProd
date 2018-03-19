@@ -56,6 +56,8 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   unsigned iMu(-1);
   for (auto& inMuon : inMuons) {
     ++iMu;
+    auto* patMuon(dynamic_cast<pat::Muon const*>(&inMuon));
+
     auto& outMuon(outMuons.create_back());
 
     fillP4(outMuon, inMuon);
@@ -63,6 +65,11 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.global = inMuon.isGlobalMuon();
     outMuon.tracker = inMuon.isTrackerMuon();
     outMuon.pf = inMuon.isPFMuon();
+    outMuon.standalone = inMuon.isStandAloneMuon();
+    outMuon.calo = inMuon.isCaloMuon();
+    outMuon.rpc = inMuon.isRPCMuon();
+    outMuon.gem = inMuon.isGEMMuon();
+    outMuon.me0 = inMuon.isME0Muon();
     
     auto&& innerTrack(inMuon.innerTrack());
     if (innerTrack.isNonnull()) {
@@ -98,42 +105,15 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.puIso = pfIso.sumPUPt;
     outMuon.r03Iso = inMuon.isolationR03().sumPt;
 
-    auto* patMuon(dynamic_cast<pat::Muon const*>(&inMuon));
-
-    if (patMuon) {
-      outMuon.loose = patMuon->isLooseMuon();
-      outMuon.medium = patMuon->isMediumMuon();
-      // Following the "short-term instruction for Moriond 2017" given in https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideMuonIdRun2#MediumID2016_to_be_used_with_Run
-      // Valid only for runs B-F
-      outMuon.mediumBtoF = outMuon.loose && inMuon.innerTrack()->validFraction() > 0.49 &&
-        ((inMuon.isGlobalMuon() &&
-          inMuon.globalTrack()->normalizedChi2() < 3. &&
-          inMuon.combinedQuality().chi2LocalPosition < 12. &&
-          inMuon.combinedQuality().trkKink < 20. &&
-          muon::segmentCompatibility(inMuon) > 0.303) ||
-         muon::segmentCompatibility(inMuon) > 0.451);
-          
-      if (vertices.size() == 0) {
-        outMuon.tight = false;
-        outMuon.soft = false;
-      }
-      else {
-        outMuon.tight = patMuon->isTightMuon(vertices.at(0));
-        outMuon.soft = patMuon->isSoftMuon(vertices.at(0));
-      }
-    }
-    else {
-      outMuon.loose = muon::isLooseMuon(inMuon);
-      outMuon.medium = muon::isMediumMuon(inMuon);
-      if (vertices.size() == 0) {
-        outMuon.tight = false;
-        outMuon.soft = false;
-      }
-      else {
-        outMuon.tight = muon::isTightMuon(inMuon, vertices.at(0));
-        outMuon.soft = muon::isSoftMuon(inMuon, vertices.at(0));
-      }
-    }
+    unsigned int selectors(inMuon.selectors());
+    for (unsigned iS(0); iS != panda::Muon::nSelectors; ++iS)
+      outMuon.selector[iS] = ((selectors & (1 << iS)) != 0);
+    
+    // backward compatibility
+    outMuon.loose = outMuon.selector[panda::Muon::kCutBasedIdLoose];
+    outMuon.medium = outMuon.selector[panda::Muon::kCutBasedIdMedium];
+    outMuon.tight = outMuon.selector[panda::Muon::kCutBasedIdTight];
+    outMuon.soft = outMuon.selector[panda::Muon::kSoftCutBasedId];
 
     outMuon.hltsafe = outMuon.combIso() / outMuon.pt() < 0.4 && outMuon.r03Iso / outMuon.pt() < 0.4;
 

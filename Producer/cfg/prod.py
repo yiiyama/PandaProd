@@ -97,46 +97,7 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 
 ### EGAMMA CORRECTIONS
 # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
-
-electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto'
-electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose'
-electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium'
-electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight'
-electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt'
-
-electronMVANoIsoWP90 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90'
-electronMVANoIsoWP80 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80'
-electronMVANoIsoWPLoose = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose'
-electronMVAIsoWP90 = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90'
-electronMVAIsoWP80 = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80'
-electronMVAIsoWPLoose = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose'
-
-electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90'
-electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80'
-
-# seems like we don't have these for >= 2017?
-electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
-electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
-electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
-
-photonLooseId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose'
-photonMediumId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium'
-photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight'
-photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt'
-photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt'
-photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
-
-electronIdModules = [
-    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
-    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
-]
-
-photonIdModules = [
-    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
-]
-    
+   
 process.selectedElectrons = cms.EDFilter('PATElectronSelector',
     src = cms.InputTag('slimmedElectrons'),
     cut = cms.string('pt > 5 && abs(eta) < 2.5')
@@ -192,6 +153,45 @@ puppiSequence = process.puppiMETSequence
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedPhotonIdentificationRun2
+
+electronIdParams = {
+    'vetoId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto',
+    'looseId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose',
+    'mediumId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium',
+    'tightId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight',
+    'mvaWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90',
+    'mvaWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80',
+    'mvaWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose',
+    'mvaIsoWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90',
+    'mvaIsoWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80',
+    'mvaIsoWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose',
+    'hltId': 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1', # seems like we don't have these for >= 2017?
+    'mvaValuesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
+    #'mvaCategoriesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
+    'combIsoEA': 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt',
+    'ecalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt',
+    'hcalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+}
+
+photonIdParams = {
+    'looseId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose',
+    'mediumId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium',
+    'tightId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight',
+    'chIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt',
+    'nhIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt',
+    'phIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
+}
+
+electronIdModules = [
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+]
+
+photonIdModules = [
+    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
+]
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
@@ -378,23 +378,11 @@ if options.isData:
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-process.panda.fillers.electrons.vetoId = electronVetoId
-process.panda.fillers.electrons.looseId = electronLooseId
-process.panda.fillers.electrons.mediumId = electronMediumId
-process.panda.fillers.electrons.tightId = electronTightId
-process.panda.fillers.electrons.hltId = electronHLTId
-process.panda.fillers.electrons.mvaWP90 = electronMVAWP90
-process.panda.fillers.electrons.mvaWP80 = electronMVAWP80
-process.panda.fillers.electrons.combIsoEA = cms.untracked.FileInPath(electronCombIsoEA)
-process.panda.fillers.electrons.ecalIsoEA = cms.untracked.FileInPath(electronEcalIsoEA)
-process.panda.fillers.electrons.hcalIsoEA = cms.untracked.FileInPath(electronHcalIsoEA)
+for name, value in electronIdParams.items():
+    setattr(process.panda.fillers.electrons, name, value)
 
-process.panda.fillers.photons.looseId = photonLooseId
-process.panda.fillers.photons.mediumId = photonMediumId
-process.panda.fillers.photons.tightId = photonTightId
-process.panda.fillers.photons.chIsoEA = cms.untracked.FileInPath(photonCHIsoEA)
-process.panda.fillers.photons.nhIsoEA = cms.untracked.FileInPath(photonNHIsoEA)
-process.panda.fillers.photons.phIsoEA = cms.untracked.FileInPath(photonPhIsoEA)
+for name, value in photonIdParams.items():
+    setattr(process.panda.fillers.photons, name, value)
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

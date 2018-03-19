@@ -184,28 +184,30 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       double nef(patJet.neutralEmEnergyFraction());
       double chf(patJet.chargedHadronEnergyFraction());
       double cef(patJet.chargedEmEnergyFraction());
+      double muf(patJet.muonEnergyFraction());
       unsigned nc(patJet.chargedMultiplicity());
       unsigned nn(patJet.neutralMultiplicity());
       unsigned nd(patJet.numberOfDaughters());
-      bool loose(false);
+      bool loose(true); // loose is not recommended any more
       bool tight(false);
+      bool tightLepVeto(false);
       bool monojet(false);
 
       if (absEta <= 2.7) {
-        loose = nhf < 0.99 && nef < 0.99 && nd > 1;
         tight = nhf < 0.9 && nef < 0.9 && nd > 1;
+        tightLepVeto = nhf < 0.9 && nef < 0.9 && nd > 1 && muf < 0.8;
         monojet = nhf < 0.8 && nef < 0.99 && nd > 1;
 
         if (absEta <= 2.4) {
-          loose = loose && chf > 0. && nc > 0 && cef < 0.99;
-          tight = tight && chf > 0. && nc > 0 && cef < 0.99;
+          tight = tight && chf > 0. && nc > 0;
+          tightLepVeto = tightLepVeto && chf > 0. && nc > 0 && cef < 0.80;
           monojet = monojet && chf > 0.1 && nc > 0 && cef < 0.99;
         }
       }
       else if (absEta <= 3.)
-        loose = tight = nef < 0.9 && nn > 2;
+        tightLepVeto = tight = nef < 0.99 && nef > 0.02 && nn > 2;
       else
-        loose = tight = nef < 0.9 && nn > 2;
+        tightLepVeto = tight = nef < 0.9 && nhf > 0.02 && nn > 10;
 
       auto& outJet(outJets.create_back());
 

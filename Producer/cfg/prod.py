@@ -144,7 +144,7 @@ if options.release == '80X':
     electronSource = 'regressionElectrons'
     photonSource = 'regressionPhotons'
 
-    egmSmearingType = 'Moriond2017_JEC'
+    egmSmearingType = 'Moriond17_23Jan'
 
     electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-veto'
     electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-loose'
@@ -188,10 +188,15 @@ else:
     electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight'
     electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt'
 
-#TODO CHECK
+    electronMVANoIsoWP90 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90'
+    electronMVANoIsoWP80 = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80'
+    electronMVANoIsoWPLoose = 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose'
+    electronMVAIsoWP90 = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90'
+    electronMVAIsoWP80 = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80'
+    electronMVAIsoWPLoose = 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose'
+
+    # seems like we don't have these for >= 2017?
     electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
-    electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90'
-    electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80'
     electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
     electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
     
@@ -203,7 +208,8 @@ else:
     photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
 
     electronIdModules = [
-        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V1_cff',
         'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
         'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
     ]
@@ -251,7 +257,14 @@ runMetCorAndUncFromMiniAOD(
 metSequence = cms.Sequence(
     process.fullPatMetSequence
 )
-puppiSequence = cms.Sequence()
+
+from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+# Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+# By default, does not use specific photon ID for PuppiPhoton (which was the case in 80X)
+makePuppiesFromMiniAOD(process, createScheduledSequence = True)
+# Just renaming
+puppiSequence = process.puppiMETSequence
+
 puppiJetSequence = cms.Sequence()
 
 if options.release == '80X':
@@ -261,17 +274,7 @@ if options.release == '80X':
     # From PUPPI MET recipe in
     # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
     
-    # 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
-    from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-    # Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
-    # *UGLY* also runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2 internally
-    # which loads photonIDValueMapProducer and egmPhotonIDs
-    makePuppiesFromMiniAOD(process, createScheduledSequence = True)
-    
-    # Just renaming
-    puppiSequence = process.puppiMETSequence
-    
-    # override photon ID to be consistent
+    # override photon ID
     process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
     process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
     
@@ -591,8 +594,8 @@ process.panda.fillers.electrons.looseId = electronLooseId
 process.panda.fillers.electrons.mediumId = electronMediumId
 process.panda.fillers.electrons.tightId = electronTightId
 process.panda.fillers.electrons.hltId = electronHLTId
-process.panda.fillers.electrons.mvaWP90 = electronMVAWP90
-process.panda.fillers.electrons.mvaWP80 = electronMVAWP80
+#process.panda.fillers.electrons.mvaWP90 = electronMVAWP90
+#process.panda.fillers.electrons.mvaWP80 = electronMVAWP80
 process.panda.fillers.electrons.combIsoEA = cms.untracked.FileInPath(electronCombIsoEA)
 process.panda.fillers.electrons.ecalIsoEA = cms.untracked.FileInPath(electronEcalIsoEA)
 process.panda.fillers.electrons.hcalIsoEA = cms.untracked.FileInPath(electronHcalIsoEA)

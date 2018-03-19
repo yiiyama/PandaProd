@@ -38,7 +38,7 @@ WeightsFiller::addOutput(TFile& _outputFile)
   if (isRealData_)
     hSumW_ = new TH1D("hSumW", "SumW", 1, 0., 1.);
   else
-    hSumW_ = new TH1D("hSumW", "SumW", 8, 0., 8.);
+    hSumW_ = new TH1D("hSumW", "SumW", 107, 0., 107.);
 
   hSumW_->SetDirectory(&_outputFile);
 

@@ -38,6 +38,10 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
   getToken_(tightIdToken_, _cfg, _coll, "tightId");
   getToken_(hltIdToken_, _cfg, _coll, "hltId");
+  getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90");
+  getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80");
+  getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap");
+  //  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap");
   getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
   getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
   getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
@@ -92,6 +96,10 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
   auto& tightId(getProduct_(_inEvent, tightIdToken_));
   auto& hltId(getProduct_(_inEvent, hltIdToken_));
+  auto& mvaWP90(getProduct_(_inEvent, mvaWP90Token_));
+  auto& mvaWP80(getProduct_(_inEvent, mvaWP80Token_));
+  auto& mvaValuesMap(getProduct_(_inEvent, mvaValuesMapToken_));
+  //  auto& mvaCategoriesMap(getProduct_(_inEvent, mvaCategoriesMapToken_));
   auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
   auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
   auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
@@ -152,7 +160,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
   for (auto& inElectron : inElectrons) {
     ++iEl;
     auto&& inRef(inElectrons.refAt(iEl));
-    
     auto&& scRef(inElectron.superCluster());
     auto& sc(*scRef);
 
@@ -165,7 +172,10 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.medium = mediumId[inRef];
     outElectron.tight = tightId[inRef];
     outElectron.hltsafe = hltId[inRef];
-
+    outElectron.mvaWP90 = mvaWP90[inRef];
+    outElectron.mvaWP80 = mvaWP80[inRef];
+    outElectron.mvaVal = mvaValuesMap[inRef];
+    //outElectron.mvaCategory = mvaCategoriesMap[inRef];
     outElectron.charge = inElectron.charge();
 
     outElectron.sieie = inElectron.full5x5_sigmaIetaIeta();
@@ -188,7 +198,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
       outElectron.dz = std::abs(gsfTrack.dz());
     }
 
-    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+    outElectron.nMissingHits = gsfTrack.hitPattern().numberOfAllHits(reco::HitPattern::MISSING_INNER_HITS);
 
     outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
 
@@ -356,18 +366,19 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 
   if (useTrigger_) {
-    auto& objMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, panda::HLTObject>().fwdMap);
+    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
 
-    std::vector<panda::HLTObject const*> triggerObjects[panda::Electron::nTriggerObjects];
+    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
 
     // loop over all trigger objects
-    for (auto& mapEntry : objMap) { // (pat object, panda object)
+    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
       // loop over the trigger filters we are interested in
       for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
         // each triggerObjectNames_[] can have multiple filters
         for (auto& name : triggerObjectNames_[iT]) {
-          if (mapEntry.first->hasFilterLabel(name)) {
-            triggerObjects[iT].push_back(mapEntry.second);
+          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
+          if (nItr != mapEntry.second->end()) {
+            triggerObjects[iT].push_back(mapEntry.first.get());
             break;
           }
         }
@@ -377,11 +388,12 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
     auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>().fwdMap);
 
     for (auto& link : eleEleMap) { // edm -> panda
+      auto& inElectron(*link.first);
       auto& outElectron(*link.second);
 
       for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
         for (auto* obj : triggerObjects[iT]) {
-          if (obj->dR2(outElectron) < 0.09) {
+          if (reco::deltaR(*obj, inElectron) < 0.3) {
             outElectron.triggerMatch[iT] = true;
             break;
           }

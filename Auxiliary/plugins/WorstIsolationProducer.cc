@@ -33,6 +33,8 @@
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
 
+#include "PandaProd/Auxiliary/interface/getProduct.h"
+
 #include <memory>
 #include <vector>
 
@@ -41,25 +43,6 @@ typedef edm::View<reco::Candidate> CandidateView;
 typedef std::vector<reco::PFCandidateRef> Footprint;
 typedef edm::ValueMap<Footprint> FootprintMap;
 typedef edm::ValueMap<float> FloatMap;
-
-// Templated function for product retrieval
-template<class C>
-C const*
-getProduct(edm::Event const& _event, edm::EDGetTokenT<C> const& _token, edm::Handle<C>* _handle = 0)
-{
-  edm::Handle<C> handle;
-
-  edm::Handle<C>* handleP(0);
-  if (_handle)
-    handleP = _handle;
-  else
-    handleP = &handle;
-
-  if (!_event.getByToken(_token, *handleP))
-    throw cms::Exception("ProductNotFound") << typeid(C).name();
-
-  return handleP->product();
-}
 
 // Templated isolation calculator (for different types of footprint collections)
 template<class F>
@@ -71,6 +54,21 @@ isInFootprint(reco::CandidatePtr const& _ptr, F const& _footprint)
       return true;
   }
   return false;
+}
+
+void
+getImpactParameters(reco::Candidate const& _ptr, reco::Vertex const& _vtx, bool _isPAT, double& _dxy, double& _dz)
+{
+  if (_isPAT) {
+    auto& cand(static_cast<pat::PackedCandidate const&>(_ptr));
+    _dxy = cand.dxy(_vtx.position());
+    _dz = cand.dz(_vtx.position());
+  }
+  else {
+    auto& track(*static_cast<reco::PFCandidate const&>(_ptr).trackRef());
+    _dxy = track.dxy(_vtx.position());
+    _dz  = track.dz(_vtx.position());
+  }
 }
 
 class WorstIsolationProducer : public edm::stream::EDProducer<> {
@@ -171,18 +169,17 @@ WorstIsolationProducer::produce(edm::Event& _event, edm::EventSetup const&)
         continue;
     }
 
-    reco::Track const* trk(0);
-    if(isPAT)
-      trk = &(static_cast<pat::PackedCandidate const&>(cand).pseudoTrack());
-    else
-      trk = static_cast<reco::PFCandidate const&>(cand).trackRef().get();
+    double dxy(999.);
+    double dz(999.);
 
     for (unsigned iV(0); iV != vertices.size(); ++iV) {
       auto& vtx(vertices.at(iV));
 
-      if (std::abs(trk->dxy(vtx.position())) > dxyMax)
+      getImpactParameters(cand, vtx, isPAT, dxy, dz);
+
+      if (dxy > dxyMax)
         continue;
-      if (std::abs(trk->dz(vtx.position())) > dzMax)
+      if (dz > dzMax)
         continue;
 
       chIndicesByVertex[iV].push_back(iPF);

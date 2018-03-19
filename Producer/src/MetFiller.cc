@@ -26,7 +26,6 @@ void
 MetFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::BranchList&) const
 {
   _eventBranches.emplace_back(getName());
-
   if (fillOthers_)
     _eventBranches += {"rawMet", "caloMet", "noMuMet", "noHFMet", "trkMet", "neutralMet", "photonMet", "hfMet"};
 
@@ -74,6 +73,7 @@ MetFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     outMet.phiUnclUp = patMet->shiftedPhi(pat::MET::UnclusteredEnUp);
     outMet.ptUnclDown = patMet->shiftedPt(pat::MET::UnclusteredEnDown);
     outMet.phiUnclDown = patMet->shiftedPhi(pat::MET::UnclusteredEnDown);
+    outMet.significance = patMet->metSignificance();
   }
 
   if (fillOthers_) {

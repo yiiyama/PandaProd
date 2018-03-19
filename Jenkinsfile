@@ -1,10 +1,10 @@
 //// DEFINE THESE PLEASE ////
 
-def in_files = ['16F85498-2E38-E711-BDFE-5065F3815281', '30B6B933-6AD4-E611-90A8-549F35AC7E2F', 'F6F880D2-ACBE-E611-B59D-0CC47A706D40']
+def in_files = ['E0A114B0-56F1-E711-8C5F-44A842B46A7E', '023E56A6-4FF3-E711-867C-68B59972C49E']
 
-def cmssw_version = 'CMSSW_8_0_29'
-def panda_tree_user = 'dabercro'
-def panda_tree_branch = 'jenkins-clean'
+def cmssw_version = 'CMSSW_9_4_4'
+def panda_tree_user = 'PandaPhysics'
+def panda_tree_branch = 'master'
 
 //// Hopefully you don't need to change much of what follows
 

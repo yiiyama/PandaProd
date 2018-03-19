@@ -1,11 +1,12 @@
 from FWCore.ParameterSet.VarParsing import VarParsing
 
 options = VarParsing('analysis')
-options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: 03Feb2017, 23Sep2016, Spring16, Summer16')
+options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
+options.register('release', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'MINIAOD release')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
 options.register('printLevel', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Debug level of the ntuplizer')
 options.register('skipEvents', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Skip first events')
@@ -14,31 +15,51 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-options.config = '18Apr2017'
+options.config = '17Nov2017'
 
 jetRecorrection = False
 muFix = False
 egFix = False
-egmSmearingType = 'Moriond2017_JEC'
 
 # Global tags
-# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_2017_data_taking
-# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
-if options.config == '18Apr2017':
+if options.config == '07Aug17':
+    # 2016 legacy rereco
     options.isData = True
     options.globaltag = '80X_dataRun2_2016LegacyRepro_v4'
+    options.release = '80X'
+elif options.config == '17Nov2017':
+    # 2017 legacy rereco
+    options.isData = True
+    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
+    options.release = '94X'
+elif options.config == 'Prompt2017':
+    # 2017 prompt reco
+    options.isData = True
+    options.globaltag = '92X_dataRun2_Prompt_v6'
+    options.release = '92X'
 elif options.config == '03Feb2017':
+    # 2016 re-miniaod
     egFix = True
     options.isData = True
     options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
+    options.release = '80X'
+elif options.config == 'Fall17':
+    options.isData = False
+    options.globaltag = '94X_mc2017_realistic_v12'
+    options.release = '94X'
 elif options.config == 'Summer16':
     jetRecorrection = True
     muFix = True
     options.isData = False
     options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
+    options.release = '80X'
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
+
+if options.release not in ['80X', '92X', '94X']:
+    raise RuntimeError('Unknown release ' + options.release)
 
 import FWCore.ParameterSet.Config as cms
 
@@ -74,7 +95,10 @@ if options.lumilist != '':
 ## SERVICES ##
 ##############
 
-process.load('Configuration.Geometry.GeometryIdeal_cff') 
+if options.isData:
+    process.load('Configuration.Geometry.GeometryRecoDB_cff') 
+else:
+    process.load('Configuration.Geometry.GeometrySimDB_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 
@@ -98,46 +122,118 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
-
-egmCorrectionSequence = cms.Sequence()
-
 ### EGAMMA CORRECTIONS
 # https://twiki.cern.ch/twiki/bin/view/CMS/EGMRegression
 # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
 
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
-from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
-from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
-regressionWeights(process)
-process.regressionElectrons = regressionElectrons
-process.regressionPhotons = regressionPhotons
+egmCorrectionSequence = cms.Sequence()
 
+if options.release == '80X':
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
+    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
+    from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
+    regressionWeights(process)
+    process.regressionElectrons = regressionElectrons
+    process.regressionPhotons = regressionPhotons
+
+    egmCorrectionSequence += regressionElectrons
+    egmCorrectionSequence += regressionPhotons
+
+    electronSource = 'regressionElectrons'
+    photonSource = 'regressionPhotons'
+
+    egmSmearingType = 'Moriond2017_JEC'
+
+    electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-veto'
+    electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-loose'
+    electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-medium'
+    electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-tight'
+    electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
+    electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90'
+    electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80'
+    electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_80X.txt'
+    electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
+    electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+    
+    photonLooseId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose'
+    photonMediumId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-medium'
+    photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-tight'
+    photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfChargedHadrons_90percentBased.txt'
+    photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased.txt'
+    photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfPhotons_90percentBased.txt'
+
+    electronIdModules = [
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+    ]
+
+    photonIdModules = [
+        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff',
+    ]
+    
+else:
+    # for releases > 80X, regression is applied by default
+
+    electronSource = 'slimmedElectrons'
+    photonSource = 'slimmedPhotons'
+
+    egmSmearingType = 'Run2017_17Nov2017_v1'
+
+    electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto'
+    electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose'
+    electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium'
+    electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight'
+    electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt'
+
+#TODO CHECK
+    electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
+    electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90'
+    electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80'
+    electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
+    electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+    
+    photonLooseId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose'
+    photonMediumId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium'
+    photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight'
+    photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt'
+    photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt'
+    photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
+
+    electronIdModules = [
+        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
+        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+    ]
+
+    photonIdModules = [
+        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
+    ]
+    
 process.selectedElectrons = cms.EDFilter('PATElectronSelector',
-    src = cms.InputTag('regressionElectrons'),
+    src = cms.InputTag(electronSource),
     cut = cms.string('pt > 5 && abs(eta) < 2.5')
 )
 
-import PandaProd.Producer.utils.egmidconf as egmidconf
+from EgammaAnalysis.ElectronTools.calibratedPatElectronsRun2_cfi import calibratedPatElectrons
+from EgammaAnalysis.ElectronTools.calibratedPatPhotonsRun2_cfi import calibratedPatPhotons
+import EgammaAnalysis.ElectronTools.calibrationTablesRun2
+egmSmearingSource = EgammaAnalysis.ElectronTools.calibrationTablesRun2.files
 
-from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
 process.smearedElectrons = calibratedPatElectrons.clone(
     electrons = 'selectedElectrons',
     isMC = (not options.isData),
-    correctionFile = egmidconf.electronSmearingData[egmSmearingType]
+    correctionFile = egmSmearingSource[egmSmearingType]
 )
 process.smearedPhotons = calibratedPatPhotons.clone(
-    photons = 'regressionPhotons',
+    photons = photonSource,
     isMC = (not options.isData),
-    correctionFile = egmidconf.photonSmearingData[egmSmearingType]
+    correctionFile = egmSmearingSource[egmSmearingType]
 )   
 
-egmCorrectionSequence = cms.Sequence(
-    process.regressionElectrons +
-    process.regressionPhotons +
-    process.selectedElectrons +
-    process.smearedElectrons +
-    process.smearedPhotons
-)
+egmCorrectionSequence += process.selectedElectrons
+egmCorrectionSequence += process.smearedElectrons
+egmCorrectionSequence += process.smearedPhotons
 
 ### Vanilla MET
 # this is the most basic MET one can find
@@ -278,28 +374,34 @@ if egFix:
         postfix = 'Puppi'
     )
 
-    process.slimmedMETsPuppi.rawVariation = 'patPFMetRawPuppi'
-
-    # insert right after pat puppi met production
-    process.fullPatMetSequencePuppi.insert(process.fullPatMetSequencePuppi.index(process.patMetModuleSequencePuppi) + 1, puppiMETEGCorrSequence)
+if options.release == '80X':
+    # Original EDProducer to very simply make puppi candidates out of packed candidates (as input to puppi jets below)
+    process.load('PandaProd.Auxiliary.PuppiCandidatesProducer_cfi')
+    puppiSequence = cms.Sequence(process.puppi)
+else:
+    puppiSequence = cms.Sequence()
 
 ### EGAMMA ID
-# https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2 ???
+# https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
+# https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
+# https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedPhotonIdentificationRun2
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
+for idmod in electronIdModules:
+    setupAllVIDIdsInModule(process, idmod, setupVIDElectronSelection)
 
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
+for idmod in photonIdModules:
+    setupAllVIDIdsInModule(process, idmod, setupVIDPhotonSelection)
 
 process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
+    process.electronMVAValueMapProducer +
     process.egmGsfElectronIDs +
     process.worstIsolationProducer
 )
@@ -396,7 +498,6 @@ if not options.isData:
 else:
     genJetFlavorSequence = cms.Sequence()
 
-
 if jetRecorrection:
     ### JET RE-CORRECTION
 
@@ -478,6 +579,24 @@ if egFix:
     process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
         met = 'slimmedMETs'
     )
+
+process.panda.fillers.electrons.vetoId = electronVetoId
+process.panda.fillers.electrons.looseId = electronLooseId
+process.panda.fillers.electrons.mediumId = electronMediumId
+process.panda.fillers.electrons.tightId = electronTightId
+process.panda.fillers.electrons.hltId = electronHLTId
+process.panda.fillers.electrons.mvaWP90 = electronMVAWP90
+process.panda.fillers.electrons.mvaWP80 = electronMVAWP80
+process.panda.fillers.electrons.combIsoEA = cms.untracked.FileInPath(electronCombIsoEA)
+process.panda.fillers.electrons.ecalIsoEA = cms.untracked.FileInPath(electronEcalIsoEA)
+process.panda.fillers.electrons.hcalIsoEA = cms.untracked.FileInPath(electronHcalIsoEA)
+
+process.panda.fillers.photons.looseId = photonLooseId
+process.panda.fillers.photons.mediumId = photonMediumId
+process.panda.fillers.photons.tightId = photonTightId
+process.panda.fillers.photons.chIsoEA = cms.untracked.FileInPath(photonCHIsoEA)
+process.panda.fillers.photons.nhIsoEA = cms.untracked.FileInPath(photonNHIsoEA)
+process.panda.fillers.photons.phIsoEA = cms.untracked.FileInPath(photonPhIsoEA)
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

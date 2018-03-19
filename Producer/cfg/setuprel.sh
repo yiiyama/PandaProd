@@ -24,13 +24,14 @@ cp -r photonid/* $SRC/RecoEgamma/PhotonIdentification/data/
 rm -rf photonid
 
 # electron and photon calibration
+# POG-recommended recipe for 94X is
 #$INSTALL cms-egamma EGM_94X_v1 EgammaAnalysis/ElectronTools
-
+# But we want to be able to run on 80X input as well. So we check out the branch for 80X and make it 94X-compilable
+# This hack is not validated yet - we need to compare smearing results made with straight 80X and straight 94X with this hybrid
 install-pkg cms-egamma EGM_gain_v1 EgammaAnalysis/ElectronTools
 grep -r numberOfHits $SRC/EgammaAnalysis/ElectronTools | awk '{print $1}' | sed 's/\(.*\):/\1/' | while read path; do sed -i 's/numberOfHits/numberOfAllHits/' $path; done
 sed -i '/#include <TFile.h>/a #include <iostream>' $SRC/EgammaAnalysis/ElectronTools/plugins/GBRForestGetterFromDB.cc
 grep -r auto_ptr $SRC/EgammaAnalysis/ElectronTools | awk '{print $1}' | sed 's/\(.*\):/\1/' | while read path; do sed -i -e 's/auto_ptr/unique_ptr/' -e 's/\.put(\([^,)]*\)\(.*\)/.put(std::move(\1)\2/' $path; done
-
 
 # MVA weights
 cd $SRC/EgammaAnalysis/ElectronTools/data

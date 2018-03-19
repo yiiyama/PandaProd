@@ -119,15 +119,8 @@ node {
            # Make sure the file is made, even for new repos
            touch test.txt
 
-           # Don't code drunk on Thanksgiving, kids
-           # Basically supposed to install only individual packages that don't match in case there's an update
-           for PKG in $(diff test.txt PandaProd/Producer/scripts/manifest.txt | perl -ne '/ (\\w+\\/\\w+)\\// && print "$1\\n"' | sort | uniq)
-           do
-               PandaProd/Producer/scripts/install-pkg $(PKG=$PKG perl -ane '/INSTALL.*$ENV{PKG}/ && print "@F[1] @F[2]\n"' PandaProd/Producer/cfg/setuprel.sh) $PKG
-           done
-
-           # Do patching
-           eval $(grep sed PandaProd/Producer/cfg/setuprel.sh)
+           # Only install new packages if there's a difference between manifests
+           diff test.txt PandaProd/Producer/scripts/manifest.txt || ./PandaProd/Producer/cfg/setuprel.sh
            '''
       }
     }

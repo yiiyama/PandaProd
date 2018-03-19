@@ -340,7 +340,8 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
                 ] + \
                 sum([['pfDeepCSVJetTags%sSubjets:prob%s' % (label, prob),
                       'pfDeepCMVAJetTags%sSubjets:prob%s' % (label, prob)]
-                      for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+#                      for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                      for prob in ['udsg', 'b', 'c', 'bb']],
                      []),
             addAssociatedTracks = False,
             addJetCharge = False,

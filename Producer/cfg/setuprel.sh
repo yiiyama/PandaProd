@@ -24,3 +24,11 @@ git clone https://github.com/ECALELFS/ScalesSmearings.git
 cd ScalesSmearings/
 git checkout Run2017_17Nov2017_v1
 cd $CWD
+
+# fixing some POG bugs
+$INSTALL cms-sw CMSSW_9_4_X PhysicsTools/PatUtils
+# simple indentation error?
+sed -i 's/    \( *addToProcessAndTask(cleanedPFCandCollection.*\)/\1/' PhysicsTools/PatUtils/python/tools/muonRecoMitigation.py
+# CHS PF candidates are never added to the sequence
+sed -i '/setattr(process,"pfNoPileUpJME"+postfix,pfCHS)/a\                task.add(pfCHS)' PhysicsTools/PatUtils/python/tools/runMETCorrectionsAndUncertainties.py
+sed -i '/setattr(process,"pfNoPileUpJME"+postfix,pfCHS)/a\                patMetModuleSequence += pfCHS' PhysicsTools/PatUtils/python/tools/runMETCorrectionsAndUncertainties.py

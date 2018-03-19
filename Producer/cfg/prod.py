@@ -93,9 +93,9 @@ if options.lumilist != '':
 ## SERVICES ##
 ##############
 
-if options.isData:
-    process.load('Configuration.Geometry.GeometryRecoDB_cff') 
-else:
+#process.load('Configuration.Geometry.GeometryIdeal_cff') 
+process.load('Configuration.Geometry.GeometryRecoDB_cff') 
+if not options.isData:
     process.load('Configuration.Geometry.GeometrySimDB_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
@@ -115,6 +115,10 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
     initialSeed = cms.untracked.uint32(13141516),
     engineName = cms.untracked.string('TRandom3')
 )
+
+#process.load("Geometry.CaloEventSetup.CaloTopology_cfi")
+process.load("Geometry.EcalMapping.EcalMapping_cfi")
+process.load("Geometry.EcalMapping.EcalMappingRecord_cfi")
 
 #############################
 ## RECO SEQUENCE AND SKIMS ##
@@ -247,52 +251,55 @@ runMetCorAndUncFromMiniAOD(
 metSequence = cms.Sequence(
     process.fullPatMetSequence
 )
+puppiSequence = cms.Sequence()
+puppiJetSequence = cms.Sequence()
 
-### PUPPI
-# TODO find PUPPI recipes, the following doesn't look right:
-# https://twiki.cern.ch/twiki/bin/viewauth/CMS/PUPPI
-# From PUPPI MET recipe in
-# https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
-
-# 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
-from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-# Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
-# *UGLY* also runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2 internally
-# which loads photonIDValueMapProducer and egmPhotonIDs
-makePuppiesFromMiniAOD(process, createScheduledSequence = True)
-
-# Just renaming
-puppiSequence = process.puppiMETSequence
-
-# override photon ID to be consistent
-process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
-process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
-
-### PUPPI JET
-
-from PandaProd.Producer.utils.makeJets_cff import makeJets
-
-puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Puppi')
-
-### PUPPI MET
-
-# Creates process.fullPatMetSequencePuppi
-# With metType = 'Puppi', slimmedJetsPuppi is automatically selected as the jet source for type 1
-runMetCorAndUncFromMiniAOD(
-    process,
-    isData = options.isData,
-    metType = 'Puppi',
-    pfCandColl = 'puppiForMET',
-    recoMetFromPFCs = True,
-    jetFlavor = 'AK4PFPuppi',
-    postfix = 'Puppi'
-)
-# There is a bug in a function used by runMetCorAndUncFromMiniAOD (PhysicsTools.PatAlgos.tools.removeIfInSequence)
-# The following module is supposed to be removed from the sequence but is not
-# The bug appears when we don't call the no-postfix version of runMetCor.. first
-process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPuppi)
-
-metSequence += process.fullPatMetSequencePuppi
+if options.release == '80X':
+    ### PUPPI
+    # TODO find PUPPI recipes, the following doesn't look right:
+    # https://twiki.cern.ch/twiki/bin/viewauth/CMS/PUPPI
+    # From PUPPI MET recipe in
+    # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
+    
+    # 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
+    from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+    # Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+    # *UGLY* also runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2 internally
+    # which loads photonIDValueMapProducer and egmPhotonIDs
+    makePuppiesFromMiniAOD(process, createScheduledSequence = True)
+    
+    # Just renaming
+    puppiSequence = process.puppiMETSequence
+    
+    # override photon ID to be consistent
+    process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+    process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
+    
+    ### PUPPI JET
+    
+    from PandaProd.Producer.utils.makeJets_cff import makeJets
+    
+    puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Puppi')
+    
+    ### PUPPI MET
+    
+    # Creates process.fullPatMetSequencePuppi
+    # With metType = 'Puppi', slimmedJetsPuppi is automatically selected as the jet source for type 1
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        metType = 'Puppi',
+        pfCandColl = 'puppiForMET',
+        recoMetFromPFCs = True,
+        jetFlavor = 'AK4PFPuppi',
+        postfix = 'Puppi'
+    )
+    # There is a bug in a function used by runMetCorAndUncFromMiniAOD (PhysicsTools.PatAlgos.tools.removeIfInSequence)
+    # The following module is supposed to be removed from the sequence but is not
+    # The bug appears when we don't call the no-postfix version of runMetCor.. first
+    process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPuppi)
+    
+    metSequence += process.fullPatMetSequencePuppi
 
 if egFix:
     ### RE-EG-CORRECT METs
@@ -372,12 +379,12 @@ if egFix:
         postfix = 'Puppi'
     )
 
-if options.release == '80X':
-    # Original EDProducer to very simply make puppi candidates out of packed candidates (as input to puppi jets below)
-    process.load('PandaProd.Auxiliary.PuppiCandidatesProducer_cfi')
-    puppiSequence = cms.Sequence(process.puppi)
-else:
-    puppiSequence = cms.Sequence()
+#if options.release == '80X':
+#    # Original EDProducer to very simply make puppi candidates out of packed candidates (as input to puppi jets below)
+#    process.load('PandaProd.Auxiliary.PuppiCandidatesProducer_cfi')
+#    puppiSequence = cms.Sequence(process.puppi)
+#else:
+#    puppiSequence = cms.Sequence()
 
 ### EGAMMA ID
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
@@ -406,6 +413,7 @@ egmIdSequence = cms.Sequence(
 
 ### FAT JETS
 
+from PandaProd.Producer.utils.makeJets_cff import makeJets
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
 # pfCHS set up here

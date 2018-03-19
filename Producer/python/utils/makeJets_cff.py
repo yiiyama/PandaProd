@@ -87,7 +87,8 @@ def makeJets(process, isData, label, candidates, suffix):
                 ] + \
                 sum([[cms.InputTag('pfDeepCSVJetTags' + suffix, 'prob' + prob),
                       cms.InputTag('pfDeepCMVAJetTags' + suffix, 'prob' + prob)]
-                     for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+#                     for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                     for prob in ['udsg', 'b', 'c', 'bb']],
                     []),
             addAssociatedTracks = False,
             addJetCharge = False,

@@ -223,6 +223,9 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', e
         src = cms.InputTag(deepCMVAInfosName)
     )
 
+    ## TODO check - is this right?
+    #pfDeepCSVJetTags.toAdd.probcc = 'probcc'
+
     # ctags
     combinedCvsLJetTags = ctag.pfCombinedCvsLJetTags.clone(
         tagInfos = [

@@ -171,11 +171,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
 
     fillP4(outElectron, inElectron);
 
-    outElectron.veto = vetoId[inRef];
-    outElectron.loose = looseId[inRef];
-    outElectron.medium = mediumId[inRef];
-    outElectron.tight = tightId[inRef];
-
     auto idBit([&inRef](BoolMap const* map)->bool {
         if (map)
           return (*map)[inRef];
@@ -183,13 +178,31 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
           return false;
       });
 
+    // backward compatibility
+    outElectron.veto = vetoId[inRef];
+    outElectron.loose = looseId[inRef];
+    outElectron.medium = mediumId[inRef];
+    outElectron.tight = tightId[inRef];
     outElectron.hltsafe = idBit(hltId);
     outElectron.mvaWP90 = idBit(mvaWP90);
     outElectron.mvaWP80 = idBit(mvaWP80);
-    outElectron.mvaWPLoose = idBit(mvaWPLoose);
-    outElectron.mvaIsoWP90 = idBit(mvaIsoWP90);
-    outElectron.mvaIsoWP80 = idBit(mvaIsoWP80);
-    outElectron.mvaIsoWPLoose = idBit(mvaIsoWPLoose);
+    outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
+    auto&& chargeInfo(inElectron.chargeInfo());
+    outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
+
+    outElectron.selector[panda::Electron::kCutBasedIdVeto] = outElectron.veto;
+    outElectron.selector[panda::Electron::kCutBasedIdLoose] = outElectron.loose;
+    outElectron.selector[panda::Electron::kCutBasedIdMedium] = outElectron.medium;
+    outElectron.selector[panda::Electron::kCutBasedIdTight] = outElectron.tight;
+    outElectron.selector[panda::Electron::kCutBasedIdHLTSafe] = outElectron.hltsafe;
+    outElectron.selector[panda::Electron::kMvaWP90] = outElectron.mvaWP90;
+    outElectron.selector[panda::Electron::kMvaWP80] = outElectron.mvaWP80;
+    outElectron.selector[panda::Electron::kMvaWPLoose] = idBit(mvaWPLoose);
+    outElectron.selector[panda::Electron::kMvaIsoWP90] = idBit(mvaIsoWP90);
+    outElectron.selector[panda::Electron::kMvaIsoWP80] = idBit(mvaIsoWP80);
+    outElectron.selector[panda::Electron::kMvaIsoWPLoose] = idBit(mvaIsoWPLoose);
+    outElectron.selector[panda::Electron::kConversionVeto] = outElectron.conversionVeto;
+    outElectron.selector[panda::Electron::kTripleCharge] = outElectron.tripleCharge;
 
     outElectron.mvaVal = mvaValuesMap ? (*mvaValuesMap)[inRef] : 0.;
     // outElectron.mvaCategory = mvaCategoriesMap ? (*mvaCategoriesMap)[inRef] : -1;
@@ -216,11 +229,6 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     }
 
     outElectron.nMissingHits = gsfTrack.hitPattern().numberOfAllHits(reco::HitPattern::MISSING_INNER_HITS);
-
-    outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
-
-    auto&& chargeInfo(inElectron.chargeInfo());
-    outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
 
     double scEta(std::abs(sc.eta()));
 

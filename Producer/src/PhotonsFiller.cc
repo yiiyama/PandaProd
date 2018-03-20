@@ -165,20 +165,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.sieie = inPhoton.full5x5_sigmaIetaIeta();
     outPhoton.sipip = inPhoton.full5x5_showerShapeVariables().sigmaIphiIphi;
     outPhoton.hOverE = inPhoton.hadTowOverEm();
-    outPhoton.pixelVeto = !inPhoton.hasPixelSeed();
-    if (isPAT)
-      outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
-
-    outPhoton.chpfVeto = true;
-    for (auto* cand : chargedPFCandidates) {
-      if (reco::deltaR(*cand, inPhoton) > 0.1)
-        continue;
-
-      if (cand->pt() / scRawPt > 0.6) {
-        outPhoton.chpfVeto = false;
-        break;
-      }
-    }
 
     outPhoton.chIso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
     if (chIsoLeakage_[iDet].IsValid())
@@ -190,7 +176,8 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (phIsoLeakage_[iDet].IsValid())
       outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.chIsoMax = chIsoMax[inRef];
-    
+
+    // backward compatibility
     outPhoton.loose = looseId[inRef];
     outPhoton.medium = mediumId[inRef];
     outPhoton.tight = tightId[inRef];
@@ -222,6 +209,29 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         outPhoton.sieie < 0.028 &&
         chIso[inRef] < 5. &&
         phIso[inRef] + 0.003 * outPhoton.pt() - highptEA * rho < 4.5;
+
+    outPhoton.pixelVeto = !inPhoton.hasPixelSeed();
+    if (isPAT)
+      outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
+
+    // new selectors
+    outPhoton.selector[panda::Photon::kCutBasedIdLoose] = outPhoton.loose;
+    outPhoton.selector[panda::Photon::kCutBasedIdMedium] = outPhoton.medium;
+    outPhoton.selector[panda::Photon::kCutBasedIdTight] = outPhoton.tight;
+    outPhoton.selector[panda::Photon::kCutBasedIdHighPt] = outPhoton.highpt;
+    outPhoton.selector[panda::Photon::kPixelVeto] = outPhoton.pixelVeto;
+    outPhoton.selector[panda::Photon::kCSafeVeto] = outPhoton.csafeVeto;
+    outPhoton.selector[panda::Photon::kCHPFVeto] = true;
+
+    for (auto* cand : chargedPFCandidates) {
+      if (reco::deltaR(*cand, inPhoton) > 0.1)
+        continue;
+
+      if (cand->pt() / scRawPt > 0.6) {
+        outPhoton.selector[panda::Photon::kCHPFVeto] = false;
+        break;
+      }
+    }
 
     outPhoton.mipEnergy = inPhoton.mipTotEnergy();
 

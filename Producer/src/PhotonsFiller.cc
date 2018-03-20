@@ -214,21 +214,13 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (isPAT)
       outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
 
-    // new selectors
-    outPhoton.selector[panda::Photon::kCutBasedIdLoose] = outPhoton.loose;
-    outPhoton.selector[panda::Photon::kCutBasedIdMedium] = outPhoton.medium;
-    outPhoton.selector[panda::Photon::kCutBasedIdTight] = outPhoton.tight;
-    outPhoton.selector[panda::Photon::kCutBasedIdHighPt] = outPhoton.highpt;
-    outPhoton.selector[panda::Photon::kPixelVeto] = outPhoton.pixelVeto;
-    outPhoton.selector[panda::Photon::kCSafeVeto] = outPhoton.csafeVeto;
-    outPhoton.selector[panda::Photon::kCHPFVeto] = true;
-
+    outPhoton.pfchVeto = true;
     for (auto* cand : chargedPFCandidates) {
       if (reco::deltaR(*cand, inPhoton) > 0.1)
         continue;
 
       if (cand->pt() / scRawPt > 0.6) {
-        outPhoton.selector[panda::Photon::kCHPFVeto] = false;
+        outPhoton.pfchVeto = false;
         break;
       }
     }

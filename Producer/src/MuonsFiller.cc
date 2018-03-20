@@ -105,15 +105,28 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.puIso = pfIso.sumPUPt;
     outMuon.r03Iso = inMuon.isolationR03().sumPt;
 
-    unsigned int selectors(inMuon.selectors());
-    for (unsigned iS(0); iS != panda::Muon::nSelectors; ++iS)
-      outMuon.selector[iS] = ((selectors & (1 << iS)) != 0);
-    
-    // backward compatibility
-    outMuon.loose = outMuon.selector[panda::Muon::kCutBasedIdLoose];
-    outMuon.medium = outMuon.selector[panda::Muon::kCutBasedIdMedium];
-    outMuon.tight = outMuon.selector[panda::Muon::kCutBasedIdTight];
-    outMuon.soft = outMuon.selector[panda::Muon::kSoftCutBasedId];
+    outMuon.loose = inMuon.passed(reco::Muon::CutBasedIdLoose);
+    outMuon.medium = inMuon.passed(reco::Muon::CutBasedIdMedium);
+    outMuon.mediumPrompt = inMuon.passed(reco::Muon::CutBasedIdMediumPrompt);
+    outMuon.tight = inMuon.passed(reco::Muon::CutBasedIdTight);
+    outMuon.globalHighPt = inMuon.passed(reco::Muon::CutBasedIdGlobalHighPt);
+    outMuon.trkHighPt = inMuon.passed(reco::Muon::CutBasedIdTrkHighPt);
+    outMuon.soft = inMuon.passed(reco::Muon::SoftCutBasedId);
+    outMuon.softMVA = inMuon.passed(reco::Muon::SoftMvaId);
+    outMuon.mvaLoose = inMuon.passed(reco::Muon::MvaLoose);
+    outMuon.mvaMedium = inMuon.passed(reco::Muon::MvaMedium);
+    outMuon.mvaTight = inMuon.passed(reco::Muon::MvaTight);
+    outMuon.pfIsoVeryLoose = inMuon.passed(reco::Muon::PFIsoVeryLoose);
+    outMuon.pfIsoLoose = inMuon.passed(reco::Muon::PFIsoLoose);
+    outMuon.pfIsoMedium = inMuon.passed(reco::Muon::PFIsoMedium);
+    outMuon.pfIsoTight = inMuon.passed(reco::Muon::PFIsoTight);
+    outMuon.pfIsoVeryTight = inMuon.passed(reco::Muon::PFIsoVeryTight);
+    outMuon.tkIsoLoose = inMuon.passed(reco::Muon::TkIsoLoose);
+    outMuon.tkIsoTight = inMuon.passed(reco::Muon::TkIsoTight);
+    outMuon.miniIsoLoose = inMuon.passed(reco::Muon::MiniIsoLoose);
+    outMuon.miniIsoMedium = inMuon.passed(reco::Muon::MiniIsoMedium);
+    outMuon.miniIsoTight = inMuon.passed(reco::Muon::MiniIsoTight);
+    outMuon.miniIsoVeryTight = inMuon.passed(reco::Muon::MiniIsoVeryTight);
 
     outMuon.hltsafe = outMuon.combIso() / outMuon.pt() < 0.4 && outMuon.r03Iso / outMuon.pt() < 0.4;
 

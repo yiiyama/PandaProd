@@ -18,6 +18,27 @@ WeightsFiller::WeightsFiller(std::string const& _name, edm::ParameterSet const& 
     // Some samples have non-standard LHEEventProduct names
     // Using notifyNewProduct() to dynamically find the tag
     lheEventToken_.first = "lheEvent";
+
+    auto pdfTypeName(getParameter_<std::string>(_cfg, "pdfType", ""));
+    if (pdfTypeName == "NNPDF3.0") {
+      pdfBegin_ = 11;
+      pdfEnd_ = 111;
+    }
+    else if (pdfTypeName == "NNPDF3.1") {
+      pdfBegin_ = 1011;
+      pdfEnd_ = 1111;
+    }
+    else if (pdfTypeName != "")
+      throw edm::Exception(edm::errors::Configuration, "Unknown PDF type " + pdfTypeName);
+
+    // override
+    unsigned begin(getParameter_<unsigned>(_cfg, "pdfBegin", 0));
+    if (begin != 0)
+      pdfBegin_ = begin;
+
+    unsigned end(getParameter_<unsigned>(_cfg, "pdfEnd", 0));
+    if (end != 0)
+      pdfEnd_ = end;
   }
 }
 
@@ -35,10 +56,12 @@ WeightsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 void
 WeightsFiller::addOutput(TFile& _outputFile)
 {
+  unsigned nPDFVar(pdfEnd_ - pdfBegin_);
+
   if (isRealData_)
     hSumW_ = new TH1D("hSumW", "SumW", 1, 0., 1.);
   else
-    hSumW_ = new TH1D("hSumW", "SumW", 107, 0., 107.);
+    hSumW_ = new TH1D("hSumW", "SumW", 7 + nPDFVar, 0., 7. + nPDFVar);
 
   hSumW_->SetDirectory(&_outputFile);
 
@@ -46,7 +69,7 @@ WeightsFiller::addOutput(TFile& _outputFile)
 
   if (!isRealData_) {
     std::vector<TString> labels{{"r1f2", "r1f5", "r2f1", "r2f2", "r5f1", "r5f5"}};
-    for (unsigned iP(1); iP != 101; ++iP)
+    for (unsigned iP(1); iP <= nPDFVar; ++iP)
       labels.emplace_back(TString::Format("pdf%d", iP));
 
     for (unsigned iL(0); iL != labels.size(); ++iL)
@@ -78,12 +101,14 @@ WeightsFiller::fillAll(edm::Event const& _inEvent, edm::EventSetup const&)
   for (unsigned iW(0); iW != 6; ++iW)
     hSumW_->Fill(iW + 1.5, normScaleVariations_[iW] * central_);
 
-  for (unsigned iW(0); iW != 100; ++iW)
+  unsigned nPDFVar(pdfEnd_ - pdfBegin_);
+
+  for (unsigned iW(0); iW < nPDFVar; ++iW)
     hSumW_->Fill(iW + 7.5, normPDFVariations_[iW] * central_);
 
   for (unsigned iS(0); iS != wids_.size(); ++iS) {
     if (genParam_[iS] >= 0.)
-      hSumW_->Fill(iS + 107.5, genParam_[iS] * central_);
+      hSumW_->Fill(iS + nPDFVar + 7.5, genParam_[iS] * central_);
   }
 }
 
@@ -110,8 +135,10 @@ WeightsFiller::fill(panda::Event& _outEvent, edm::Event const&, edm::EventSetup 
   _outEvent.genReweight.r2f2DW = normScaleVariations_[3] - 1.;
   _outEvent.genReweight.r5f1DW = normScaleVariations_[4] - 1.;
   _outEvent.genReweight.r5f5DW = normScaleVariations_[5] - 1.;
-  for (unsigned iW(0); iW != 100; ++iW)
-    _outEvent.genReweight.nnpdfAltDW[iW] = normPDFVariations_[iW] - 1.;
+
+  unsigned nPDFVar(pdfEnd_ - pdfBegin_);
+  for (unsigned iW(0); iW != nPDFVar; ++iW)
+    _outEvent.genReweight.pdfAltDW[iW] = normPDFVariations_[iW] - 1.;
 
   // genParam branch is not filled from the outEvent object, but we copy the value here for consistence
   // (some other filler module may decide to use the values!)
@@ -209,10 +236,8 @@ WeightsFiller::getLHEWeights_(LHEEventProduct const& _lheEvent)
 
       normScaleVariations_[iV] = wgt.wgt / lheCentral;
     }
-    else if (id >= 11 && id <= 110) // NNPDF
-      normPDFVariations_[id - 11] = wgt.wgt / lheCentral;
-    else if (id >= 2001 && id < 2100) // NNPDF in some alternative configuration
-      normPDFVariations_[id - 2001] = wgt.wgt / lheCentral;
+    else if (id >= pdfBegin_ && id < pdfEnd_)
+      normPDFVariations_[id - pdfBegin_] = wgt.wgt / lheCentral;
   }
 
   if (bufferCounter_ < learningPhase) {

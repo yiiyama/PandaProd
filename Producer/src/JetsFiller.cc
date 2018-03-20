@@ -26,6 +26,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   jerName_(getParameter_<std::string>(_cfg, "jer", "")),
   csvTag_(getParameter_<std::string>(_cfg, "csv", "")),
   cmvaTag_(getParameter_<std::string>(_cfg, "cmva", "")),
+  qglTag_(getParameter_<std::string>(_cfg, "qgl", "")),
   deepCsvTag_(getParameter_<std::string>(_cfg, "deepCSV", "")),
   deepCmvaTag_(getParameter_<std::string>(_cfg, "deepCMVA", "")),
   puidTag_(getParameter_<std::string>(_cfg, "puid", "")),
@@ -54,7 +55,6 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
 
   getToken_(jetsToken_, _cfg, _coll, "jets");
   getToken_(puidJetsToken_, _cfg, _coll, "pileupJets", false);
-  getToken_(qglToken_, _cfg, _coll, "qgl", false);
   if (!isRealData_) {
     getToken_(genJetsToken_, _cfg, _coll, "genJets", false);
     getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
@@ -105,7 +105,7 @@ JetsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils::
       _eventBranches.emplace_back("!" + getName() + ".deepCMVA" + prob.first);
   }
 
-  if (qglToken_.second.isUninitialized())
+  if (qglTag_.empty())
     _eventBranches.emplace_back("!" + getName() + ".qgl");
 
   if (!fillConstituents_)
@@ -143,10 +143,6 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
       random = new CLHEP::RandGauss(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
     }
   }
-
-  FloatMap const* inQGL(0);
-  if (!qglToken_.second.isUninitialized())
-    inQGL = &getProduct_(_inEvent, qglToken_);
 
   auto* puidJets(puidJetsToken_.second.isUninitialized() ? nullptr : &getProduct_(_inEvent, puidJetsToken_));
 
@@ -274,18 +270,17 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
 
       // Fill with -0.5 if we didn't match the jets
       if (!deepCsvTag_.empty()) {
-        for (auto prob : deepProbs) {
-            fillDeepBySwitch_(outJet, prob.second, patJet.bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
-        }
+        for (auto prob : deepProbs)
+          fillDeepBySwitch_(outJet, prob.second, patJet.bDiscriminator(deepCsvTag_ + ":prob" + prob.first));
       }
       if (!deepCmvaTag_.empty()) {
-        for (auto prob : deepProbs) {
+        for (auto prob : deepProbs)
           fillDeepBySwitch_(outJet, prob.second + deepSuff::DEEP_SIZE, patJet.bDiscriminator(deepCmvaTag_ + ":prob" + prob.first));
-        }
       }
 
-      if (inQGL)
-        outJet.qgl = (*inQGL)[inRef];
+      if (!qglTag_.empty())
+        outJet.qgl = patJet.userFloat(qglTag_);
+        
       outJet.area = inJet.jetArea();
       outJet.nhf = nhf;
       outJet.chf = chf;
@@ -295,6 +290,7 @@ JetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Event
         outJet.puid = (puidJet != nullptr) ? puidJet->userFloat(puidTag_) : -2.0;
       outJet.loose = loose;
       outJet.tight = tight;
+      outJet.tightLepVeto = tightLepVeto;
       outJet.monojet = monojet;
     }
 

@@ -247,7 +247,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
         if (seedId.subdetId() == EcalBarrel) {
           EBDetId ebid(seedId);
-          outPhoton.ix = ebid.ieta();
+          outPhoton.ix = ebid.ietaAbs();
           outPhoton.iy = ebid.iphi();
         }
         else {

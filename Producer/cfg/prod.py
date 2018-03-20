@@ -3,6 +3,8 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 options = VarParsing('analysis')
 options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
+options.register('pdfname', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'PDF name')
+options.register('redojec', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Redo JEC')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
@@ -14,20 +16,19 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-jetRecorrection = False
-
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
 if options.config == '17Nov2017':
     # 2017 legacy rereco
     options.isData = True
-    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
-    jetRecorrection = True
+    options.globaltag = '94X_dataRun2_v6'
+    options.redojec = True
 elif options.config == 'Fall17':
     options.isData = False
-    options.globaltag = '94X_mc2017_realistic_v12'
-    jetRecorrection = True
+    options.globaltag = '94X_mc2017_realistic_v13'
+    options.pdfname = 'NNPDF3.1'
+    options.redojec = True
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
@@ -87,10 +88,6 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
     engineName = cms.untracked.string('TRandom3')
 )
 
-#process.load("Geometry.CaloEventSetup.CaloTopology_cfi")
-#process.load("Geometry.EcalMapping.EcalMapping_cfi")
-#process.load("Geometry.EcalMapping.EcalMappingRecord_cfi")
-
 #############################
 ## RECO SEQUENCE AND SKIMS ##
 #############################
@@ -121,8 +118,8 @@ process.smearedPhotons = calibratedPatPhotons.clone(
 )   
 
 egmCorrectionSequence = cms.Sequence(
-    process.selectedElectrons,
-    process.smearedElectrons,
+    process.selectedElectrons +
+    process.smearedElectrons +
     process.smearedPhotons
 )
 
@@ -148,6 +145,15 @@ from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAO
 makePuppiesFromMiniAOD(process, createScheduledSequence = True)
 ## Just renaming
 puppiSequence = process.puppiMETSequence
+
+process.puppiNoLep.useExistingWeights = False
+process.puppi.useExistingWeights = False
+
+### CHS
+process.pfCHS = cms.EDFilter('CandPtrSelector',
+    src = cms.InputTag('packedPFCandidates'),
+    cut = cms.string('fromPV')
+)
 
 ### EGAMMA ID
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
@@ -213,12 +219,73 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
-### FAT JETS
+### REMAKE CHS JETS WITH DEEP FLAVOR
 
 from PandaProd.Producer.utils.makeJets_cff import makeJets
+
+slimmedJetsSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
+
+if options.redojec:
+    ### JET RE-CORRECTION
+    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
+
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if options.isData:
+        jecLevels.append('L2L3Residual')
+
+    # slimmedJets made from scratch
+    #process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
+    #    src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    levels = cms.vstring(*jecLevels),
+    #)
+    #
+    #process.slimmedJets = updatedPatJets.clone(
+    #    jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    addJetCorrFactors = cms.bool(True),
+    #    jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactors')),
+    #    addBTagInfo = cms.bool(False),
+    #    addDiscriminators = cms.bool(False)
+    #)
+
+    process.updatedPatJetCorrFactorsPuppi = updatedPatJetCorrFactors.clone(
+        src = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        levels = cms.vstring(*jecLevels),
+    )
+
+    process.slimmedJetsPuppi = updatedPatJets.clone(
+        jetSource = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        addJetCorrFactors = cms.bool(True),
+        jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactorsPuppi')),
+        addBTagInfo = cms.bool(False),
+        addDiscriminators = cms.bool(False)
+    )
+
+    ### MET RE-CORRECTION
+    # pfMet is already corrected above in the VANILLA MET section
+
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        metType = "Puppi",
+        postfix = "Puppi",
+        jetFlavor = "AK4PFPuppi"
+    )
+
+    jetRecorrectionSequence = cms.Sequence(
+        #process.updatedPatJetCorrFactors +
+        #process.slimmedJets +
+        process.updatedPatJetCorrFactorsPuppi +
+        process.slimmedJetsPuppi +
+        process.fullPatMetSequencePuppi
+    )
+
+else:
+    jetRecorrectionSequence = cms.Sequence()
+
+### FAT JETS
+
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-# pfCHS set up here
 fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
@@ -235,13 +302,6 @@ ak8PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-ca15CHSSequence = makeFatJets(
-    process,
-    isData = options.isData,
-    label = 'CA15PFchs',
-    candidates = 'pfCHS'
-)
-
 ca15PuppiSequence = makeFatJets(
     process,
     isData = options.isData,
@@ -249,33 +309,12 @@ ca15PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
-initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
-ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
-ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')
-ca15CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFchs', 'CA15PFchs', '', 'ca15')
-ca15PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFPuppi', 'CA15PFPuppi', '', 'ca15')
-
 fatJetSequence = cms.Sequence(
     fatJetInitSequence +
     ak8CHSSequence +
     ak8PuppiSequence +
-    ca15CHSSequence +
-    ca15PuppiSequence +
-    ak8CHSDoubleBTagSequence +
-    ak8PuppiDoubleBTagSequence +
-    ca15CHSDoubleBTagSequence +
-    ca15PuppiDoubleBTagSequence
+    ca15PuppiSequence
 )
-
-### Deep B Tagging
-# Uses pfCHS from the fatJetSequence, so make sure it's after
-deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
-
-### QG TAGGING
-
-process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
 
 ### GEN JET FLAVORS
 if not options.isData:
@@ -306,36 +345,6 @@ if not options.isData:
 else:
     genJetFlavorSequence = cms.Sequence()
 
-if jetRecorrection:
-    ### JET RE-CORRECTION
-
-    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
-
-    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-    if options.isData:
-        jecLevels.append('L2L3Residual')
-    
-    process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
-        src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
-        levels = cms.vstring(*jecLevels),
-    )
-
-    process.slimmedJets = updatedPatJets.clone(
-        jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
-        addJetCorrFactors = cms.bool(True),
-        jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactors')),
-        addBTagInfo = cms.bool(False),
-        addDiscriminators = cms.bool(False)
-    )
-
-    jetRecorrectionSequence = cms.Sequence(
-        process.updatedPatJetCorrFactors +
-        process.slimmedJets
-    )
-
-else:
-    jetRecorrectionSequence = cms.Sequence()
-
 # runMetCorAnd.. adds a CaloMET module only once, adding the postfix
 # However, repeated calls to the function overwrites the MET source of patCaloMet
 process.patCaloMet.metSource = 'metrawCalo'
@@ -351,12 +360,11 @@ process.reco = cms.Path(
     egmCorrectionSequence +
     egmIdSequence +
     puppiSequence +
-    jetRecorrectionSequence +
     metSequence +
+    slimmedJetsSequence +
+    jetRecorrectionSequence +
     process.MonoXFilter +
     fatJetSequence +
-    deepFlavorSequence +
-    process.QGTagger +
     genJetFlavorSequence
 )
 
@@ -368,19 +376,21 @@ process.load('PandaProd.Producer.panda_cfi')
 process.panda.isRealData = options.isData
 process.panda.useTrigger = options.useTrigger
 #process.panda.SelectEvents = ['reco'] # no skim
+process.panda.fillers.chsAK4Jets.jets = 'slimmedJetsDeepFlavor'
 if options.isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.ak4GenJets.enabled = False
     process.panda.fillers.ak8GenJets.enabled = False
     process.panda.fillers.ca15GenJets.enabled = False
+else:
+    process.panda.fillers.weights.pdfType = options.pdfname
+    process.panda.fillers.extraMets.types.append('gen')
 
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
-
 for name, value in electronIdParams.items():
     setattr(process.panda.fillers.electrons, name, value)
-
 for name, value in photonIdParams.items():
     setattr(process.panda.fillers.photons, name, value)
 

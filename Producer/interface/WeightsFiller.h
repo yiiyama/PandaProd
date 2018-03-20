@@ -43,6 +43,9 @@ class WeightsFiller : public FillerBase {
   float genParamBuffer_[learningPhase][panda::GenReweight::NMAX]{};
   unsigned bufferCounter_{0};
 
+  unsigned pdfBegin_{0};
+  unsigned pdfEnd_{0};
+
   double central_{0.};
   double normScaleVariations_[6]{}; // Scale variations (muR, muF) normalized by originalXWGTUP
   double normPDFVariations_[100]{}; // NNPDF variations normalized by originalXWGTUP

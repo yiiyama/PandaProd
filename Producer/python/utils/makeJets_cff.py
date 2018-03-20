@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
 from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
+from RecoJets.JetProducers.QGTagger_cfi import QGTagger
 from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
 from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
@@ -63,7 +64,13 @@ def makeJets(process, isData, label, candidates, suffix):
             'pfCombinedMVAV2BJetTags',
             'pfDeepCSVJetTags',
             'pfDeepCMVAJetTags'
-            ]
+        ]
+    )
+
+    qgTagger = addattr('QGTagger',
+        QGTagger.clone(
+            srcJets = jets
+        )
     )
 
     if not isData:
@@ -98,6 +105,9 @@ def makeJets(process, isData, label, candidates, suffix):
             addJetFlavourInfo = False
         )
     )
+
+    addattr.last.userData.userFloats.src = [qgTagger.getModuleLabel() + ':qgLikelihood']
+    addattr.last.userData.userFloats.labelPostfixesToStrip = cms.vstring(suffix)
 
     if not isData:
         addattr.last.genJetMatch = genJetMatch

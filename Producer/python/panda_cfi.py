@@ -180,7 +180,8 @@ panda = cms.EDAnalyzer('PandaProducer',
                 IsoMu27 = cms.untracked.vstring('hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p09', 'hltL3crIsoL1sMu22Or25L1f0L2f10QL3f27QL3trkIsoFiltered0p07'), # last one 2017
                 IsoTkMu27 = cms.untracked.vstring('hltL3fL1sMu22Or25L1f0Tkf27QL3trkIsoFiltered0p09'), # not in 2017
                 Mu50 = cms.untracked.vstring('hltL3fL1sMu22Or25L1f0L2f10QL3Filtered50Q')
-            )
+            ),
+            rochesterCorrectionSource = cms.untracked.string('')
         ),
         taus = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

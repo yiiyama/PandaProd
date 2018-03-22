@@ -377,6 +377,7 @@ process.panda.isRealData = options.isData
 process.panda.useTrigger = options.useTrigger
 #process.panda.SelectEvents = ['reco'] # no skim
 process.panda.fillers.chsAK4Jets.jets = 'slimmedJetsDeepFlavor'
+
 if options.isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
@@ -389,10 +390,14 @@ else:
 
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
+
 for name, value in electronIdParams.items():
     setattr(process.panda.fillers.electrons, name, value)
+
 for name, value in photonIdParams.items():
     setattr(process.panda.fillers.photons, name, value)
+
+process.panda.fillers.muons.rochesterCorrectionSource = 'PandaProd/Utilities/data/RoccoR2017v0.txt'
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

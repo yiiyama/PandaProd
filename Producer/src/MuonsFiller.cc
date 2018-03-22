@@ -1,5 +1,8 @@
 #include "../interface/MuonsFiller.h"
 
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/RandomNumberGenerator.h"
+
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -8,8 +11,12 @@
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 
+#include "CLHEP/Random/RandomEngine.h"
+#include "CLHEP/Random/RandFlat.h"
+
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  rochesterCorrector_(edm::FileInPath(getParameter_<std::string>(_cfg, "rochesterCorrectionSource")).fullPath())
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
@@ -50,6 +57,13 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
   auto& vertices(getProduct_(_inEvent, verticesToken_));
 
   auto& outMuons(_outEvent.muons);
+
+  CLHEP::RandFlat* random(0);
+
+  if (!isRealData_) {
+    // random number used for Rochester corrections
+    random = new CLHEP::RandFlat(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
+  }
 
   std::vector<edm::Ptr<reco::Muon>> ptrList;
 
@@ -151,6 +165,33 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     }
 
     outMuon.pfPt = inMuon.pfP4().pt();
+
+    // Rochester correction
+    // See PandaProd/Utilities/doc/README.RoccoR
+    if (isRealData_) {
+      outMuon.rochCorr = rochesterCorrector_.kScaleDT(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi());
+      outMuon.rochCorrErr = rochesterCorrector_.kScaleDTerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi());
+    }
+    else {
+      double u1(random->fire());
+      try {
+        if (patMuon && patMuon->genParticleRef().isNonnull()) {
+          auto& gen(*patMuon->genParticleRef());
+          outMuon.rochCorr = rochesterCorrector_.kScaleFromGenMC(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, gen.pt(), u1);
+          outMuon.rochCorrErr = rochesterCorrector_.kScaleFromGenMCerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, gen.pt(), u1);
+        }
+        else {
+          double u2(random->fire());
+          outMuon.rochCorr = rochesterCorrector_.kScaleAndSmearMC(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, u1, u2);
+          outMuon.rochCorrErr = rochesterCorrector_.kScaleAndSmearMCerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, u1, u2);
+        }
+      }
+      catch (std::exception& ex) {
+        // Rochester correction can throw or be nan for certain combination of parameters
+        outMuon.rochCorr = -1.;
+        outMuon.rochCorrErr = 0.;
+      }
+    }
 
     ptrList.push_back(inMuons.ptrAt(iMu));
   }

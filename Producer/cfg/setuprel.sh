@@ -1,14 +1,14 @@
 #!/bin/bash
 
-CWD=`pwd`
-SRC=$CMSSW_BASE/src
-
 # Use PandaProd/Producer/scripts/cms-git-diff to find out which packages should be checked out from each branch.
 
+CWD=`pwd`
+SRC=$CMSSW_BASE/src
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
-# cut-based electron and photon ID
+# Cut-based electron and photon ID
 $INSTALL lsoffi CMSSW_9_4_0_pre3_TnP RecoEgamma/ElectronIdentification RecoEgamma/PhotonIdentification
+
 # MVA electron ID
 # RecoEgamma/ElectronIdentification overlaps with the line above but most of the files added above are not contained in this branch and thus will not be overwritten
 # Using -x exclusion list to avoid overwriting lsoffi - so dumb!
@@ -22,7 +22,7 @@ git clone -b CMSSW_9_4_0_pre3_TnP https://github.com/lsoffi/RecoEgamma-PhotonIde
 cp -r photonid/* $SRC/RecoEgamma/PhotonIdentification/data/
 rm -rf photonid
 
-# electron and photon calibration
+# Electron and photon calibration
 $INSTALL cms-egamma EGM_94X_v1 EgammaAnalysis/ElectronTools
 
 # MVA weights
@@ -32,8 +32,5 @@ cd ScalesSmearings/
 git checkout Run2017_17Nov2017_v1
 cd $CWD
 
-# fixing some POG bugs
-$INSTALL cms-sw CMSSW_9_4_X PhysicsTools/PatUtils
-# CHS PF candidates are never added to the sequence
-sed -i '/setattr(process,"pfNoPileUpJME"+postfix,pfCHS)/a\                task.add(pfCHS)' $SRC/PhysicsTools/PatUtils/python/tools/runMETCorrectionsAndUncertainties.py
-sed -i '/setattr(process,"pfNoPileUpJME"+postfix,pfCHS)/a\                patMetModuleSequence += pfCHS' $SRC/PhysicsTools/PatUtils/python/tools/runMETCorrectionsAndUncertainties.py
+# Jet & MET reclustering (maybe not strictly needed in our current prod.py because we don't recluster)
+$INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils

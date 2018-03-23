@@ -28,17 +28,16 @@ class JetsFiller : public FillerBase {
 
   typedef edm::View<reco::Jet> JetView;
   typedef edm::View<reco::GenJet> GenJetView;
-  typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
   NamedToken<edm::View<pat::Jet>> puidJetsToken_;
   NamedToken<GenJetView> genJetsToken_;
-  NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;
   std::string jecName_;
   std::string jerName_;
   std::string csvTag_;
   std::string cmvaTag_;
+  std::string qglTag_;
 
   enum deepSuff {
     udsg = 0,

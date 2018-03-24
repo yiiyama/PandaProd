@@ -49,7 +49,7 @@ class FatJetsFiller : public JetsFiller {
   fastjet::contrib::SoftDrop* softdrop_{0};
   fastjet::contrib::Njettiness* tau_{0};
   fastjet::HEPTopTaggerV2* htt_{0};
-  ECFNManager* ecfnManager_{0};
+  pandaecf::Calculator *ecfcalc_{0};
   panda::BoostedBtaggingMVACalculator jetBoostedBtaggingMVACalc_{};
 
   enum SubstructureComputeMode {

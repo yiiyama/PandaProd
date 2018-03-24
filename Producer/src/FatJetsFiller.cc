@@ -48,7 +48,7 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
 
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
     softdrop_ = new fastjet::contrib::SoftDrop(1., 0.15, R_);
-    ecfnManager_ = new ECFNManager();
+    ecfcalc_ = new pandaecf::Calculator();
     tau_ = new fastjet::contrib::Njettiness(fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::NormalizedMeasure(1., R_));
 
     //htt
@@ -77,7 +77,7 @@ FatJetsFiller::~FatJetsFiller()
 {
   delete jetDefCA_;
   delete softdrop_;
-  delete ecfnManager_;
+  delete ecfcalc_;
   delete tau_;
   delete htt_;
 }
@@ -117,8 +117,6 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
   reco::BoostedDoubleSVTagInfoCollection const* doubleBTagInfo(0);
   if (doSubstructure)
     doubleBTagInfo = &getProduct_(_inEvent, doubleBTagInfoToken_);
-
-  double betas[] = {0.5, 1., 2., 4.};
 
   auto& outSubjets(outSubjetSelector_(_outEvent));
 
@@ -216,16 +214,17 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           VPseudoJet sdconstsFiltered(sdconsts.begin(), sdconsts.begin() + nFilter);
 
           // calculate ECFs
-          for (unsigned iB(0); iB != 4; ++iB) {
-            calcECFN(betas[iB], sdconstsFiltered, ecfnManager_); // calculate for all Ns and os
-            for (int N : {1, 2, 3, 4}) {
-              for (int order : {1, 2, 3}) {
-                float ecf(ecfnManager_->ecfns[TString::Format("%i_%i", N, order)]);
-                if (!outJet.set_ecf(order, N, iB, ecf))
-                  throw std::runtime_error(TString::Format("FatJetsFiller Could not save o=%i, N=%i, iB=%i", order, N, iB).Data());
-              } // o loop
-            } // N loop
-          } // beta loop
+          ecfcalc_->calculate(sdconstsFiltered);
+          for (auto iter = ecfcalc_->begin(); iter != ecfcalc_->end(); ++iter) {
+            int oI = iter.get<pandaecf::Calculator::oP>() + 1;
+            int nI = iter.get<pandaecf::Calculator::nP>() + 1;
+            int bI = iter.get<pandaecf::Calculator::bP>();
+            bool success = outJet.set_ecf(oI, nI, bI,
+                                          static_cast<float>(iter.get<pandaecf::Calculator::ecfP>()));
+            if (!success)
+              throw std::runtime_error(
+                  TString::Format("FatJetsFiller Could not save oI=%i, nI=%i, bI=%i", oI, nI, bI).Data());
+          }
 
           outJet.tau3SD = tau_->getTau(3, sdconsts);
           outJet.tau2SD = tau_->getTau(2, sdconsts);

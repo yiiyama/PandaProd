@@ -3,6 +3,7 @@
 <use name="DataFormats/PatCandidates"/>
 <use name="JetMETCorrections/Objects"/>
 <use name="CondFormats/JetMETObjects"/>
+<use name="PandaProd/Utilities"/>
 <library file="*.cc" name="PandaProdAuxiliaryPlugins">
    <flags EDM_PLUGIN="1"/>
 </library>

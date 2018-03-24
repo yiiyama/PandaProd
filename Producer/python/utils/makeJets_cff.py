@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-from RecoJets.JetProducers.ak4PFJetsPuppi_cfi import ak4PFJetsPuppi
+from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
+from RecoJets.JetProducers.QGTagger_cfi import QGTagger
 from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
 from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import patJetCorrFactors
@@ -28,8 +29,8 @@ def makeJets(process, isData, label, candidates, suffix):
 
     addattr = AddAttr(process, sequence, suffix)
 
-    ak4PFJets = addattr('ak4PFJets',
-        ak4PFJetsPuppi.clone(
+    jets = addattr('ak4PFJets',
+        ak4PFJets.clone(
             src = candidates,
             doAreaFastjet = True
         )
@@ -41,7 +42,7 @@ def makeJets(process, isData, label, candidates, suffix):
 
     jetCorrFactors = addattr('jetCorrFactors',
         patJetCorrFactors.clone(
-            src = ak4PFJets,
+            src = jets,
             payload = label,
             levels = jecLevels,
             primaryVertices = pvSource
@@ -53,7 +54,7 @@ def makeJets(process, isData, label, candidates, suffix):
 
     sequence += setupBTag(
         process,
-        jetCollection = ak4PFJets,
+        jetCollection = jets,
         suffix = suffix,
         vsuffix = '',
         muons = muons,
@@ -63,13 +64,19 @@ def makeJets(process, isData, label, candidates, suffix):
             'pfCombinedMVAV2BJetTags',
             'pfDeepCSVJetTags',
             'pfDeepCMVAJetTags'
-            ]
+        ]
+    )
+
+    qgTagger = addattr('QGTagger',
+        QGTagger.clone(
+            srcJets = jets
+        )
     )
 
     if not isData:
         genJetMatch = addattr('genJetMatch',
             patJetGenJetMatch.clone(
-                src = ak4PFJets,
+                src = jets,
                 maxDeltaR = 0.4,
                 matched = genJets
             )
@@ -77,7 +84,7 @@ def makeJets(process, isData, label, candidates, suffix):
 
     allPatJets = addattr('patJets',
         patJets.clone(
-            jetSource = ak4PFJets,
+            jetSource = jets,
             addJetCorrFactors = True,
             jetCorrFactorsSource = [jetCorrFactors],
             addBTagInfo = True,
@@ -87,7 +94,8 @@ def makeJets(process, isData, label, candidates, suffix):
                 ] + \
                 sum([[cms.InputTag('pfDeepCSVJetTags' + suffix, 'prob' + prob),
                       cms.InputTag('pfDeepCMVAJetTags' + suffix, 'prob' + prob)]
-                     for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+#                     for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                     for prob in ['udsg', 'b', 'c', 'bb']],
                     []),
             addAssociatedTracks = False,
             addJetCharge = False,
@@ -97,6 +105,9 @@ def makeJets(process, isData, label, candidates, suffix):
             addJetFlavourInfo = False
         )
     )
+
+    addattr.last.userData.userFloats.src = [qgTagger.getModuleLabel() + ':qgLikelihood']
+    addattr.last.userData.userFloats.labelPostfixesToStrip = cms.vstring(suffix)
 
     if not isData:
         addattr.last.genJetMatch = genJetMatch

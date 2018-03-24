@@ -28,6 +28,8 @@ class PFCandsFiller : public FillerBase {
   NamedToken<reco::CandidateView> puppiNoLepInputToken_;
   NamedToken<VertexView> verticesToken_;
 
+  bool useExistingWeights_{true};
+
   //! cache the candidate and vertex ordering (using ref keys) to use in setRefs
   panda::PFCandCollection* outCandidates_{};
   std::vector<VertexPtr> orderedVertices_{};

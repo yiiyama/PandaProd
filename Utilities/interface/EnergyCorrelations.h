@@ -141,9 +141,6 @@ namespace pandaecf {
       const data_type& operator->() const { return _data; }
       template <int I>
         const typename std::tuple_element<I, data_type>::type& get() const { return std::get<I>(_data); }
-        // leaving this here just because I'm kind of proud of this C++11 mess
-        // auto get() -> typename std::add_const<typename std::add_lvalue_reference<decltype(std::get<I> (_data))>::type>::type const { return std::get<I>(_data); }
-
     };
 
     iterator begin() const { return iterator(this, 0); }

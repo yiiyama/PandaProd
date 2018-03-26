@@ -1,8 +1,15 @@
 <use name="FWCore/Framework"/>
+<use name="FWCore/ParameterSet"/>
+<use name="FWCore/MessageLogger"/>
+<use name="FWCore/Utilities"/>
 <use name="PhysicsTools/PatUtils"/>
 <use name="DataFormats/PatCandidates"/>
+<use name="DataFormats/HepMCCandidates"/>
+<use name="DataFormats/Common"/>
+<use name="DataFormats/Math"/>
 <use name="JetMETCorrections/Objects"/>
 <use name="CondFormats/JetMETObjects"/>
+<use   name="SimGeneral/HepPDTRecord"/>
 <library file="*.cc" name="PandaProdAuxiliaryPlugins">
    <flags EDM_PLUGIN="1"/>
 </library>

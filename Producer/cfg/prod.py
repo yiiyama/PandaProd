@@ -3,10 +3,11 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 options = VarParsing('analysis')
 options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
+options.register('pdfname', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'PDF name')
+options.register('redojec', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Redo JEC')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
-options.register('release', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'MINIAOD release')
 options.register('useTrigger', default = True, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'Fill trigger information')
 options.register('printLevel', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Debug level of the ntuplizer')
 options.register('skipEvents', default = 0, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.int, info = 'Skip first events')
@@ -15,49 +16,21 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-jetRecorrection = False
-muFix = False
-egFix = False
-
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
-if options.config == '07Aug17':
-    # 2016 legacy rereco
-    options.isData = True
-    options.globaltag = '80X_dataRun2_2016LegacyRepro_v4'
-    options.release = '80X'
-elif options.config == '17Nov2017':
+if options.config == '17Nov2017':
     # 2017 legacy rereco
     options.isData = True
-    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
-    options.release = '94X'
-elif options.config == 'Prompt2017':
-    # 2017 prompt reco
-    options.isData = True
-    options.globaltag = '92X_dataRun2_Prompt_v6'
-    options.release = '92X'
-elif options.config == '03Feb2017':
-    # 2016 re-miniaod
-    egFix = True
-    options.isData = True
-    options.globaltag = '80X_dataRun2_2016SeptRepro_v7'
-    options.release = '80X'
+    options.globaltag = '94X_dataRun2_v6'
+    options.redojec = True
 elif options.config == 'Fall17':
     options.isData = False
-    options.globaltag = '94X_mc2017_realistic_v12'
-    options.release = '94X'
-elif options.config == 'Summer16':
-    jetRecorrection = True
-    muFix = True
-    options.isData = False
-    options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
-    options.release = '80X'
+    options.globaltag = '94X_mc2017_realistic_v13'
+    options.pdfname = 'NNPDF3.1'
+    options.redojec = True
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
-
-if options.release not in ['80X', '92X', '94X']:
-    raise RuntimeError('Unknown release ' + options.release)
 
 import FWCore.ParameterSet.Config as cms
 
@@ -93,7 +66,6 @@ if options.lumilist != '':
 ## SERVICES ##
 ##############
 
-#process.load('Configuration.Geometry.GeometryIdeal_cff') 
 process.load('Configuration.Geometry.GeometryRecoDB_cff') 
 if not options.isData:
     process.load('Configuration.Geometry.GeometrySimDB_cff')
@@ -116,104 +88,15 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
     engineName = cms.untracked.string('TRandom3')
 )
 
-#process.load("Geometry.CaloEventSetup.CaloTopology_cfi")
-process.load("Geometry.EcalMapping.EcalMapping_cfi")
-process.load("Geometry.EcalMapping.EcalMappingRecord_cfi")
-
 #############################
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
 ### EGAMMA CORRECTIONS
-# https://twiki.cern.ch/twiki/bin/view/CMS/EGMRegression
 # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
-
-egmCorrectionSequence = cms.Sequence()
-
-if options.release == '80X':
-    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedElectrons as regressionElectrons
-    from EgammaAnalysis.ElectronTools.regressionApplication_cff import slimmedPhotons as regressionPhotons
-    from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
-    regressionWeights(process)
-    process.regressionElectrons = regressionElectrons
-    process.regressionPhotons = regressionPhotons
-
-    egmCorrectionSequence += regressionElectrons
-    egmCorrectionSequence += regressionPhotons
-
-    electronSource = 'regressionElectrons'
-    photonSource = 'regressionPhotons'
-
-    egmSmearingType = 'Moriond2017_JEC'
-
-    electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-veto'
-    electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-loose'
-    electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-medium'
-    electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-tight'
-    electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
-    electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90'
-    electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80'
-    electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_80X.txt'
-    electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
-    electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
-    
-    photonLooseId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose'
-    photonMediumId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-medium'
-    photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-tight'
-    photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfChargedHadrons_90percentBased.txt'
-    photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased.txt'
-    photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Spring16/effAreaPhotons_cone03_pfPhotons_90percentBased.txt'
-
-    electronIdModules = [
-        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
-        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff',
-        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
-    ]
-
-    photonIdModules = [
-        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff',
-    ]
-    
-else:
-    # for releases > 80X, regression is applied by default
-
-    electronSource = 'slimmedElectrons'
-    photonSource = 'slimmedPhotons'
-
-    egmSmearingType = 'Run2017_17Nov2017_v1'
-
-    electronVetoId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto'
-    electronLooseId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose'
-    electronMediumId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium'
-    electronTightId = 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight'
-    electronCombIsoEA = 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt'
-
-#TODO CHECK
-    electronHLTId = 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1'
-    electronMVAWP90 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90'
-    electronMVAWP80 = 'egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80'
-    electronEcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt'
-    electronHcalIsoEA = 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
-    
-    photonLooseId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose'
-    photonMediumId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium'
-    photonTightId = 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight'
-    photonCHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt'
-    photonNHIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt'
-    photonPhIsoEA = 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
-
-    electronIdModules = [
-        'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
-        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
-        'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
-    ]
-
-    photonIdModules = [
-        'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
-    ]
-    
+   
 process.selectedElectrons = cms.EDFilter('PATElectronSelector',
-    src = cms.InputTag(electronSource),
+    src = cms.InputTag('slimmedElectrons'),
     cut = cms.string('pt > 5 && abs(eta) < 2.5')
 )
 
@@ -221,6 +104,7 @@ from EgammaAnalysis.ElectronTools.calibratedPatElectronsRun2_cfi import calibrat
 from EgammaAnalysis.ElectronTools.calibratedPatPhotonsRun2_cfi import calibratedPatPhotons
 import EgammaAnalysis.ElectronTools.calibrationTablesRun2
 egmSmearingSource = EgammaAnalysis.ElectronTools.calibrationTablesRun2.files
+egmSmearingType = 'Run2017_17Nov2017_v1'
 
 process.smearedElectrons = calibratedPatElectrons.clone(
     electrons = 'selectedElectrons',
@@ -228,14 +112,16 @@ process.smearedElectrons = calibratedPatElectrons.clone(
     correctionFile = egmSmearingSource[egmSmearingType]
 )
 process.smearedPhotons = calibratedPatPhotons.clone(
-    photons = photonSource,
+    photons = 'slimmedPhotons',
     isMC = (not options.isData),
     correctionFile = egmSmearingSource[egmSmearingType]
 )   
 
-egmCorrectionSequence += process.selectedElectrons
-egmCorrectionSequence += process.smearedElectrons
-egmCorrectionSequence += process.smearedPhotons
+egmCorrectionSequence = cms.Sequence(
+    process.selectedElectrons +
+    process.smearedElectrons +
+    process.smearedPhotons
+)
 
 ### Vanilla MET
 # this is the most basic MET one can find
@@ -251,145 +137,67 @@ runMetCorAndUncFromMiniAOD(
 metSequence = cms.Sequence(
     process.fullPatMetSequence
 )
-puppiSequence = cms.Sequence()
-puppiJetSequence = cms.Sequence()
 
-if options.release == '80X':
-    ### PUPPI
-    # TODO find PUPPI recipes, the following doesn't look right:
-    # https://twiki.cern.ch/twiki/bin/viewauth/CMS/PUPPI
-    # From PUPPI MET recipe in
-    # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETUncertaintyPrescription
-    
-    # 80X does not contain the latest & greatest PuppiPhoton; need to rerun for all config
-    from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-    # Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
-    # *UGLY* also runs switchOnVIDPhotonIdProducer and sets up photon id Spring16_V2p2 internally
-    # which loads photonIDValueMapProducer and egmPhotonIDs
-    makePuppiesFromMiniAOD(process, createScheduledSequence = True)
-    
-    # Just renaming
-    puppiSequence = process.puppiMETSequence
-    
-    # override photon ID to be consistent
-    process.puppiPhoton.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
-    process.puppiForMET.photonId = 'egmPhotonIDs:cutBasedPhotonID-Spring16-V2p2-loose' 
-    
-    ### PUPPI JET
-    
-    from PandaProd.Producer.utils.makeJets_cff import makeJets
-    
-    puppiJetSequence = makeJets(process, options.isData, 'AK4PFPuppi', 'puppi', 'Puppi')
-    
-    ### PUPPI MET
-    
-    # Creates process.fullPatMetSequencePuppi
-    # With metType = 'Puppi', slimmedJetsPuppi is automatically selected as the jet source for type 1
-    runMetCorAndUncFromMiniAOD(
-        process,
-        isData = options.isData,
-        metType = 'Puppi',
-        pfCandColl = 'puppiForMET',
-        recoMetFromPFCs = True,
-        jetFlavor = 'AK4PFPuppi',
-        postfix = 'Puppi'
-    )
-    # There is a bug in a function used by runMetCorAndUncFromMiniAOD (PhysicsTools.PatAlgos.tools.removeIfInSequence)
-    # The following module is supposed to be removed from the sequence but is not
-    # The bug appears when we don't call the no-postfix version of runMetCor.. first
-    process.fullPatMetSequencePuppi.remove(process.selectedPatJetsForMetT1T2CorrPuppi)
-    
-    metSequence += process.fullPatMetSequencePuppi
+### PUPPI
+from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+## Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+## By default, does not use specific photon ID for PuppiPhoton (which was the case in 80X)
+makePuppiesFromMiniAOD(process, createScheduledSequence = True)
+## Just renaming
+puppiSequence = process.puppiMETSequence
 
-if egFix:
-    ### RE-EG-CORRECT METs
+process.puppiNoLep.useExistingWeights = False
+process.puppi.useExistingWeights = False
 
-    # First create the MET sequence
-    # Creates process.fullPatMetSequence which includes slimmedMETs
-    runMetCorAndUncFromMiniAOD(
-        process,
-        isData = options.isData,
-        recoMetFromPFCs = muFix, # no config has egFix = True & muFix = True at the moment
-        postfix = 'MuEGReClean',
-    )
-
-    # see above
-    process.fullPatMetSequenceMuEGReClean.remove(process.selectedPatJetsForMetT1T2CorrMuEGReClean)
-
-    # metSequence += process.fullPatMetSequence
-
-    # THIS FUNCTION IS BUGGY
-    # from PhysicsTools.PatUtils.tools.eGammaCorrection import eGammaCorrection
-    from PandaProd.Producer.utils.eGammaCorrection import eGammaCorrection
-
-    # Postfix is appended to all MET collection names within the eGammaCorrection function
-    metCollections = [
-        'patPFMetRaw',
-        'patPFMetT1',
-        'patPFMetT0pcT1',
-        'patPFMetT1Smear',
-        'patPFMetT1Txy',
-        'patPFMetTxy'
-    ]
-    variations = ['Up', 'Down']
-    for var in variations:
-        metCollections.extend([
-            'patPFMetT1JetEn' + var,
-            'patPFMetT1JetRes' + var,
-            'patPFMetT1SmearJetRes' + var,
-            'patPFMetT1ElectronEn' + var,
-            'patPFMetT1PhotonEn' + var,
-            'patPFMetT1MuonEn' + var,
-            'patPFMetT1TauEn' + var,
-            'patPFMetT1UnclusteredEn' + var,
-        ])
-
-    # Extracts correction from the differences between pre- and post-GSFix e/g collections
-    # and inserts them into various corrected MET objects
-    metEGCorrSequence = eGammaCorrection(
-        process, 
-        electronCollection = 'slimmedElectronsBeforeGSFix',
-        photonCollection = 'slimmedPhotonsBeforeGSFix',
-        corElectronCollection = 'slimmedElectrons',
-        corPhotonCollection = 'slimmedPhotons',
-        metCollections = metCollections,
-        pfCandMatching = False,
-        pfCandidateCollection = 'packedPFCandidates',
-        postfix = 'MuEGReClean'
-    )
-
-    # set to patPFMet due to the way metEGCorrSequence is implemented
-    process.slimmedMETsMuEGReClean.rawVariation = 'patPFMetRawMuEGReClean'
-
-    # insert right after pat met production
-    process.fullPatMetSequenceMuEGReClean.insert(process.fullPatMetSequenceMuEGReClean.index(process.patMetModuleSequenceMuEGReClean) + 1, metEGCorrSequence)
-    metSequence += process.fullPatMetSequenceMuEGReClean
-
-
-    ## now correct puppi MET
-    puppiMETEGCorrSequence = eGammaCorrection(
-        process, 
-        electronCollection = 'slimmedElectronsBeforeGSFix',
-        photonCollection = 'slimmedPhotonsBeforeGSFix',
-        corElectronCollection = 'slimmedElectrons',
-        corPhotonCollection = 'slimmedPhotons',
-        metCollections = metCollections,
-        pfCandMatching = False,
-        pfCandidateCollection = 'packedPFCandidates',
-        postfix = 'Puppi'
-    )
-
-#if options.release == '80X':
-#    # Original EDProducer to very simply make puppi candidates out of packed candidates (as input to puppi jets below)
-#    process.load('PandaProd.Auxiliary.PuppiCandidatesProducer_cfi')
-#    puppiSequence = cms.Sequence(process.puppi)
-#else:
-#    puppiSequence = cms.Sequence()
+### CHS
+process.pfCHS = cms.EDFilter('CandPtrSelector',
+    src = cms.InputTag('packedPFCandidates'),
+    cut = cms.string('fromPV')
+)
 
 ### EGAMMA ID
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedPhotonIdentificationRun2
+
+electronIdParams = {
+    'vetoId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto',
+    'looseId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose',
+    'mediumId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium',
+    'tightId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight',
+    'mvaWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90',
+    'mvaWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80',
+    'mvaWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose',
+    'mvaIsoWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90',
+    'mvaIsoWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80',
+    'mvaIsoWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose',
+    'hltId': 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1', # seems like we don't have these for >= 2017?
+    'mvaValuesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
+    #'mvaCategoriesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
+    'combIsoEA': 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt',
+    'ecalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt',
+    'hcalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+}
+
+photonIdParams = {
+    'looseId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose',
+    'mediumId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium',
+    'tightId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight',
+    'chIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt',
+    'nhIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt',
+    'phIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
+}
+
+electronIdModules = [
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+]
+
+photonIdModules = [
+    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
+]
 
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
@@ -411,12 +219,73 @@ egmIdSequence = cms.Sequence(
     process.worstIsolationProducer
 )
 
-### FAT JETS
+### REMAKE CHS JETS WITH DEEP FLAVOR
 
 from PandaProd.Producer.utils.makeJets_cff import makeJets
+
+slimmedJetsSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
+
+if options.redojec:
+    ### JET RE-CORRECTION
+    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
+
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if options.isData:
+        jecLevels.append('L2L3Residual')
+
+    # slimmedJets made from scratch
+    #process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
+    #    src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    levels = cms.vstring(*jecLevels),
+    #)
+    #
+    #process.slimmedJets = updatedPatJets.clone(
+    #    jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    addJetCorrFactors = cms.bool(True),
+    #    jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactors')),
+    #    addBTagInfo = cms.bool(False),
+    #    addDiscriminators = cms.bool(False)
+    #)
+
+    process.updatedPatJetCorrFactorsPuppi = updatedPatJetCorrFactors.clone(
+        src = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        levels = cms.vstring(*jecLevels),
+    )
+
+    process.slimmedJetsPuppi = updatedPatJets.clone(
+        jetSource = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        addJetCorrFactors = cms.bool(True),
+        jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactorsPuppi')),
+        addBTagInfo = cms.bool(False),
+        addDiscriminators = cms.bool(False)
+    )
+
+    ### MET RE-CORRECTION
+    # pfMet is already corrected above in the VANILLA MET section
+
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        metType = "Puppi",
+        postfix = "Puppi",
+        jetFlavor = "AK4PFPuppi"
+    )
+
+    jetRecorrectionSequence = cms.Sequence(
+        #process.updatedPatJetCorrFactors +
+        #process.slimmedJets +
+        process.updatedPatJetCorrFactorsPuppi +
+        process.slimmedJetsPuppi +
+        process.fullPatMetSequencePuppi
+    )
+
+else:
+    jetRecorrectionSequence = cms.Sequence()
+
+### FAT JETS
+
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-# pfCHS set up here
 fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
@@ -433,13 +302,6 @@ ak8PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-ca15CHSSequence = makeFatJets(
-    process,
-    isData = options.isData,
-    label = 'CA15PFchs',
-    candidates = 'pfCHS'
-)
-
 ca15PuppiSequence = makeFatJets(
     process,
     isData = options.isData,
@@ -447,33 +309,19 @@ ca15PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
-initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
-ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
-ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')
-ca15CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFchs', 'CA15PFchs', '', 'ca15')
-ca15PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFPuppi', 'CA15PFPuppi', '', 'ca15')
-
 fatJetSequence = cms.Sequence(
     fatJetInitSequence +
     ak8CHSSequence +
     ak8PuppiSequence +
-    ca15CHSSequence +
-    ca15PuppiSequence +
-    ak8CHSDoubleBTagSequence +
-    ak8PuppiDoubleBTagSequence +
-    ca15CHSDoubleBTagSequence +
-    ca15PuppiDoubleBTagSequence
+    ca15PuppiSequence
 )
 
-### Deep B Tagging
-# Uses pfCHS from the fatJetSequence, so make sure it's after
-deepFlavorSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
-
-### QG TAGGING
-
-process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJetsDeepFlavor'
+### MERGE GEN PARTICLES
+if not options.isData and False:
+    process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
+    genMergeSequence = cms.Sequence( process.mergedGenParticles )
+else:
+    genMergeSequence = cms.Sequence()
 
 ### GEN JET FLAVORS
 if not options.isData:
@@ -504,36 +352,6 @@ if not options.isData:
 else:
     genJetFlavorSequence = cms.Sequence()
 
-if jetRecorrection:
-    ### JET RE-CORRECTION
-
-    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
-
-    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
-    if options.isData:
-        jecLevels.append('L2L3Residual')
-    
-    process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
-        src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
-        levels = cms.vstring(*jecLevels),
-    )
-
-    process.slimmedJets = updatedPatJets.clone(
-        jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
-        addJetCorrFactors = cms.bool(True),
-        jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactors')),
-        addBTagInfo = cms.bool(False),
-        addDiscriminators = cms.bool(False)
-    )
-
-    jetRecorrectionSequence = cms.Sequence(
-        process.updatedPatJetCorrFactors +
-        process.slimmedJets
-    )
-
-else:
-    jetRecorrectionSequence = cms.Sequence()
-
 # runMetCorAnd.. adds a CaloMET module only once, adding the postfix
 # However, repeated calls to the function overwrites the MET source of patCaloMet
 process.patCaloMet.metSource = 'metrawCalo'
@@ -549,13 +367,12 @@ process.reco = cms.Path(
     egmCorrectionSequence +
     egmIdSequence +
     puppiSequence +
-    puppiJetSequence +
-    jetRecorrectionSequence +
     metSequence +
+    slimmedJetsSequence +
+    jetRecorrectionSequence +
     process.MonoXFilter +
     fatJetSequence +
-    deepFlavorSequence +
-    process.QGTagger +
+    genMergeSequence + 
     genJetFlavorSequence
 )
 
@@ -567,42 +384,28 @@ process.load('PandaProd.Producer.panda_cfi')
 process.panda.isRealData = options.isData
 process.panda.useTrigger = options.useTrigger
 #process.panda.SelectEvents = ['reco'] # no skim
+process.panda.fillers.chsAK4Jets.jets = 'slimmedJetsDeepFlavor'
+
 if options.isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.ak4GenJets.enabled = False
     process.panda.fillers.ak8GenJets.enabled = False
     process.panda.fillers.ca15GenJets.enabled = False
+else:
+    process.panda.fillers.weights.pdfType = options.pdfname
+    process.panda.fillers.extraMets.types.append('gen')
 
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-if muFix:
-    process.panda.fillers.pfMet.met = 'slimmedMetsMuonFixed'
+for name, value in electronIdParams.items():
+    setattr(process.panda.fillers.electrons, name, value)
 
-if egFix:
-    process.panda.fillers.pfMet.met = 'slimmedMETsMuEGReClean'
-    process.panda.fillers.metMuOnlyFix = process.panda.fillers.puppiMet.clone(
-        met = 'slimmedMETs'
-    )
+for name, value in photonIdParams.items():
+    setattr(process.panda.fillers.photons, name, value)
 
-process.panda.fillers.electrons.vetoId = electronVetoId
-process.panda.fillers.electrons.looseId = electronLooseId
-process.panda.fillers.electrons.mediumId = electronMediumId
-process.panda.fillers.electrons.tightId = electronTightId
-process.panda.fillers.electrons.hltId = electronHLTId
-process.panda.fillers.electrons.mvaWP90 = electronMVAWP90
-process.panda.fillers.electrons.mvaWP80 = electronMVAWP80
-process.panda.fillers.electrons.combIsoEA = cms.untracked.FileInPath(electronCombIsoEA)
-process.panda.fillers.electrons.ecalIsoEA = cms.untracked.FileInPath(electronEcalIsoEA)
-process.panda.fillers.electrons.hcalIsoEA = cms.untracked.FileInPath(electronHcalIsoEA)
-
-process.panda.fillers.photons.looseId = photonLooseId
-process.panda.fillers.photons.mediumId = photonMediumId
-process.panda.fillers.photons.tightId = photonTightId
-process.panda.fillers.photons.chIsoEA = cms.untracked.FileInPath(photonCHIsoEA)
-process.panda.fillers.photons.nhIsoEA = cms.untracked.FileInPath(photonNHIsoEA)
-process.panda.fillers.photons.phIsoEA = cms.untracked.FileInPath(photonPhIsoEA)
+process.panda.fillers.muons.rochesterCorrectionSource = 'PandaProd/Utilities/data/RoccoR2017v0.txt'
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel
@@ -614,67 +417,6 @@ process.ntuples = cms.EndPath(process.panda)
 ##############
 
 process.schedule = cms.Schedule(process.reco, process.ntuples)
-
-############################
-## REPLACE-ALL TYPE FIXES ##
-############################
-
-if muFix:
-    ### PF CLEANING (BAD MUON REMOVAL)
-   
-    # Replace all references made so far to packedPFCandidates with cleanMuonsPFCandidates
-
-    from PhysicsTools.PatAlgos.tools.helpers import MassSearchReplaceAnyInputTagVisitor
-
-    replacePFCandidates = MassSearchReplaceAnyInputTagVisitor('packedPFCandidates', 'cleanMuonsPFCandidates', verbose = False)
-    for everywhere in [process.producers, process.filters, process.analyzers, process.psets, process.vpsets]:
-        for name, obj in everywhere.iteritems():
-            replacePFCandidates.doIt(obj, name)
-
-    process.panda.fillers.common.pfCandidates = 'cleanMuonsPFCandidates'
-    process.panda.fillers.pfCandidates.puppiInput = 'cleanMuonsPFCandidates'
-
-    from PhysicsTools.PatUtils.tools.muonRecoMitigation import muonRecoMitigation
-
-    # Adds badGlobalMuonTaggerMAOD, cloneGlobalMuonTaggerMAOD, badMuons, and cleanMuonsPFCandidates
-    muonRecoMitigation(
-        process,
-        pfCandCollection = 'packedPFCandidates',
-        runOnMiniAOD = True
-    )
-
-    pfCleaningSequence = cms.Sequence(
-        process.badMuons +
-        process.cleanMuonsPFCandidates
-    )
-
-    process.reco.insert(0, pfCleaningSequence)
-
-    ### MET
-    # Recompute MET from muon-fixed PF candidates
-
-    runMetCorAndUncFromMiniAOD(
-        process,
-        isData = options.isData,
-        pfCandColl = 'cleanMuonsPFCandidates',
-        recoMetFromPFCs = True,
-        postfix = 'MuonFixed'
-    )
-
-    # see above
-    process.patCaloMet.metSource = 'metrawCalo'
-
-    process.fullPatMetSequenceMuonFixed.remove(process.selectedPatJetsForMetT1T2CorrMuonFixed)
-
-    process.reco += process.fullPatMetSequenceMuonFixed
-
-    process.panda.fillers.pfMet.met = 'slimmedMETsMuonFixed'
-
-    # And of course this is against the convention (MET filters are true if event is *good*) but that's what the REMINIAOD developers chose.
-    process.Flag_badMuons = cms.Path(process.badGlobalMuonTaggerMAOD)
-    process.Flag_duplicateMuons = cms.Path(process.cloneGlobalMuonTaggerMAOD)
-    process.schedule.insert(0, process.Flag_badMuons)
-    process.schedule.insert(0, process.Flag_duplicateMuons)
 
 if options.connect:
     if options.connect == 'mit':

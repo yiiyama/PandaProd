@@ -303,10 +303,10 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', e
     return sequence
 
 
-def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos = []):
-    if algo == 'ak8':
+def setupDoubleBTag(process, jetCollection, subjetCollection, suffix, vsuffix, algo, addedTagInfos = []):
+    if algo == 'AK8':
         deltaR = 0.8
-    elif algo == 'ca15':
+    elif algo == 'CA15':
         deltaR = 1.5
     else:
         raise RuntimeError('Unknown algo ' + algo)
@@ -335,7 +335,7 @@ def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos
     try:
         boostedDoubleSVTagInfos = getattr(process, boostedDoubleSVTagInfosName)
     except AttributeError:
-        if algo == 'ak8':
+        if algo == 'AK8':
             boostedDoubleSVTagInfos = btag.pfBoostedDoubleSVAK8TagInfos.clone(
                 svTagInfos = ivfTagInfosName
             )
@@ -346,10 +346,21 @@ def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos
 
         setattr(process, boostedDoubleSVTagInfosName, boostedDoubleSVTagInfos)
 
+    boostedDoubleSVBJetTags = cms.EDProducer('BoostedDoubleBJetTagProducer',
+        jets = jetCollection,
+        subjets = subjetCollection,
+        tagInfos = cms.InputTag(boostedDoubleSVTagInfosName),
+        subjetBtag = cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix + 'Subjets'),
+        subjetMatchRadius = cms.double(deltaR),
+        weights = cms.FileInPath('PandaProd/Utilities/data/BoostedSVDoubleCA15_withSubjet_v4.weights.xml')
+    )
+    setattr(process, 'pfBoostedDoubleSVBJetTags' + suffix, boostedDoubleSVBJetTags)
+
     sequence = cms.Sequence(
         impactParameterTagInfos +
         inclusiveSecondaryVertexFinderTagInfos +
-        boostedDoubleSVTagInfos
+        boostedDoubleSVTagInfos +
+        boostedDoubleSVBJetTags
     )
 
     return sequence

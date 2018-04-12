@@ -2,6 +2,7 @@
 #define PandaProd_Producer_MuonsFiller_h
 
 #include "FillerBase.h"
+#include "PandaProd/Utilities/interface/RoccoR.h"
 
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
@@ -24,6 +25,7 @@ class MuonsFiller : public FillerBase {
   NamedToken<reco::VertexCollection> verticesToken_;
 
   std::set<std::string> triggerObjectNames_[panda::Muon::nTriggerObjects];
+  RoccoR rochesterCorrector_;
 };
 
 #endif

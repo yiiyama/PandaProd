@@ -3,6 +3,8 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
+#include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/EcalDetId/interface/EEDetId.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Photon.h"
@@ -14,9 +16,9 @@
 
 PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
-  chIsoEA_(getParameter_<edm::FileInPath>(_cfg, "chIsoEA").fullPath()),
-  nhIsoEA_(getParameter_<edm::FileInPath>(_cfg, "nhIsoEA").fullPath()),
-  phIsoEA_(getParameter_<edm::FileInPath>(_cfg, "phIsoEA").fullPath())
+  chIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "chIsoEA")).fullPath()),
+  nhIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "nhIsoEA")).fullPath()),
+  phIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "phIsoEA")).fullPath())
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
   getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons", false);
@@ -129,6 +131,12 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         return reco::CandidatePtr();
     });
 
+  std::vector<reco::Candidate const*> chargedPFCandidates;
+  for (auto& cand : pfCandidates) {
+    if (cand.charge() != 0)
+      chargedPFCandidates.emplace_back(&cand);
+  }
+
   noZS::EcalClusterLazyTools lazyTools(_inEvent, _setup, ebHitsToken_.second, eeHitsToken_.second);
 
   auto& outPhotons(_outEvent.photons);
@@ -144,6 +152,7 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     auto&& scRef(inPhoton.superCluster());
     auto& sc(*scRef);
+    double scRawPt(sc.rawEnergy() / std::cosh(sc.eta()));
 
     auto& outPhoton(outPhotons.create_back());
 
@@ -156,9 +165,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.sieie = inPhoton.full5x5_sigmaIetaIeta();
     outPhoton.sipip = inPhoton.full5x5_showerShapeVariables().sigmaIphiIphi;
     outPhoton.hOverE = inPhoton.hadTowOverEm();
-    outPhoton.pixelVeto = !inPhoton.hasPixelSeed();
-    if (isPAT)
-      outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
 
     outPhoton.chIso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
     if (chIsoLeakage_[iDet].IsValid())
@@ -170,7 +176,8 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (phIsoLeakage_[iDet].IsValid())
       outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
     outPhoton.chIsoMax = chIsoMax[inRef];
-    
+
+    // backward compatibility
     outPhoton.loose = looseId[inRef];
     outPhoton.medium = mediumId[inRef];
     outPhoton.tight = tightId[inRef];
@@ -203,6 +210,21 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         chIso[inRef] < 5. &&
         phIso[inRef] + 0.003 * outPhoton.pt() - highptEA * rho < 4.5;
 
+    outPhoton.pixelVeto = !inPhoton.hasPixelSeed();
+    if (isPAT)
+      outPhoton.csafeVeto = static_cast<pat::Photon const&>(inPhoton).passElectronVeto();
+
+    outPhoton.pfchVeto = true;
+    for (auto* cand : chargedPFCandidates) {
+      if (reco::deltaR(*cand, inPhoton) > 0.1)
+        continue;
+
+      if (cand->pt() / scRawPt > 0.6) {
+        outPhoton.pfchVeto = false;
+        break;
+      }
+    }
+
     outPhoton.mipEnergy = inPhoton.mipTotEnergy();
 
     outPhoton.r9 = inPhoton.r9();
@@ -220,11 +242,27 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outPhoton.etop = lazyTools.eTop(seed);
       outPhoton.ebottom = lazyTools.eBottom(seed);
       
-      auto* seedHit(findHit(seed.seed()));
-      if (seedHit)
+      auto&& seedId(seed.seed());
+      auto* seedHit(findHit(seedId));
+      if (seedHit) {
         outPhoton.time = seedHit->time();
-      else
+
+        if (seedId.subdetId() == EcalBarrel) {
+          EBDetId ebid(seedId);
+          outPhoton.ix = ebid.ietaAbs();
+          outPhoton.iy = ebid.iphi();
+        }
+        else {
+          EEDetId eeid(seedId);
+          outPhoton.ix = eeid.ix();
+          outPhoton.iy = eeid.iy();
+        }
+      }        
+      else {
         outPhoton.time = -50.;
+        outPhoton.ix = 0;
+        outPhoton.iy = 0;
+      }
     }
 
     outPhoton.timeSpan = 0.;    

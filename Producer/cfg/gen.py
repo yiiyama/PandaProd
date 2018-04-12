@@ -15,8 +15,8 @@ options.parseArguments()
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_2017_data_taking
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
 
-if options.config == 'Summer16':
-    options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
+if options.config == 'Fall17':
+    options.globaltag = '94X_mc2017_realistic_v13'
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
@@ -48,10 +48,6 @@ process.maxEvents = cms.untracked.PSet(
 ##############
 ## SERVICES ##
 ##############
-
-#process.load('Configuration.Geometry.GeometryIdeal_cff') 
-#process.load('Configuration.StandardSequences.Services_cff')
-#process.load('Configuration.StandardSequences.MagneticField_cff')
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
 process.GlobalTag.globaltag = options.globaltag
@@ -92,7 +88,7 @@ process.panda.isRealData = False
 process.panda.useTrigger = False
 
 for fname, conf in process.panda.fillers.parameters_().items():
-    if fname not in ['common', 'weights', 'partons', 'genParticles', 'ak4GenJets', 'ak8GenJets']:
+    if fname not in ['common', 'weights', 'partons', 'genParticles', 'ak4GenJets', 'ak8GenJets', 'extraMets']:
         getattr(process.panda.fillers, fname).enabled = False
 
 process.panda.fillers.common.genParticles = 'genParticles'
@@ -100,6 +96,7 @@ del process.panda.fillers.common.finalStateParticles
 process.panda.fillers.genParticles.outputMode = 1
 process.panda.fillers.ak4GenJets.genJets = 'ak4GenJets'
 process.panda.fillers.ak8GenJets.genJets = 'ak8GenJets'
+process.panda.fillers.extraMets.types = ['gen']
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel

@@ -22,11 +22,11 @@ options.parseArguments()
 if options.config == '17Nov2017':
     # 2017 legacy rereco
     options.isData = True
-    options.globaltag = '94X_dataRun2_v6'
+    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
     options.redojec = True
 elif options.config == 'Fall17':
     options.isData = False
-    options.globaltag = '94X_mc2017_realistic_v13'
+    options.globaltag = '94X_mc2017_realistic_v14'
     options.pdfname = 'NNPDF3.1'
     options.redojec = True
 elif options.config:

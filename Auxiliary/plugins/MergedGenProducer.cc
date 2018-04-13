@@ -64,12 +64,12 @@ void MergedGenProducer::produce(edm::Event& event, const edm::EventSetup& setup)
     if (pr.status() != 1) continue;
 
     unsigned found_matches = 0;
-    float threshold = 0.001 * pr.pt();
+    float threshold = 0.005 * pr.pt(); // 10 bit precision -> 3 decimal places
     for (unsigned j = 0; j < packed_handle->size(); ++j) {
       pat::PackedGenParticle const& pk = packed_handle->at(j);
       if (pr.pdgId() != pk.pdgId()  
           || fabs(pk.pt() - pr.pt()) > threshold
-          || deltaR2(pk.eta(), pk.phi(), pr.eta(), pr.phi()) > 0.00001)
+          || deltaR(pk.eta(), pk.phi(), pr.eta(), pr.phi()) > 0.0005) // sqrt( (24/65k)^2 + (4pi/65k)^2 )
         continue;
       ++found_matches;
       st1_dup_map[&pk] = &pr;

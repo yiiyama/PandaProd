@@ -25,7 +25,13 @@ egmSmearingType = 'Moriond2017_JEC'
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_2017_data_taking
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Global_Tags_for_PdmVMCcampaignPh
 
-if options.config == '18Apr2017':
+if options.config == '17Nov2017':
+    options.isData = True
+    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
+elif options.config == 'Fall17':
+    options.globaltag = '94X_mc2017_realistic_v14'
+    jetRecorrection = True
+elif options.config == '18Apr2017':
     options.isData = True
     options.globaltag = '80X_dataRun2_2016LegacyRepro_v4'
 elif options.config == '03Feb2017':

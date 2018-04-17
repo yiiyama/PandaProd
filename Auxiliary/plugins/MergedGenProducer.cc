@@ -6,6 +6,7 @@
 
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+#include "DataFormats/Candidate/interface/OverlapChecker.h"
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -57,19 +58,20 @@ void MergedGenProducer::produce(edm::Event& event, const edm::EventSetup& setup)
   // Also map pointers in the original pruned collection to their index in the vector.
   // This index will be the same in the merged collection.
   std::map<reco::Candidate const*, std::size_t> pruned_idx_map;
-
+  OverlapChecker overlap;
   for (unsigned int i = 0; i < pruned_handle->size(); ++i) {
     reco::GenParticle const& pr = pruned_handle->at(i);
     pruned_idx_map[&pr] = i;
     if (pr.status() != 1) continue;
 
     unsigned found_matches = 0;
-    float threshold = 0.005 * pr.pt(); // 10 bit precision -> 3 decimal places
+    //float threshold = 0.005 * pr.pt(); // 10 bit precision -> 3 decimal places
     for (unsigned j = 0; j < packed_handle->size(); ++j) {
       pat::PackedGenParticle const& pk = packed_handle->at(j);
       if (pr.pdgId() != pk.pdgId()  
-          || fabs(pk.pt() - pr.pt()) > threshold
-          || deltaR(pk.eta(), pk.phi(), pr.eta(), pr.phi()) > 0.0005) // sqrt( (24/65k)^2 + (4pi/65k)^2 )
+          || !overlap(pr,pk) )
+          //|| fabs(pk.pt() - pr.pt()) > threshold
+          //|| deltaR(pk.eta(), pk.phi(), pr.eta(), pr.phi()) > 0.0005) // sqrt( (24/65k)^2 + (4pi/65k)^2 )
         continue;
       ++found_matches;
       st1_dup_map[&pk] = &pr;

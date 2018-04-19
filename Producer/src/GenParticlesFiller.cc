@@ -1,4 +1,5 @@
 #include "../interface/GenParticlesFiller.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -163,6 +164,7 @@ struct PNodeWithPtr : public PNode {
     outParticle.parent.idx() = parentIdx;
 
     _map.add(candPtr, outParticle);
+    //edm::LogWarning("fillPanda") << candPtr.id() << "\n"; 
     if (replacedCandPtr.isNonnull())
       _map.add(replacedCandPtr, outParticle);
 

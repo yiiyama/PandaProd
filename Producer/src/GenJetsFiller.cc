@@ -1,4 +1,5 @@
 #include "../interface/GenJetsFiller.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 GenJetsFiller::GenJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
@@ -80,6 +81,8 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   std::vector<edm::Ptr<reco::GenJet>> ptrList;
 
   unsigned iJet(-1);
+  jetBHadrons.clear();
+  jetCHadrons.clear();
   for (auto& inJet : inJets) {
     ++iJet;
     if (inJet.pt() < minPt_)
@@ -93,7 +96,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
 
     auto& flavor(inFlavor[edm::Ptr<reco::Jet>(ptr)]);
     
-    for (unsigned genBHad=0; genBHad<genBHadJetIndex->size(); genBHad++) {
+    if (genBHadJetIndex) for (unsigned genBHad=0; genBHad<genBHadJetIndex->size(); genBHad++) {
       unsigned jetIndex = genBHadJetIndex->at(genBHad);
       unsigned hadIndex = genBHadIndex->at(genBHad);
       const reco::GenParticle* genHadron=0; // This will hold a pointer to the (duplicated) gen particle hadron mother
@@ -101,7 +104,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       // Find the corresponding pointer in the true gen particle collection
       if(genHadron) for (unsigned iP(0); iP != inParticles.size(); ++iP) {
         auto& inCand(inParticles.at(iP));
-        auto&& inParticlesPtr(inParticles.ptrAt(iP));
+        edm::Ptr<reco::Candidate> inParticlesPtr(inParticles.ptrAt(iP));
         if (
           inCand.pdgId()              == genHadron->pdgId() &&
           inCand.statusFlags().flags_ == genHadron->statusFlags().flags_ &&
@@ -112,7 +115,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         }
       }
     }
-    for (unsigned genCHad=0; genCHad<genCHadJetIndex->size(); genCHad++) {
+    if (genCHadJetIndex) for (unsigned genCHad=0; genCHad<genCHadJetIndex->size(); genCHad++) {
       unsigned jetIndex = genCHadJetIndex->at(genCHad);
       unsigned hadIndex = genCHadIndex->at(genCHad);
       const reco::GenParticle* genHadron=0; // This will hold a pointer to the (duplicated) gen particle hadron mother
@@ -120,7 +123,7 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       // Find the corresponding pointer in the true gen particle collection
       if(genHadron) for (unsigned iP(0); iP != inParticles.size(); ++iP) {
         auto& inCand(inParticles.at(iP));
-        auto&& inParticlesPtr(inParticles.ptrAt(iP));
+        edm::Ptr<reco::Candidate> inParticlesPtr(inParticles.ptrAt(iP));
         if (
           inCand.pdgId()              == genHadron->pdgId() &&
           inCand.statusFlags().flags_ == genHadron->statusFlags().flags_ &&
@@ -159,9 +162,9 @@ void
 GenJetsFiller::setRefs(ObjectMapStore const& _objectMaps)
 {
   auto& genJetMap(objectMap_->get<reco::GenJet, panda::GenJet>().fwdMap);
-  auto& genParticleMap(objectMap_->get<reco::Candidate, panda::GenParticle>().fwdMap);
+  auto& genParticleMap(_objectMaps.at("genParticles").get<reco::Candidate, panda::GenParticle>().fwdMap);
   // For each gen jet
-  for (auto const& jetBHadronMapping : jetBHadrons) {
+  if (jetBHadrons.size()>0) for (auto const& jetBHadronMapping : jetBHadrons) {
     // Dig up the corresponding reference to the panda::GenJet
     auto matchedJetPtr = jetBHadronMapping.first;
     auto&& genJetLink(genJetMap.find(matchedJetPtr));
@@ -169,11 +172,13 @@ GenJetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     //auto &inGenJet(*genJetLink->first);
     auto &outGenJet(*genJetLink->second);
     
-    const std::vector<edm::Ptr<reco::GenParticle> > *matchedBHadrons = &jetBHadronMapping.second;
+    const std::vector<edm::Ptr<reco::Candidate> > *matchedBHadrons = &jetBHadronMapping.second;
     for (unsigned iHad=0; iHad<matchedBHadrons->size(); iHad++) {
       auto&& outGenParticleLink(genParticleMap.find(matchedBHadrons->at(iHad)));
       if(outGenParticleLink != genParticleMap.end())
         outGenJet.matchedBHadrons.addRef(outGenParticleLink->second);
+      else
+        edm::LogWarning("GenJetsFiller") << "Could not add reference to gen particle (iHad="<<iHad<<") looking in map with size "<<genParticleMap.size()<<"\n";
     }
         
   }

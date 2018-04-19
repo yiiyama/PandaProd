@@ -53,7 +53,7 @@ class GenJetsFiller : public FillerBase {
 
   double minPt_{15.};
 
-  std::map< edm::Ptr<reco::GenJet>, std::vector< edm::Ptr<reco::GenParticle> > > jetBHadrons, jetCHadrons;
+  std::map< edm::Ptr<reco::GenJet>, std::vector< edm::Ptr<reco::Candidate> > > jetBHadrons, jetCHadrons;
 };
 
 #endif

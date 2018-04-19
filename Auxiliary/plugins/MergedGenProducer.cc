@@ -68,7 +68,6 @@ void MergedGenProducer::produce(edm::Event& event, const edm::EventSetup& setup)
       pat::PackedGenParticle const& pk = packed_handle->at(j);
       pat::PackedGenParticle packedPruned(pr);
       PackedGenParticleExposer exposedPacked(pk), exposedPackedPruned(packedPruned);
-      continue; //testing 
       if (
         pr.pdgId() != pk.pdgId()  
         || exposedPacked.packedPt()!=exposedPackedPruned.packedPt()

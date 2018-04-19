@@ -168,15 +168,28 @@ GenJetsFiller::setRefs(ObjectMapStore const& _objectMaps)
     // Dig up the corresponding reference to the panda::GenJet
     auto matchedJetPtr = jetBHadronMapping.first;
     auto&& genJetLink(genJetMap.find(matchedJetPtr));
-    assert(genJetLink != genJetMap.end());
     //auto &inGenJet(*genJetLink->first);
-    auto &outGenJet(*genJetLink->second);
-    
+    auto &outGenJet(*genJetLink->second);    
     const std::vector<edm::Ptr<reco::Candidate> > *matchedBHadrons = &jetBHadronMapping.second;
     for (unsigned iHad=0; iHad<matchedBHadrons->size(); iHad++) {
       auto&& outGenParticleLink(genParticleMap.find(matchedBHadrons->at(iHad)));
       if(outGenParticleLink != genParticleMap.end())
         outGenJet.matchedBHadrons.addRef(outGenParticleLink->second);
+      else
+        edm::LogWarning("GenJetsFiller") << "Could not add reference to gen particle (iHad="<<iHad<<") looking in map with size "<<genParticleMap.size()<<"\n";
+    }
+  }
+  if (jetCHadrons.size()>0) for (auto const& jetCHadronMapping : jetCHadrons) {
+    // Dig up the corresponding reference to the panda::GenJet
+    auto matchedJetPtr = jetCHadronMapping.first;
+    auto&& genJetLink(genJetMap.find(matchedJetPtr));
+    //auto &inGenJet(*genJetLink->first);
+    auto &outGenJet(*genJetLink->second);
+    const std::vector<edm::Ptr<reco::Candidate> > *matchedCHadrons = &jetCHadronMapping.second;
+    for (unsigned iHad=0; iHad<matchedCHadrons->size(); iHad++) {
+      auto&& outGenParticleLink(genParticleMap.find(matchedCHadrons->at(iHad)));
+      if(outGenParticleLink != genParticleMap.end())
+        outGenJet.matchedCHadrons.addRef(outGenParticleLink->second);
       else
         edm::LogWarning("GenJetsFiller") << "Could not add reference to gen particle (iHad="<<iHad<<") looking in map with size "<<genParticleMap.size()<<"\n";
     }

@@ -301,6 +301,20 @@ ak8PuppiSequence = makeFatJets(
     label = 'AK8PFPuppi',
     candidates = 'puppi'
 )
+from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
+updateJetCollection(
+   process,
+   jetSource = cms.InputTag('packedPatJetsAK8PFPuppi'),
+   pvSource = cms.InputTag('offlineSlimmedPrimaryVertices'),
+   svSource = cms.InputTag('slimmedSecondaryVertices'),
+   rParam = 0.8,
+   jetCorrections = ('AK8PFchs', cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute']), 'None'),
+   btagDiscriminators = [
+      'pfBoostedDoubleSecondaryVertexAK8BJetTags',
+      'pfDeepDoubleBJetTags:probQ', 
+      'pfDeepDoubleBJetTags:probH', 
+      ]
+)
 
 ca15PuppiSequence = makeFatJets(
     process,

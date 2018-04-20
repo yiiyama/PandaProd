@@ -6,6 +6,7 @@ CWD=`pwd`
 SRC=$CMSSW_BASE/src
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
+
 # Cut-based electron and photon ID
 $INSTALL lsoffi CMSSW_9_4_0_pre3_TnP RecoEgamma/ElectronIdentification RecoEgamma/PhotonIdentification
 
@@ -33,3 +34,9 @@ cd $CWD
 
 # Jet & MET reclustering (maybe not strictly needed in our current prod.py because we don't recluster)
 $INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils
+
+# Deep double B tagger from FNAL
+$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
+git clone https://github.com/jmduarte/RecoBTag-Combined.git RecoBTag/Combined/data  -b deepdoubleb_v0
+#git cms-checkdeps -a
+

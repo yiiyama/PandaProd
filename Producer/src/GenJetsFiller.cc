@@ -137,10 +137,8 @@ GenJetsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     
     outJet.pdgid = flavor.getHadronFlavour();
     outJet.partonFlavor = flavor.getPartonFlavour();
-    //outJet.numB = flavor.getbHadrons().size();
-    //outJet.numC = flavor.getcHadrons().size();
-    outJet.numB = jetBHadrons[ptr].size();
-    outJet.numC = jetCHadrons[ptr].size();
+    outJet.numB = flavor.getbHadrons().size();
+    outJet.numC = flavor.getcHadrons().size();
 
     ptrList.push_back(ptr);
   }

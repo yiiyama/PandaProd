@@ -19,6 +19,7 @@ class GenJetsFiller : public FillerBase {
   typedef edm::View<reco::GenJet> GenJetView;
   typedef edm::ValueMap<int> IntMap;
   typedef edm::View<reco::GenParticle> GenParticleView;
+  typedef edm::Ptr<reco::GenJet> GenJetPtr;
 
   NamedToken<GenParticleView> genParticlesToken_;
   NamedToken<GenJetView> genJetsToken_;
@@ -53,7 +54,8 @@ class GenJetsFiller : public FillerBase {
 
   double minPt_{15.};
 
-  std::map< edm::Ptr<reco::GenJet>, std::vector< edm::Ptr<reco::Candidate> > > jetBHadrons, jetCHadrons;
+  std::map<GenJetPtr, std::vector<reco::CandidatePtr>> jetBHadrons_;
+  std::map<GenJetPtr, std::vector<reco::CandidatePtr>> jetCHadrons_;
 };
 
 #endif

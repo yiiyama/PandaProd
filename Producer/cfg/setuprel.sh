@@ -38,6 +38,10 @@ $INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils
 # Deep double B tagger from FNAL
 #$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
 $INSTALL DylanHsu double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
-git clone https://github.com/jmduarte/RecoBTag-Combined.git RecoBTag/Combined/data  -b deepdoubleb_v0
-#git cms-checkdeps -a
 
+# clone to a temp area and move the contents to avoid including .git
+TEMP=$(mktemp -d)
+git clone https://github.com/jmduarte/RecoBTag-Combined.git $TEMP/data -b deepdoubleb_v0
+mkdir -p $SRC/RecoBTag/Combined/data
+mv $TEMP/data/DeepDoubleB $SRC/RecoBTag/Combined/data/
+rm -rf $TEMP

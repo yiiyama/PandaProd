@@ -1,4 +1,5 @@
 #include "../interface/GenParticlesFiller.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -163,6 +164,7 @@ struct PNodeWithPtr : public PNode {
     outParticle.parent.idx() = parentIdx;
 
     _map.add(candPtr, outParticle);
+    //edm::LogWarning("fillPanda") << candPtr.id() << "\n"; 
     if (replacedCandPtr.isNonnull())
       _map.add(replacedCandPtr, outParticle);
 
@@ -255,7 +257,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   auto& inParticles(getProduct_(_inEvent, genParticlesToken_));
   // this is miniaod-specific - modify if we need to run on AOD for some reason
   PackedGenParticleView const* inFinalStates(0);
-  if (!finalStateParticlesToken_.second.isUninitialized())
+  if (false && !finalStateParticlesToken_.second.isUninitialized())
     inFinalStates = &getProduct_(_inEvent, finalStateParticlesToken_);
 
   std::map<reco::CandidatePtr, PNodeWithPtr*> nodeMap;

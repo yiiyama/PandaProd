@@ -11,6 +11,7 @@ from PandaProd.Producer.utils.addattr import AddAttr
 from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
 from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
 
+
 pfSource = 'packedPFCandidates'
 pvSource = 'offlineSlimmedPrimaryVertices'
 electrons = 'slimmedElectrons'
@@ -18,6 +19,7 @@ muons = 'slimmedMuons'
 taus = 'slimmedTaus'
 photons = 'slimmedPhotons'
 genJets = 'slimmedGenJets'
+genParticleCollection = 'prunedGenParticles'
 
 def makeJets(process, isData, label, candidates, suffix):
     """
@@ -81,6 +83,7 @@ def makeJets(process, isData, label, candidates, suffix):
                 matched = genJets
             )
         )
+
 
     allPatJets = addattr('patJets',
         patJets.clone(

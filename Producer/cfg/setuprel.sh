@@ -6,12 +6,12 @@ CWD=`pwd`
 SRC=$CMSSW_BASE/src
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
+
 # Cut-based electron and photon ID
 $INSTALL lsoffi CMSSW_9_4_0_pre3_TnP RecoEgamma/ElectronIdentification RecoEgamma/PhotonIdentification
 
 # MVA electron ID
 # RecoEgamma/ElectronIdentification overlaps with the line above but most of the files added above are not contained in this branch and thus will not be overwritten
-# Using -x exclusion list to avoid overwriting lsoffi - so dumb!
 $INSTALL guitargeek ElectronID_MVA2017_940pre3 RecoEgamma/EgammaTools RecoEgamma/ElectronIdentification -x RecoEgamma/ElectronIdentification/python/Identification/cutBasedElectronID_tools.py
 
 # MVA weights for ID
@@ -34,3 +34,10 @@ cd $CWD
 
 # Jet & MET reclustering (maybe not strictly needed in our current prod.py because we don't recluster)
 $INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils
+
+# Deep double B tagger from FNAL
+#$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
+$INSTALL DylanHsu double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
+git clone https://github.com/jmduarte/RecoBTag-Combined.git RecoBTag/Combined/data  -b deepdoubleb_v0
+#git cms-checkdeps -a
+

@@ -3,6 +3,8 @@ import RecoBTag.Configuration.RecoBTag_cff as btag
 import RecoBTag.CTagging.RecoCTagging_cff as ctag
 import RecoVertex.AdaptiveVertexFinder.inclusiveVertexing_cff as vertexing
 from RecoBTag.SecondaryVertex.trackSelection_cff import trackSelectionBlock
+import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
+from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import _patJets
 
 from PandaProd.Producer.utils.addattr import AddAttr
 
@@ -303,7 +305,7 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', e
     return sequence
 
 
-def setupDoubleBTag(process, jetCollection, subjetCollection, suffix, vsuffix, algo, addedTagInfos = []):
+def setupDoubleBTag(process, isData, jetCollection, jecLabel, subjetCollection, suffix, vsuffix, algo, addedTagInfos = []):
     if algo == 'AK8':
         deltaR = 0.8
     elif algo == 'CA15':
@@ -345,7 +347,7 @@ def setupDoubleBTag(process, jetCollection, subjetCollection, suffix, vsuffix, a
             )
 
         setattr(process, boostedDoubleSVTagInfosName, boostedDoubleSVTagInfos)
-
+    
     boostedDoubleSVBJetTags = cms.EDProducer('BoostedDoubleBJetTagProducer',
         jets = jetCollection,
         subjets = subjetCollection,
@@ -355,12 +357,28 @@ def setupDoubleBTag(process, jetCollection, subjetCollection, suffix, vsuffix, a
         weights = cms.FileInPath('PandaProd/Utilities/data/BoostedSVDoubleCA15_withSubjet_v4.weights.xml')
     )
     setattr(process, 'pfBoostedDoubleSVBJetTags' + suffix, boostedDoubleSVBJetTags)
+    
+    boostedDeepDoubleBTagInfosName = 'pfDeepDoubleBJetTagInfos' + suffix
+    boostedDeepDoubleBTagInfos = btag.pfDeepDoubleBTagInfos.clone(
+      jets = jetCollection,
+      vertices = cms.InputTag('offlineSlimmedPrimaryVertices'),
+      secondary_vertices = cms.InputTag('slimmedSecondaryVertices'),
+      shallow_tag_infos = cms.InputTag(boostedDoubleSVTagInfosName),
+    )   
+    setattr(process, boostedDeepDoubleBTagInfosName, boostedDeepDoubleBTagInfos)
+
+    boostedDeepDoubleBTags = btag.pfDeepDoubleBJetTags.clone(
+        src = cms.InputTag(boostedDeepDoubleBTagInfosName)
+    )
+    setattr(process, 'pfDeepDoubleBJetTags'+suffix, boostedDeepDoubleBTags)
 
     sequence = cms.Sequence(
         impactParameterTagInfos +
         inclusiveSecondaryVertexFinderTagInfos +
         boostedDoubleSVTagInfos +
-        boostedDoubleSVBJetTags
+        boostedDoubleSVBJetTags +
+        boostedDeepDoubleBTagInfos + 
+        boostedDeepDoubleBTags
     )
 
     return sequence

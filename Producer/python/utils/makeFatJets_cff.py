@@ -8,6 +8,7 @@ from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import _patJets
 import PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi as jetSelector_cfi
 import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
 from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
+#from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
 
 from PandaProd.Producer.utils.addattr import AddAttr
 from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag, setupDoubleBTag
@@ -242,7 +243,9 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
 
     sequence += setupDoubleBTag(
         process,
+        isData,
         pfJets,
+        jecLabel,
         subjets,
         label,
         '',
@@ -292,7 +295,11 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     )
     patJetsMod = addattr.last
     patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
-    patJetsMod.discriminatorSources = ['pfBoostedDoubleSVBJetTags' + label]
+    patJetsMod.discriminatorSources = [
+        cms.InputTag('pfBoostedDoubleSVBJetTags' + label),
+        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probQ'),
+        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probH')
+    ]
     if not isData:
         patJetsMod.genJetMatch = genJetMatch
 

@@ -7,7 +7,6 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 
@@ -20,23 +19,6 @@ MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
-
-  if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-      std::string name(panda::Muon::TriggerObjectName[iT]); // "f<trigger filter name>"
-      auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
-    }
-  }
-}
-
-void
-MuonsFiller::addOutput(TFile& _outputFile)
-{
-  TDirectory::TContext context(&_outputFile);
-  auto* t(panda::utils::makeDocTree("MuonTriggerObject", panda::Muon::TriggerObjectName, panda::Muon::nTriggerObjects));
-  t->Write();
-  delete t;
 }
 
 void
@@ -46,8 +28,6 @@ MuonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils:
 
   if (isRealData_)
     _eventBranches.emplace_back("!muons.matchedGen_");
-  if (!useTrigger_)
-    _eventBranches.emplace_back("!muons.triggerMatch");
 }
 
 void
@@ -273,43 +253,6 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       auto& outMuon(*link.first);
       outMuon.matchedGen.setRef(genMap.at(genPtr));
-    }
-  }
-
-  if (useTrigger_) {
-    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
-
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Muon::nTriggerObjects];
-
-    // loop over all trigger objects
-    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
-      // loop over the trigger filters we are interested in
-      for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-        // each triggerObjectNames_[] can have multiple filters
-        for (auto& name : triggerObjectNames_[iT]) {
-          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
-          if (nItr != mapEntry.second->end()) {
-            triggerObjects[iT].push_back(mapEntry.first.get());
-            break;
-          }
-        }
-      }
-    }
-
-    auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>().fwdMap);
-
-    for (auto& link : muMuMap) { // edm -> panda
-      auto& inMuon(*link.first);
-      auto& outMuon(*link.second);
-
-      for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-        for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(*obj, inMuon) < 0.3) {
-            outMuon.triggerMatch[iT] = true;
-            break;
-          }
-        }
-      }
     }
   }
 }

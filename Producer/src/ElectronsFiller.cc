@@ -1,6 +1,5 @@
 #include "../interface/ElectronsFiller.h"
 
-#include "FWCore/Common/interface/TriggerNames.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
@@ -9,7 +8,6 @@
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/Conversion.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/HepMCCandidate/interface/GenStatusFlags.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
@@ -54,23 +52,6 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
-
-  if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
-      std::string name(panda::Electron::TriggerObjectName[iT]); // "f<trigger filter name>"
-      auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
-    }
-  }
-}
-
-void
-ElectronsFiller::addOutput(TFile& _outputFile)
-{
-  TDirectory::TContext context(&_outputFile);
-  auto* t(panda::utils::makeDocTree("ElectronTriggerObject", panda::Electron::TriggerObjectName, panda::Electron::nTriggerObjects));
-  t->Write();
-  delete t;
 }
 
 void
@@ -80,8 +61,6 @@ ElectronsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::ut
 
   if (isRealData_)
     _eventBranches.emplace_back("!electrons.matchedGen_");
-  if (!useTrigger_)
-    _eventBranches.emplace_back("!electrons.triggerMatch");
 }
 
 void
@@ -378,43 +357,6 @@ ElectronsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       auto& outElectron(*link.first);
       outElectron.matchedGen.setRef(genMap.at(genPtr));
-    }
-  }
-
-  if (useTrigger_) {
-    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
-
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Electron::nTriggerObjects];
-
-    // loop over all trigger objects
-    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
-      // loop over the trigger filters we are interested in
-      for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
-        // each triggerObjectNames_[] can have multiple filters
-        for (auto& name : triggerObjectNames_[iT]) {
-          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
-          if (nItr != mapEntry.second->end()) {
-            triggerObjects[iT].push_back(mapEntry.first.get());
-            break;
-          }
-        }
-      }
-    }
-
-    auto& eleEleMap(objectMap_->get<reco::GsfElectron, panda::Electron>().fwdMap);
-
-    for (auto& link : eleEleMap) { // edm -> panda
-      auto& inElectron(*link.first);
-      auto& outElectron(*link.second);
-
-      for (unsigned iT(0); iT != panda::Electron::nTriggerObjects; ++iT) {
-        for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(*obj, inElectron) < 0.3) {
-            outElectron.triggerMatch[iT] = true;
-            break;
-          }
-        }
-      }
     }
   }
 }

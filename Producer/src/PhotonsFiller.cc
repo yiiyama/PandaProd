@@ -1,6 +1,5 @@
 #include "../interface/PhotonsFiller.h"
 
-#include "FWCore/Common/interface/TriggerNames.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
@@ -8,7 +7,6 @@
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Photon.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
@@ -34,16 +32,6 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(phIsoToken_, _cfg, _coll, "phIso");
   getToken_(chIsoMaxToken_, _cfg, _coll, "chIsoMax");
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
-  if (!isRealData_)
-    getToken_(genParticlesToken_, _cfg, _coll, "common", "finalStateParticles");
-
-  if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
-      std::string name(panda::Photon::TriggerObjectName[iT]); // "f<trigger filter name>"
-      auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
-    }
-  }
 
   chIsoLeakage_[0].Compile(getParameter_<std::string>(_cfg, "chIsoLeakage.EB", "").c_str());
   chIsoLeakage_[1].Compile(getParameter_<std::string>(_cfg, "chIsoLeakage.EE", "").c_str());
@@ -59,18 +47,7 @@ PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
   _eventBranches.emplace_back("photons");
 
   if (isRealData_)
-    _eventBranches += {"!photons.geniso", "!photons.matchedGen_"};
-  if (!useTrigger_)
-    _eventBranches.emplace_back("!photons.triggerMatch");
-}
-
-void
-PhotonsFiller::addOutput(TFile& _outputFile)
-{
-  TDirectory::TContext context(&_outputFile);
-  TTree* t(panda::utils::makeDocTree("PhotonTriggerObject", panda::Photon::TriggerObjectName, panda::Photon::nTriggerObjects));
-  t->Write();
-  delete t;
+    _eventBranches += {"!photons.matchedGen_"};
 }
 
 void
@@ -90,10 +67,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& phIso(getProduct_(_inEvent, phIsoToken_));
   auto& chIsoMax(getProduct_(_inEvent, chIsoMaxToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
-  // final state gen particles
-  pat::PackedGenParticleCollection const* genParticles(0);
-  if (!isRealData_)
-    genParticles = &getProduct_(_inEvent, genParticlesToken_);
 
   auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
       EcalRecHitCollection const* hits(0);
@@ -276,44 +249,6 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         outPhoton.timeSpan = dt;
     }
 
-    if (!isRealData_) {
-      // compute genIso
-
-      if (isPAT) {
-        auto& patPhoton(static_cast<pat::Photon const&>(inPhoton));
-
-        auto* gen(patPhoton.genPhoton());
-        if (gen && gen->mother()) {
-          auto* mother(gen->mother());
-          
-          // look for the final state particle that matches gen
-          pat::PackedGenParticle const* matched(0);
-
-          for (auto& fs : *genParticles) {
-            if (fs.mother(0) != mother)
-              continue;
-
-            if (fs.pdgId() != gen->pdgId())
-              continue;
-
-            // arbitrary cuts..
-            if (reco::deltaR(fs, *gen) < 0.01 && std::abs(fs.pt() - gen->pt()) < 0.1) {
-              matched = &fs;
-              break;
-            }
-          }
-
-          if (matched) {
-            for (auto& fs : *genParticles) {
-              if (reco::deltaR(fs, *matched) < 0.3) {
-                outPhoton.genIso += fs.pt();
-              }
-            }
-          }
-        }
-      }      
-    }
-
     reco::CandidatePtr matchedPF(findPF(inPhoton));
 
     if (matchedPF.isNonnull())
@@ -407,43 +342,6 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       auto& outPhoton(*link.first);
       outPhoton.matchedGen.setRef(genMap.at(genPtr));
-    }
-  }
-
-  if (useTrigger_) {
-    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
-
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Photon::nTriggerObjects];
-
-    // loop over all trigger objects
-    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
-      // loop over the trigger filters we are interested in
-      for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
-        // each triggerObjectNames_[] can have multiple filters
-        for (auto& name : triggerObjectNames_[iT]) {
-          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
-          if (nItr != mapEntry.second->end()) {
-            triggerObjects[iT].push_back(mapEntry.first.get());
-            break;
-          }
-        }
-      }
-    }
-
-    auto& phoPhoMap(objectMap_->get<reco::Photon, panda::Photon>().fwdMap);
-
-    for (auto& link : phoPhoMap) { // edm -> panda
-      auto& inPhoton(*link.first);
-      auto& outPhoton(*link.second);
-
-      for (unsigned iT(0); iT != panda::Photon::nTriggerObjects; ++iT) {
-        for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(*obj, inPhoton) < 0.3) {
-            outPhoton.triggerMatch[iT] = true;
-            break;
-          }
-        }
-      }
     }
   }
 }

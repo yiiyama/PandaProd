@@ -13,7 +13,6 @@ class MuonsFiller : public FillerBase {
   MuonsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~MuonsFiller() {}
 
-  void addOutput(TFile&) override;
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
@@ -24,7 +23,6 @@ class MuonsFiller : public FillerBase {
   NamedToken<MuonView> muonsToken_;
   NamedToken<reco::VertexCollection> verticesToken_;
 
-  std::set<std::string> triggerObjectNames_[panda::Muon::nTriggerObjects];
   RoccoR rochesterCorrector_;
 };
 

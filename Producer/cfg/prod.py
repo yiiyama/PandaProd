@@ -19,10 +19,10 @@ options.parseArguments()
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
-if options.config == '17Nov2017':
-    # 2017 legacy rereco
+if options.config == '31Mar2018':
+    # re-miniaod of 2017 legacy rereco
     options.isData = True
-    options.globaltag = '94X_dataRun2_ReReco_EOY17_v2'
+    options.globaltag = '94X_dataRun2_ReReco_EOY17_v6'
     options.redojec = True
 elif options.config == 'Fall17':
     options.isData = False

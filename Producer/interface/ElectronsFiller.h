@@ -25,7 +25,6 @@ class ElectronsFiller : public FillerBase {
   ~ElectronsFiller() {}
 
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
-  void addOutput(TFile&) override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
 
@@ -76,8 +75,6 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas phCHIsoEA_;
   EffectiveAreas phNHIsoEA_;
   EffectiveAreas phPhIsoEA_;
-
-  std::set<std::string> triggerObjectNames_[panda::Electron::nTriggerObjects];
 };
 
 #endif

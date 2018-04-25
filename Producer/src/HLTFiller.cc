@@ -42,14 +42,13 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
 
   TString menu(hltConfig_.tableName());
 
-  // _outRun.hlt is not reset at each init() call
-  if (!configChanged) {
-    if (menu != *_outRun.hlt.menu)
-      throw edm::Exception(edm::errors::Configuration, "HLTFiller")
-        << "HLTConfigProvider claims nothing is changed, but the menu name did.";
-
-    return;
-  }
+  // _outRun.hlt is not reset at each init() call, but _outRun itself is reset.
+  // In particular _outRun.hltMenu is set to 0 at each beginRun(), which means
+  // we must load the current menu from menuMap + hltTree even when the configuration
+  // has not changed.
+  if (!configChanged && menu != *_outRun.hlt.menu)
+    throw edm::Exception(edm::errors::Configuration, "HLTFiller")
+      << "HLTConfigProvider claims nothing is changed, but the menu name did.";
 
   *_outRun.hlt.menu = menu;
   auto menuItr(menuMap_.find(menu));
@@ -59,6 +58,8 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
   filterIndices_.clear();
 
   if (menuItr != menuMap_.end()) {
+    // We have processed this menu before. Loading it from the tree.
+
     _outRun.hltMenu = menuItr->second;
     hltTree_->GetEntry(_outRun.hltMenu);
     
@@ -68,6 +69,8 @@ HLTFiller::fillBeginRun(panda::Run& _outRun, edm::Run const& _inRun, edm::EventS
 
     return;
   }
+
+  // First encounter with the menu. Increment the menuMap size.
 
   _outRun.hltMenu = menuMap_.size();
   menuMap_.emplace(menu, _outRun.hltMenu);

@@ -3,6 +3,8 @@ import RecoBTag.Configuration.RecoBTag_cff as btag
 import RecoBTag.CTagging.RecoCTagging_cff as ctag
 import RecoVertex.AdaptiveVertexFinder.inclusiveVertexing_cff as vertexing
 from RecoBTag.SecondaryVertex.trackSelection_cff import trackSelectionBlock
+import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
+from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import _patJets
 
 from PandaProd.Producer.utils.addattr import AddAttr
 
@@ -25,6 +27,7 @@ def initBTag(process, vsuffix, candidates = 'particleFlow', primaryVertex = 'off
         process.load('RecoBTag.SecondaryVertex.secondaryVertex_EventSetup_cff')
         process.load('RecoBTag.Combined.combinedMVA_EventSetup_cff')
         process.load('RecoBTag.SoftLepton.softLepton_EventSetup_cff')
+        process.load('RecoBTag.Combined.deepFlavour_cff')
 
     vertexingConfig[vsuffix] = (candidates, primaryVertex)
 
@@ -114,7 +117,7 @@ def makeIvfTagInfos(ipTagInfosName, vsuffix, deltaR = 0.3):
 # Give the list of btag discriminators (see below for names) in tags to run only a part of the full menu.
 # vsuffix is the suffix given to initBTag that defines the secondary vertexing sequence.
 # The optional argument addedTagInfos can be used to retrieve back the TagInfo modules added in order to compute the specified btag discriminators.
-def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electrons = 'gedGsfElectrons', tags = [], addedTagInfos = []):
+def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'slimmedMuons', electrons = 'slimmedElectrons', tags = [], addedTagInfos = []):
     """
     Configure the BTag sequence for the given jet collection.
     The suffix will be appended to the CMSSW module names to
@@ -127,6 +130,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     ivfTagInfosName = ivfTagInfosNameBase + suffix
     smTagInfosName = 'softPFMuonsTagInfos' + suffix
     seTagInfosName = 'softPFElectronsTagInfos' + suffix
+    deepCSVInfosName = 'pfDeepCSVTagInfos' + suffix
+    deepCMVAInfosName = 'pfDeepCMVATagInfos' + suffix
     # ctag info
     ivfcvslTagInfosName = 'pfInclusiveSecondaryVertexFinderCvsLTagInfos' + suffix
 
@@ -149,6 +154,15 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     inclusiveSecondaryVertexFinderCvsLTagInfos = btag.pfInclusiveSecondaryVertexFinderCvsLTagInfos.clone(
         extSVCollection = 'inclusiveCandidateSecondaryVerticesCvsL' + vsuffix,
         trackIPTagInfos = ipTagInfosName
+    )
+    pfDeepCSVTagInfos = btag.pfDeepCSVTagInfos.clone(
+        svTagInfos = ivfTagInfosName,
+    )
+    pfDeepCMVATagInfos = btag.pfDeepCMVATagInfos.clone(
+        deepNNTagInfos = deepCSVInfosName,
+        ipInfoSrc = ipTagInfosName,
+        elInfoSrc = seTagInfosName,
+        muInfoSrc = smTagInfosName
     )
 
     # impact parameter b-tags
@@ -203,6 +217,17 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ]
     )
 
+    # deep flavor
+    pfDeepCSVJetTags = btag.pfDeepCSVJetTags.clone(
+        src = cms.InputTag(deepCSVInfosName)
+    )
+    pfDeepCMVAJetTags = btag.pfDeepCMVAJetTags.clone(
+        src = cms.InputTag(deepCMVAInfosName)
+    )
+
+    ## TODO check - is this right?
+    #pfDeepCSVJetTags.toAdd.probcc = 'probcc'
+
     # ctags
     combinedCvsLJetTags = ctag.pfCombinedCvsLJetTags.clone(
         tagInfos = [
@@ -230,6 +255,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         'pfCombinedSecondaryVertexV2BJetTags': (combinedSecondaryVertexV2BJetTags, [ipTagInfosName, svTagInfosName]),
         'pfSimpleInclusiveSecondaryVertexHighEffBJetTags': (simpleInclusiveSecondaryVertexHighEffBJetTags, [ipTagInfosName, ivfTagInfosName]),
         'pfCombinedInclusiveSecondaryVertexV2BJetTags': (combinedInclusiveSecondaryVertexV2BJetTags, [ipTagInfosName, ivfTagInfosName]),
+        'pfDeepCSVJetTags': (pfDeepCSVJetTags, [deepCSVInfosName]),
+        'pfDeepCMVAJetTags': (pfDeepCMVAJetTags, [deepCMVAInfosName]),
         'softPFMuonBJetTags': (softPFMuonBJetTags, [smTagInfosName]),
         'softPFElectronBJetTags': (softPFElectronBJetTags, [seTagInfosName]),
         'pfCombinedMVAV2BJetTags': (combinedMVAV2BJetTags, [ipTagInfosName, svTagInfosName, ivfTagInfosName, smTagInfosName, seTagInfosName]),
@@ -244,6 +271,8 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
         ivfcvslTagInfosName: (inclusiveSecondaryVertexFinderCvsLTagInfos, [ipTagInfosName]),
         smTagInfosName: (softPFMuonsTagInfos, []),
         seTagInfosName: (softPFElectronsTagInfos, []),
+        deepCSVInfosName: (pfDeepCSVTagInfos, [ivfTagInfosName]),
+        deepCMVAInfosName: (pfDeepCMVATagInfos, [ipTagInfosName, deepCSVInfosName, seTagInfosName, smTagInfosName])
     }
 
     def addTagInfo(name, sequence):
@@ -276,10 +305,10 @@ def setupBTag(process, jetCollection, suffix, vsuffix, muons = 'muons', electron
     return sequence
 
 
-def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos = []):
-    if algo == 'ak8':
+def setupDoubleBTag(process, isData, jetCollection, jecLabel, subjetCollection, suffix, vsuffix, algo, addedTagInfos = []):
+    if algo == 'AK8':
         deltaR = 0.8
-    elif algo == 'ca15':
+    elif algo == 'CA15':
         deltaR = 1.5
     else:
         raise RuntimeError('Unknown algo ' + algo)
@@ -308,7 +337,7 @@ def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos
     try:
         boostedDoubleSVTagInfos = getattr(process, boostedDoubleSVTagInfosName)
     except AttributeError:
-        if algo == 'ak8':
+        if algo == 'AK8':
             boostedDoubleSVTagInfos = btag.pfBoostedDoubleSVAK8TagInfos.clone(
                 svTagInfos = ivfTagInfosName
             )
@@ -318,11 +347,38 @@ def setupDoubleBTag(process, jetCollection, suffix, vsuffix, algo, addedTagInfos
             )
 
         setattr(process, boostedDoubleSVTagInfosName, boostedDoubleSVTagInfos)
+    
+    boostedDoubleSVBJetTags = cms.EDProducer('BoostedDoubleBJetTagProducer',
+        jets = jetCollection,
+        subjets = subjetCollection,
+        tagInfos = cms.InputTag(boostedDoubleSVTagInfosName),
+        subjetBtag = cms.InputTag('pfCombinedInclusiveSecondaryVertexV2BJetTags' + suffix + 'Subjets'),
+        subjetMatchRadius = cms.double(deltaR),
+        weights = cms.FileInPath('PandaProd/Utilities/data/BoostedSVDoubleCA15_withSubjet_v4.weights.xml')
+    )
+    setattr(process, 'pfBoostedDoubleSVBJetTags' + suffix, boostedDoubleSVBJetTags)
+    
+    boostedDeepDoubleBTagInfosName = 'pfDeepDoubleBJetTagInfos' + suffix
+    boostedDeepDoubleBTagInfos = btag.pfDeepDoubleBTagInfos.clone(
+      jets = jetCollection,
+      vertices = cms.InputTag('offlineSlimmedPrimaryVertices'),
+      secondary_vertices = cms.InputTag('slimmedSecondaryVertices'),
+      shallow_tag_infos = cms.InputTag(boostedDoubleSVTagInfosName),
+    )   
+    setattr(process, boostedDeepDoubleBTagInfosName, boostedDeepDoubleBTagInfos)
+
+    boostedDeepDoubleBTags = btag.pfDeepDoubleBJetTags.clone(
+        src = cms.InputTag(boostedDeepDoubleBTagInfosName)
+    )
+    setattr(process, 'pfDeepDoubleBJetTags'+suffix, boostedDeepDoubleBTags)
 
     sequence = cms.Sequence(
         impactParameterTagInfos +
         inclusiveSecondaryVertexFinderTagInfos +
-        boostedDoubleSVTagInfos
+        boostedDoubleSVTagInfos +
+        boostedDoubleSVBJetTags +
+        boostedDeepDoubleBTagInfos + 
+        boostedDeepDoubleBTags
     )
 
     return sequence

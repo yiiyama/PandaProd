@@ -1,35 +1,24 @@
 #include "../interface/MuonsFiller.h"
 
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/RandomNumberGenerator.h"
+
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
-#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 
+#include "CLHEP/Random/RandomEngine.h"
+#include "CLHEP/Random/RandFlat.h"
+
 MuonsFiller::MuonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
-  FillerBase(_name, _cfg)
+  FillerBase(_name, _cfg),
+  rochesterCorrector_(edm::FileInPath(getParameter_<std::string>(_cfg, "rochesterCorrectionSource")).fullPath())
 {
   getToken_(muonsToken_, _cfg, _coll, "muons");
   getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
-
-  if (useTrigger_) {
-    for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-      std::string name(panda::Muon::TriggerObjectName[iT]); // "f<trigger filter name>"
-      auto filters(getParameter_<VString>(_cfg, "triggerObjects." + name.substr(1)));
-      triggerObjectNames_[iT].insert(filters.begin(), filters.end());
-    }
-  }
-}
-
-void
-MuonsFiller::addOutput(TFile& _outputFile)
-{
-  TDirectory::TContext context(&_outputFile);
-  auto* t(panda::utils::makeDocTree("MuonTriggerObject", panda::Muon::TriggerObjectName, panda::Muon::nTriggerObjects));
-  t->Write();
-  delete t;
 }
 
 void
@@ -39,8 +28,6 @@ MuonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::utils:
 
   if (isRealData_)
     _eventBranches.emplace_back("!muons.matchedGen_");
-  if (!useTrigger_)
-    _eventBranches.emplace_back("!muons.triggerMatch");
 }
 
 void
@@ -51,11 +38,20 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
 
   auto& outMuons(_outEvent.muons);
 
+  CLHEP::RandFlat* random(0);
+
+  if (!isRealData_) {
+    // random number used for Rochester corrections
+    random = new CLHEP::RandFlat(edm::Service<edm::RandomNumberGenerator>()->getEngine(_inEvent.streamID()));
+  }
+
   std::vector<edm::Ptr<reco::Muon>> ptrList;
 
   unsigned iMu(-1);
   for (auto& inMuon : inMuons) {
     ++iMu;
+    auto* patMuon(dynamic_cast<pat::Muon const*>(&inMuon));
+
     auto& outMuon(outMuons.create_back());
 
     fillP4(outMuon, inMuon);
@@ -63,6 +59,11 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.global = inMuon.isGlobalMuon();
     outMuon.tracker = inMuon.isTrackerMuon();
     outMuon.pf = inMuon.isPFMuon();
+    outMuon.standalone = inMuon.isStandAloneMuon();
+    outMuon.calo = inMuon.isCaloMuon();
+    outMuon.rpc = inMuon.isRPCMuon();
+    outMuon.gem = inMuon.isGEMMuon();
+    outMuon.me0 = inMuon.isME0Muon();
     
     auto&& innerTrack(inMuon.innerTrack());
     if (innerTrack.isNonnull()) {
@@ -98,42 +99,28 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     outMuon.puIso = pfIso.sumPUPt;
     outMuon.r03Iso = inMuon.isolationR03().sumPt;
 
-    auto* patMuon(dynamic_cast<pat::Muon const*>(&inMuon));
-
-    if (patMuon) {
-      outMuon.loose = patMuon->isLooseMuon();
-      outMuon.medium = patMuon->isMediumMuon();
-      // Following the "short-term instruction for Moriond 2017" given in https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideMuonIdRun2#MediumID2016_to_be_used_with_Run
-      // Valid only for runs B-F
-      outMuon.mediumBtoF = outMuon.loose && inMuon.innerTrack()->validFraction() > 0.49 &&
-        ((inMuon.isGlobalMuon() &&
-          inMuon.globalTrack()->normalizedChi2() < 3. &&
-          inMuon.combinedQuality().chi2LocalPosition < 12. &&
-          inMuon.combinedQuality().trkKink < 20. &&
-          muon::segmentCompatibility(inMuon) > 0.303) ||
-         muon::segmentCompatibility(inMuon) > 0.451);
-          
-      if (vertices.size() == 0) {
-        outMuon.tight = false;
-        outMuon.soft = false;
-      }
-      else {
-        outMuon.tight = patMuon->isTightMuon(vertices.at(0));
-        outMuon.soft = patMuon->isSoftMuon(vertices.at(0));
-      }
-    }
-    else {
-      outMuon.loose = muon::isLooseMuon(inMuon);
-      outMuon.medium = muon::isMediumMuon(inMuon);
-      if (vertices.size() == 0) {
-        outMuon.tight = false;
-        outMuon.soft = false;
-      }
-      else {
-        outMuon.tight = muon::isTightMuon(inMuon, vertices.at(0));
-        outMuon.soft = muon::isSoftMuon(inMuon, vertices.at(0));
-      }
-    }
+    outMuon.loose = inMuon.passed(reco::Muon::CutBasedIdLoose);
+    outMuon.medium = inMuon.passed(reco::Muon::CutBasedIdMedium);
+    outMuon.mediumPrompt = inMuon.passed(reco::Muon::CutBasedIdMediumPrompt);
+    outMuon.tight = inMuon.passed(reco::Muon::CutBasedIdTight);
+    outMuon.globalHighPt = inMuon.passed(reco::Muon::CutBasedIdGlobalHighPt);
+    outMuon.trkHighPt = inMuon.passed(reco::Muon::CutBasedIdTrkHighPt);
+    outMuon.soft = inMuon.passed(reco::Muon::SoftCutBasedId);
+    outMuon.softMVA = inMuon.passed(reco::Muon::SoftMvaId);
+    outMuon.mvaLoose = inMuon.passed(reco::Muon::MvaLoose);
+    outMuon.mvaMedium = inMuon.passed(reco::Muon::MvaMedium);
+    outMuon.mvaTight = inMuon.passed(reco::Muon::MvaTight);
+    outMuon.pfIsoVeryLoose = inMuon.passed(reco::Muon::PFIsoVeryLoose);
+    outMuon.pfIsoLoose = inMuon.passed(reco::Muon::PFIsoLoose);
+    outMuon.pfIsoMedium = inMuon.passed(reco::Muon::PFIsoMedium);
+    outMuon.pfIsoTight = inMuon.passed(reco::Muon::PFIsoTight);
+    outMuon.pfIsoVeryTight = inMuon.passed(reco::Muon::PFIsoVeryTight);
+    outMuon.tkIsoLoose = inMuon.passed(reco::Muon::TkIsoLoose);
+    outMuon.tkIsoTight = inMuon.passed(reco::Muon::TkIsoTight);
+    outMuon.miniIsoLoose = inMuon.passed(reco::Muon::MiniIsoLoose);
+    outMuon.miniIsoMedium = inMuon.passed(reco::Muon::MiniIsoMedium);
+    outMuon.miniIsoTight = inMuon.passed(reco::Muon::MiniIsoTight);
+    outMuon.miniIsoVeryTight = inMuon.passed(reco::Muon::MiniIsoVeryTight);
 
     outMuon.hltsafe = outMuon.combIso() / outMuon.pt() < 0.4 && outMuon.r03Iso / outMuon.pt() < 0.4;
 
@@ -158,6 +145,33 @@ MuonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Even
     }
 
     outMuon.pfPt = inMuon.pfP4().pt();
+
+    // Rochester correction
+    // See PandaProd/Utilities/doc/README.RoccoR
+    if (isRealData_) {
+      outMuon.rochCorr = rochesterCorrector_.kScaleDT(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi());
+      outMuon.rochCorrErr = rochesterCorrector_.kScaleDTerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi());
+    }
+    else {
+      double u1(random->fire());
+      try {
+        if (patMuon && patMuon->genParticleRef().isNonnull()) {
+          auto& gen(*patMuon->genParticleRef());
+          outMuon.rochCorr = rochesterCorrector_.kScaleFromGenMC(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, gen.pt(), u1);
+          outMuon.rochCorrErr = rochesterCorrector_.kScaleFromGenMCerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, gen.pt(), u1);
+        }
+        else {
+          double u2(random->fire());
+          outMuon.rochCorr = rochesterCorrector_.kScaleAndSmearMC(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, u1, u2);
+          outMuon.rochCorrErr = rochesterCorrector_.kScaleAndSmearMCerror(outMuon.charge, outMuon.pt(), outMuon.eta(), outMuon.phi(), outMuon.trkLayersWithMmt, u1, u2);
+        }
+      }
+      catch (std::exception& ex) {
+        // Rochester correction can throw or be nan for certain combination of parameters
+        outMuon.rochCorr = -1.;
+        outMuon.rochCorrErr = 0.;
+      }
+    }
 
     ptrList.push_back(inMuons.ptrAt(iMu));
   }
@@ -239,43 +253,6 @@ MuonsFiller::setRefs(ObjectMapStore const& _objectMaps)
 
       auto& outMuon(*link.first);
       outMuon.matchedGen.setRef(genMap.at(genPtr));
-    }
-  }
-
-  if (useTrigger_) {
-    auto& nameMap(_objectMaps.at("hlt").get<pat::TriggerObjectStandAlone, VString>().fwdMap);
-
-    std::vector<pat::TriggerObjectStandAlone const*> triggerObjects[panda::Muon::nTriggerObjects];
-
-    // loop over all trigger objects
-    for (auto& mapEntry : nameMap) { // (pat object, list of filter names)
-      // loop over the trigger filters we are interested in
-      for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-        // each triggerObjectNames_[] can have multiple filters
-        for (auto& name : triggerObjectNames_[iT]) {
-          auto nItr(std::find(mapEntry.second->begin(), mapEntry.second->end(), name));
-          if (nItr != mapEntry.second->end()) {
-            triggerObjects[iT].push_back(mapEntry.first.get());
-            break;
-          }
-        }
-      }
-    }
-
-    auto& muMuMap(objectMap_->get<reco::Muon, panda::Muon>().fwdMap);
-
-    for (auto& link : muMuMap) { // edm -> panda
-      auto& inMuon(*link.first);
-      auto& outMuon(*link.second);
-
-      for (unsigned iT(0); iT != panda::Muon::nTriggerObjects; ++iT) {
-        for (auto* obj : triggerObjects[iT]) {
-          if (reco::deltaR(*obj, inMuon) < 0.3) {
-            outMuon.triggerMatch[iT] = true;
-            break;
-          }
-        }
-      }
     }
   }
 }

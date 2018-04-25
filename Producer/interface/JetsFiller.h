@@ -7,6 +7,7 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 
 #include <functional>
 
@@ -23,18 +24,43 @@ class JetsFiller : public FillerBase {
 
  protected:
   virtual void fillDetails_(panda::Event&, edm::Event const&, edm::EventSetup const&) {}
+  void fillDeepBySwitch_(panda::MicroJet&, unsigned int const, float);
 
   typedef edm::View<reco::Jet> JetView;
   typedef edm::View<reco::GenJet> GenJetView;
-  typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<JetView> jetsToken_;
+  NamedToken<edm::View<pat::Jet>> puidJetsToken_;
   NamedToken<GenJetView> genJetsToken_;
-  NamedToken<FloatMap> qglToken_;
   NamedToken<double> rhoToken_;
   std::string jecName_;
   std::string jerName_;
   std::string csvTag_;
+  std::string cmvaTag_;
+  std::string qglTag_;
+
+  enum deepSuff {
+    udsg = 0,
+    b,
+    c,
+    bb,
+    cc,
+    DEEP_SIZE
+  };
+
+  // Add suffixes to maps
+#define ADD_TO_MAP(s) {#s, deepSuff::s}
+  const std::map<const std::string, deepSuff> deepProbs = {
+    ADD_TO_MAP(udsg),
+    ADD_TO_MAP(b),
+    ADD_TO_MAP(c),
+    ADD_TO_MAP(bb),
+    ADD_TO_MAP(cc)
+  };
+
+  std::string deepCsvTag_;
+  std::string deepCmvaTag_;
+
   std::string puidTag_;
 
   JetCorrectionUncertainty* jecUncertainty_{0};

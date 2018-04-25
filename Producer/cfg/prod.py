@@ -3,6 +3,8 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 options = VarParsing('analysis')
 options.register('config', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Single-switch config. Values: Prompt17, Summer16')
 options.register('globaltag', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Global tag')
+options.register('pdfname', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'PDF name')
+options.register('redojec', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Redo JEC')
 options.register('connect', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Globaltag connect')
 options.register('lumilist', default = '', mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.string, info = 'Good lumi list JSON')
 options.register('isData', default = False, mult = VarParsing.multiplicity.singleton, mytype = VarParsing.varType.bool, info = 'True if running on Data, False if running on MC')
@@ -14,16 +16,19 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-# EGM object energy smearing type to apply
-egmSmearingType = 'Moriond2017_JEC'
-
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
-if options.config == 'Prompt2017':
+if options.config == '31Mar2018':
+    # re-miniaod of 2017 legacy rereco
     options.isData = True
-    options.globaltag = '92X_dataRun2_Prompt_v6'
-
+    options.globaltag = '94X_dataRun2_ReReco_EOY17_v6'
+    options.redojec = True
+elif options.config == 'Fall17':
+    options.isData = False
+    options.globaltag = '94X_mc2017_realistic_v14'
+    options.pdfname = 'NNPDF3.1'
+    options.redojec = True
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
@@ -61,9 +66,8 @@ if options.lumilist != '':
 ## SERVICES ##
 ##############
 
-if options.isData:
-    process.load('Configuration.Geometry.GeometryRecoDB_cff') 
-else:
+process.load('Configuration.Geometry.GeometryRecoDB_cff') 
+if not options.isData:
     process.load('Configuration.Geometry.GeometrySimDB_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
@@ -88,40 +92,36 @@ process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
 ## RECO SEQUENCE AND SKIMS ##
 #############################
 
-if options.isData:
-    ### EGAMMA SCALING
-    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
-    # Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
+### EGAMMA CORRECTIONS
+# https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
+   
+process.selectedElectrons = cms.EDFilter('PATElectronSelector',
+    src = cms.InputTag('slimmedElectrons'),
+    cut = cms.string('pt > 5 && abs(eta) < 2.5')
+)
 
-    # Will use the same modules as EGM smearing (internally the modules switch between scaling (data)
-    # and smearing (MC)). Scaling parameters are run-dependent and not defined for 2017 data yet.
+from EgammaAnalysis.ElectronTools.calibratedPatElectronsRun2_cfi import calibratedPatElectrons
+from EgammaAnalysis.ElectronTools.calibratedPatPhotonsRun2_cfi import calibratedPatPhotons
+import EgammaAnalysis.ElectronTools.calibrationTablesRun2
+egmSmearingSource = EgammaAnalysis.ElectronTools.calibrationTablesRun2.files
+egmSmearingType = 'Run2017_17Nov2017_v1'
 
-    egmCorrectionSequence = cms.Sequence()
+process.smearedElectrons = calibratedPatElectrons.clone(
+    electrons = 'selectedElectrons',
+    isMC = (not options.isData),
+    correctionFile = egmSmearingSource[egmSmearingType]
+)
+process.smearedPhotons = calibratedPatPhotons.clone(
+    photons = 'slimmedPhotons',
+    isMC = (not options.isData),
+    correctionFile = egmSmearingSource[egmSmearingType]
+)   
 
-else:
-    ### EGAMMA SMEARING
-    # https://twiki.cern.ch/twiki/bin/view/CMS/EGMSmearer
-    # Configurations in ECALELFS repo don't work out-of-the-box for us; downloaded into PandaProd.
-    
-    import PandaProd.Producer.utils.egmidconf as egmidconf
-    
-    from PandaProd.Producer.utils.calibratedEgamma_cfi import calibratedPatElectrons, calibratedPatPhotons
-    process.smearedElectrons = calibratedPatElectrons.clone(
-        electrons = 'slimmedElectrons',
-        isMC = (not options.isData),
-        correctionFile = egmidconf.electronSmearingData[egmSmearingType]
-    )
-    process.smearedPhotons = calibratedPatPhotons.clone(
-        photons = 'slimmedPhotons',
-        isMC = (not options.isData),
-        correctionFile = egmidconf.photonSmearingData[egmSmearingType]
-    )   
-    
-    egmCorrectionSequence = cms.Sequence(
-        process.smearedElectrons +
-        process.smearedPhotons
-    )
-
+egmCorrectionSequence = cms.Sequence(
+    process.selectedElectrons +
+    process.smearedElectrons +
+    process.smearedPhotons
+)
 
 ### Vanilla MET
 # this is the most basic MET one can find
@@ -139,45 +139,153 @@ metSequence = cms.Sequence(
 )
 
 ### PUPPI
+from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+## Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+## By default, does not use specific photon ID for PuppiPhoton (which was the case in 80X)
+makePuppiesFromMiniAOD(process, createScheduledSequence = True)
+## Just renaming
+puppiSequence = process.puppiMETSequence
 
-# Original EDProducer to very simply make puppi candidates out of packed candidates (as input to puppi jets below)
-process.load('PandaProd.Auxiliary.PuppiCandidatesProducer_cfi')
+process.puppiNoLep.useExistingWeights = False
+process.puppi.useExistingWeights = False
 
-puppiSequence = cms.Sequence(process.puppi)
+### CHS
+process.pfCHS = cms.EDFilter('CandPtrSelector',
+    src = cms.InputTag('packedPFCandidates'),
+    cut = cms.string('fromPV')
+)
 
 ### EGAMMA ID
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
 # https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedPhotonIdentificationRun2
 
+electronIdParams = {
+    'vetoId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto',
+    'looseId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose',
+    'mediumId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium',
+    'tightId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight',
+    'mvaWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90',
+    'mvaWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80',
+    'mvaWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose',
+    'mvaIsoWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90',
+    'mvaIsoWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80',
+    'mvaIsoWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose',
+    'hltId': 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1', # seems like we don't have these for >= 2017?
+    'mvaValuesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
+    #'mvaCategoriesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
+    'combIsoEA': 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt',
+    'ecalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt',
+    'hcalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
+}
+
+photonIdParams = {
+    'looseId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose',
+    'mediumId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium',
+    'tightId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight',
+    'chIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt',
+    'nhIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt',
+    'phIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
+}
+
+electronIdModules = [
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V1_cff',
+    'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff'
+]
+
+photonIdModules = [
+    'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff'
+]
+
 from PhysicsTools.SelectorUtils.tools.vid_id_tools import setupAllVIDIdsInModule, setupVIDElectronSelection, setupVIDPhotonSelection, switchOnVIDElectronIdProducer, switchOnVIDPhotonIdProducer, DataFormat
 # Loads egmGsfElectronIDs
 switchOnVIDElectronIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff', setupVIDElectronSelection)
-setupAllVIDIdsInModule(process, 'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronHLTPreselecition_Summer16_V1_cff', setupVIDElectronSelection)
+for idmod in electronIdModules:
+    setupAllVIDIdsInModule(process, idmod, setupVIDElectronSelection)
 
 switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
-setupAllVIDIdsInModule(process, 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff', setupVIDPhotonSelection)
+for idmod in photonIdModules:
+    setupAllVIDIdsInModule(process, idmod, setupVIDPhotonSelection)
 
 process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 
 egmIdSequence = cms.Sequence(
     process.photonIDValueMapProducer +
     process.egmPhotonIDs +
+    process.electronMVAValueMapProducer +
     process.egmGsfElectronIDs +
     process.worstIsolationProducer
 )
 
-### QG TAGGING
+### REMAKE CHS JETS WITH DEEP FLAVOR
 
-process.load('RecoJets.JetProducers.QGTagger_cfi')
-process.QGTagger.srcJets = 'slimmedJets'
+from PandaProd.Producer.utils.makeJets_cff import makeJets
+
+slimmedJetsSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
+
+if options.redojec:
+    ### JET RE-CORRECTION
+    from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
+
+    jecLevels= ['L1FastJet',  'L2Relative', 'L3Absolute']
+    if options.isData:
+        jecLevels.append('L2L3Residual')
+
+    # slimmedJets made from scratch
+    #process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
+    #    src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    levels = cms.vstring(*jecLevels),
+    #)
+    #
+    #process.slimmedJets = updatedPatJets.clone(
+    #    jetSource = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
+    #    addJetCorrFactors = cms.bool(True),
+    #    jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactors')),
+    #    addBTagInfo = cms.bool(False),
+    #    addDiscriminators = cms.bool(False)
+    #)
+
+    process.updatedPatJetCorrFactorsPuppi = updatedPatJetCorrFactors.clone(
+        src = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        levels = cms.vstring(*jecLevels),
+    )
+
+    process.slimmedJetsPuppi = updatedPatJets.clone(
+        jetSource = cms.InputTag('slimmedJetsPuppi', '', cms.InputTag.skipCurrentProcess()),
+        addJetCorrFactors = cms.bool(True),
+        jetCorrFactorsSource = cms.VInputTag(cms.InputTag('updatedPatJetCorrFactorsPuppi')),
+        addBTagInfo = cms.bool(False),
+        addDiscriminators = cms.bool(False)
+    )
+
+    ### MET RE-CORRECTION
+    # pfMet is already corrected above in the VANILLA MET section
+
+    runMetCorAndUncFromMiniAOD(
+        process,
+        isData = options.isData,
+        metType = "Puppi",
+        postfix = "Puppi",
+        jetFlavor = "AK4PFPuppi"
+    )
+
+    jetRecorrectionSequence = cms.Sequence(
+        #process.updatedPatJetCorrFactors +
+        #process.slimmedJets +
+        process.updatedPatJetCorrFactorsPuppi +
+        process.slimmedJetsPuppi +
+        process.fullPatMetSequencePuppi
+    )
+
+else:
+    jetRecorrectionSequence = cms.Sequence()
 
 ### FAT JETS
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-# pfCHS set up here
 fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
@@ -194,13 +302,6 @@ ak8PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-ca15CHSSequence = makeFatJets(
-    process,
-    isData = options.isData,
-    label = 'CA15PFchs',
-    candidates = 'pfCHS'
-)
-
 ca15PuppiSequence = makeFatJets(
     process,
     isData = options.isData,
@@ -208,32 +309,34 @@ ca15PuppiSequence = makeFatJets(
     candidates = 'puppi'
 )
 
-from PandaProd.Producer.utils.setupBTag import initBTag, setupDoubleBTag
-# initBTag is already being called in makeFatJets() but we call it here again to eliminate implicit dependence between parts of config
-initBTag(process, '', 'packedPFCandidates', 'offlineSlimmedPrimaryVertices')
-ak8CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFchs', 'AK8PFchs', '', 'ak8')
-ak8PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsAK8PFPuppi', 'AK8PFPuppi', '', 'ak8')
-ca15CHSDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFchs', 'CA15PFchs', '', 'ca15')
-ca15PuppiDoubleBTagSequence = setupDoubleBTag(process, 'packedPatJetsCA15PFPuppi', 'CA15PFPuppi', '', 'ca15')
-
 fatJetSequence = cms.Sequence(
     fatJetInitSequence +
     ak8CHSSequence +
     ak8PuppiSequence +
-    ca15CHSSequence +
-    ca15PuppiSequence +
-    ak8CHSDoubleBTagSequence +
-    ak8PuppiDoubleBTagSequence +
-    ca15CHSDoubleBTagSequence +
-    ca15PuppiDoubleBTagSequence
+    ca15PuppiSequence
 )
+
+### MERGE GEN PARTICLES
+if not options.isData:
+    process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
+    genMergeSequence = cms.Sequence( process.mergedGenParticles )
+else:
+    genMergeSequence = cms.Sequence()
 
 ### GEN JET FLAVORS
 if not options.isData:
     process.load('PhysicsTools.JetMCAlgos.HadronAndPartonSelector_cfi')
+    from PhysicsTools.JetMCAlgos.HadronAndPartonSelector_cfi import selectedHadronsAndPartons
+    from PhysicsTools.JetMCAlgos.GenHFHadronMatcher_cff import matchGenBHadron
+    from PhysicsTools.JetMCAlgos.GenHFHadronMatcher_cff import matchGenCHadron
     from PhysicsTools.JetMCAlgos.AK4PFJetsMCFlavourInfos_cfi import ak4JetFlavourInfos
+    # Input particle collection for matching to gen jets (partons + leptons) 
+    # MUST use use proper input jet collection: the jets to which hadrons should be associated
+    # rParam and jetAlgorithm MUST match those used for jets to be associated with hadrons
+    # More details on the tool: https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagMCTools#New_jet_flavour_definition
 
-    process.selectedHadronsAndPartons.particles = 'prunedGenParticles'
+    #process.selectedHadronsAndPartons.particles = 'prunedGenParticles'
+    process.selectedHadronsAndPartons.particles = 'mergedGenParticles'
 
     process.ak4GenJetFlavourInfos = ak4JetFlavourInfos.clone(
         jets = 'slimmedGenJets'
@@ -247,15 +350,56 @@ if not options.isData:
         jetAlgorithm = 'CambridgeAachen',
         rParam = 1.5
     )
+    
+    # Begin GenHFHadronMatcher subsequences
+    # Adapted from PhysicsTools/JetMCAlgos/test/matchGenHFHadrons.py
+    # Supplies PDG ID to real name resolution of MC particles
+    process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
+    
+    process.ak4MatchGenBHadron = matchGenBHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ak4GenJetFlavourInfos"
+    )
+    process.ak4MatchGenCHadron = matchGenCHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ak4GenJetFlavourInfos"
+    )
+    process.ak8MatchGenBHadron = matchGenBHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ak8GenJetFlavourInfos"
+    )
+    process.ak8MatchGenCHadron = matchGenCHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ak8GenJetFlavourInfos"
+    )
+    process.ca15MatchGenBHadron = matchGenBHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ca15GenJetFlavourInfos"
+    )
+    process.ca15MatchGenCHadron = matchGenCHadron.clone(
+        genParticles = process.selectedHadronsAndPartons.particles,
+        jetFlavourInfos = "ca15GenJetFlavourInfos"
+    )
+    #End GenHFHadronMatcher subsequences
 
     genJetFlavorSequence = cms.Sequence(
         process.selectedHadronsAndPartons +
         process.ak4GenJetFlavourInfos +
         process.ak8GenJetFlavourInfos +
-        process.ca15GenJetFlavourInfos
+        process.ca15GenJetFlavourInfos + 
+        process.ak4MatchGenBHadron +
+        process.ak4MatchGenCHadron +
+        process.ak8MatchGenBHadron +
+        process.ak8MatchGenCHadron +
+        process.ca15MatchGenBHadron +
+        process.ca15MatchGenCHadron
     )
 else:
     genJetFlavorSequence = cms.Sequence()
+
+# runMetCorAnd.. adds a CaloMET module only once, adding the postfix
+# However, repeated calls to the function overwrites the MET source of patCaloMet
+process.patCaloMet.metSource = 'metrawCalo'
 
 ### MONOX FILTER
 
@@ -269,9 +413,11 @@ process.reco = cms.Path(
     egmIdSequence +
     puppiSequence +
     metSequence +
+    slimmedJetsSequence +
+    jetRecorrectionSequence +
     process.MonoXFilter +
-    process.QGTagger +
     fatJetSequence +
+    genMergeSequence + 
     genJetFlavorSequence
 )
 
@@ -283,17 +429,28 @@ process.load('PandaProd.Producer.panda_cfi')
 process.panda.isRealData = options.isData
 process.panda.useTrigger = options.useTrigger
 #process.panda.SelectEvents = ['reco'] # no skim
+process.panda.fillers.chsAK4Jets.jets = 'slimmedJetsDeepFlavor'
+
 if options.isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.ak4GenJets.enabled = False
     process.panda.fillers.ak8GenJets.enabled = False
     process.panda.fillers.ca15GenJets.enabled = False
-    del process.panda.fillers.electrons.smearedElectrons
-    del process.panda.fillers.photons.smearedPhotons
+else:
+    process.panda.fillers.weights.pdfType = options.pdfname
+    process.panda.fillers.extraMets.types.append('gen')
 
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
+
+for name, value in electronIdParams.items():
+    setattr(process.panda.fillers.electrons, name, value)
+
+for name, value in photonIdParams.items():
+    setattr(process.panda.fillers.photons, name, value)
+
+process.panda.fillers.muons.rochesterCorrectionSource = 'PandaProd/Utilities/data/RoccoR2017v0.txt'
 
 process.panda.outputFile = options.outputFile
 process.panda.printLevel = options.printLevel
@@ -305,14 +462,6 @@ process.ntuples = cms.EndPath(process.panda)
 ##############
 
 process.schedule = cms.Schedule(process.reco, process.ntuples)
-
-############################
-## REPLACE-ALL TYPE FIXES ##
-############################
-
-# runMetCorAnd.. adds a CaloMET module only once, adding the postfix
-# However, repeated calls to the function overwrites the MET source of patCaloMet
-process.patCaloMet.metSource = 'metrawCalo'
 
 if options.connect:
     if options.connect == 'mit':

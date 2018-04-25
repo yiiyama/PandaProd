@@ -4,13 +4,14 @@ from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
 from RecoJets.JetProducers.ak4GenJets_cfi import ak4GenJets
 import RecoJets.JetProducers.nJettinessAdder_cfi as nJettinessAdder_cfi
 from RecoJets.JetProducers.QGTagger_cfi import QGTagger
-import PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi as jetProducer_cfi
+from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import _patJets
 import PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi as jetSelector_cfi
 import PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff as jetUpdater_cff
 from PhysicsTools.PatAlgos.mcMatchLayer0.jetMatch_cfi import patJetGenJetMatch
+#from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
 
 from PandaProd.Producer.utils.addattr import AddAttr
-from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag
+from PandaProd.Producer.utils.setupBTag import initBTag, setupBTag, setupDoubleBTag
 
 finalStateGenParticles = 'packedGenParticles'
 prunedGenParticles = 'prunedGenParticles'
@@ -89,12 +90,13 @@ def initFatJets(process, isData, labels):
             )
 
     # Charged hadron subtraction
-    addattr('pfCHS',
-        cms.EDFilter("CandPtrSelector",
-            src = cms.InputTag(pfSource),
-            cut = cms.string("fromPV")
+    if not hasattr(process, 'pfCHS'):
+        addattr('pfCHS',
+            cms.EDFilter("CandPtrSelector",
+                src = cms.InputTag(pfSource),
+                cut = cms.string("fromPV")
+            )
         )
-    )
 
     # Initialize btag inputs
     sequence += initBTag(process, '', pfSource, pvSource)
@@ -230,9 +232,26 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         jetCollection = subjets,
         suffix = label + 'Subjets',
         vsuffix = '',
-        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags']
+        tags = ['pfCombinedInclusiveSecondaryVertexV2BJetTags',
+                'pfCombinedMVAV2BJetTags',
+                'pfDeepCSVJetTags',
+                'pfDeepCMVAJetTags'
+                ]
     )
-    
+
+    ### double-b tagging ###
+
+    sequence += setupDoubleBTag(
+        process,
+        isData,
+        pfJets,
+        jecLabel,
+        subjets,
+        label,
+        '',
+        algo
+    )
+  
     ########################################
     ##          MAKE PAT JETS             ##
     ########################################
@@ -262,10 +281,10 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         )
 
     patJets = addattr('patJets',
-        jetProducer_cfi.patJets.clone(
+        _patJets.clone(
             jetSource = pfJets,
             addJetCorrFactors = True,
-            addBTagInfo = False,
+            addBTagInfo = True,
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,
@@ -276,6 +295,11 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     )
     patJetsMod = addattr.last
     patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
+    patJetsMod.discriminatorSources = [
+        cms.InputTag('pfBoostedDoubleSVBJetTags' + label),
+        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probQ'),
+        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probH')
+    ]
     if not isData:
         patJetsMod.genJetMatch = genJetMatch
 
@@ -284,6 +308,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
 
     patJetsMod.userData.userFloats.src.append(sdKinematics.getModuleLabel() + ':Mass')
     patJetsMod.userData.userFloats.src.append(prunedKinematics.getModuleLabel() + ':Mass')
+    patJetsMod.userData.userFloats.labelPostfixesToStrip = cms.vstring(label)
 
     selectedPatJets = addattr('selectedPatJets',
         jetSelector_cfi.selectedPatJets.clone(
@@ -295,7 +320,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     ## SOFT DROP ##
 
     patJetsSoftDrop = addattr('patJetsSoftDrop',
-        jetProducer_cfi._patJets.clone(
+        _patJets.clone(
             jetSource = pfJetsSoftDrop,
             addJetCorrFactors = False,
             addBTagInfo = False,
@@ -315,6 +340,8 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
         )
     )
 
+    ## GEN MATCH ##
+
     if not isData:
         genSubjetsMatch = addattr('genSubjetMatch',
             patJetGenJetMatch.clone(
@@ -324,12 +351,22 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
             )
         )
 
+    ### SUBJETS ###
+
     patSubjets = addattr('patSubjets',
-        jetProducer_cfi._patJets.clone(
+        _patJets.clone(
             jetSource = subjets,
             addJetCorrFactors = False,
             addBTagInfo = True,
-            discriminatorSources = ['pfCombinedInclusiveSecondaryVertexV2BJetTags' + label + 'Subjets'],
+            discriminatorSources = [
+                'pfCombinedInclusiveSecondaryVertexV2BJetTags' + label + 'Subjets',
+                'pfCombinedMVAV2BJetTags' + label + 'Subjets'
+                ] + \
+                sum([['pfDeepCSVJetTags%sSubjets:prob%s' % (label, prob),
+                      'pfDeepCMVAJetTags%sSubjets:prob%s' % (label, prob)]
+#                      for prob in ['udsg', 'b', 'c', 'bb', 'cc']],
+                      for prob in ['udsg', 'b', 'c', 'bb']],
+                     []),
             addAssociatedTracks = False,
             addJetCharge = False,
             addGenPartonMatch = False,
@@ -340,6 +377,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     )
     patSubjetsMod = addattr.last
     patSubjetsMod.userData.userFloats.src.append(cms.InputTag(subQGTag.getModuleLabel(), 'qgLikelihood'))
+    patSubjetsMod.userData.userFloats.labelPostfixesToStrip = cms.vstring(label)
     if not isData:
         patSubjetsMod.genJetMatch = genSubjetsMatch
 

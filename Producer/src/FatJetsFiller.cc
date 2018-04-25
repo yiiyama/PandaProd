@@ -8,11 +8,17 @@
 
 FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   JetsFiller(_name, _cfg, _coll),
+  shallowBBTagTag_(getParameter_<std::string>(_cfg, "shallowBBTag", "")),
+  deepBBprobQTag_(getParameter_<std::string>(_cfg, "deepBBprobQTag", "")),
+  deepBBprobHTag_(getParameter_<std::string>(_cfg, "deepBBprobHTag", "")),
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
   sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
   prunedKinematicsTag_(getParameter_<std::string>(_cfg, "prunedKinematics")),
   subjetBtagTag_(getParameter_<std::string>(_cfg, "subjetBtag", "")),
   subjetQGLTag_(getParameter_<std::string>(_cfg, "subjetQGL", "")),
+  subjetCmvaTag_(getParameter_<std::string>(_cfg, "subjetCmva", "")),
+  subjetDeepCsvTag_(getParameter_<std::string>(_cfg, "subjetDeepCSV", "")),
+  subjetDeepCmvaTag_(getParameter_<std::string>(_cfg, "subjetDeepCMVA", "")),
   activeArea_(7., 1, 0.01),
   areaDef_(fastjet::active_area_explicit_ghosts, activeArea_)
 {
@@ -41,11 +47,9 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
     getToken_(categoriesToken_, _cfg, _coll, "recoil");
 
   if (computeSubstructure_ != kNever) {
-    getToken_(doubleBTagInfoToken_, _cfg, _coll, "doubleBTag");
-
     jetDefCA_ = new fastjet::JetDefinition(fastjet::cambridge_algorithm, R_);
     softdrop_ = new fastjet::contrib::SoftDrop(1., 0.15, R_);
-    ecfnManager_ = new ECFNManager();
+    ecfcalc_ = new pandaecf::Calculator();
     tau_ = new fastjet::contrib::Njettiness(fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::NormalizedMeasure(1., R_));
 
     //htt
@@ -65,8 +69,6 @@ FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& 
                                         maxCandMass,massRatioWidth,
                                         minM23Cut,minM13Cut,
                                         maxM13Cut,rejectMinR);
-
-    jetBoostedBtaggingMVACalc_.initialize("BDT", getParameter_<edm::FileInPath>(_cfg, "doubleBTagWeights").fullPath());
   }
 }
 
@@ -74,7 +76,7 @@ FatJetsFiller::~FatJetsFiller()
 {
   delete jetDefCA_;
   delete softdrop_;
-  delete ecfnManager_;
+  delete ecfcalc_;
   delete tau_;
   delete htt_;
 }
@@ -111,11 +113,6 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
                       (computeSubstructure_ == kLargeRecoil && getProduct_(_inEvent, categoriesToken_) != 0));
 
   auto& inSubjets(getProduct_(_inEvent, subjetsToken_));
-  reco::BoostedDoubleSVTagInfoCollection const* doubleBTagInfo(0);
-  if (doSubstructure)
-    doubleBTagInfo = &getProduct_(_inEvent, doubleBTagInfoToken_);
-
-  double betas[] = {0.5, 1., 2., 4.};
 
   auto& outSubjets(outSubjetSelector_(_outEvent));
 
@@ -137,9 +134,14 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
       outJet.mSD  = inJet.userFloat(sdKinematicsTag_ + ":Mass");
       outJet.mPruned = inJet.userFloat(prunedKinematicsTag_ + ":Mass");
 
-      unsigned iSJ(-1);
+      if (!shallowBBTagTag_.empty())
+        outJet.double_sub = inJet.bDiscriminator(shallowBBTagTag_);
+      if (!deepBBprobQTag_.empty())
+        outJet.deepBBprobQ = inJet.bDiscriminator(deepBBprobQTag_);
+      if (!deepBBprobHTag_.empty())
+        outJet.deepBBprobH = inJet.bDiscriminator(deepBBprobHTag_);
+
       for (auto& inSubjet : inSubjets) {
-        ++iSJ;
         if (reco::deltaR(inSubjet.eta(), inSubjet.phi(), inJet.eta(), inJet.phi()) > R_) 
           continue;
 
@@ -147,14 +149,27 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
         fillP4(outSubjet, inSubjet);
 
-        auto&& inRef(inSubjets.refAt(iSJ));
-
         if (dynamic_cast<pat::Jet const*>(&inSubjet)) {
           auto& patSubjet(dynamic_cast<pat::Jet const&>(inSubjet));
           if (!subjetBtagTag_.empty())
             outSubjet.csv = patSubjet.bDiscriminator(subjetBtagTag_);
+          if (!subjetCmvaTag_.empty())
+            outSubjet.cmva = patSubjet.bDiscriminator(subjetCmvaTag_);
           if (!subjetQGLTag_.empty() && patSubjet.hasUserFloat(subjetQGLTag_))
             outSubjet.qgl = patSubjet.userFloat(subjetQGLTag_);
+
+          if (!subjetDeepCsvTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second, patSubjet.bDiscriminator(subjetDeepCsvTag_ + ":prob" + prob.first));
+            }
+          }
+
+          if (!subjetDeepCmvaTag_.empty()) {
+            for (auto prob : deepProbs) {
+              fillDeepBySwitch_(outSubjet, prob.second + deepSuff::DEEP_SIZE, patSubjet.bDiscriminator(subjetDeepCmvaTag_ + ":prob" + prob.first));
+            }
+          }
+
         }
 
         outJet.subjets.addRef(&outSubjet);
@@ -198,16 +213,17 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
           VPseudoJet sdconstsFiltered(sdconsts.begin(), sdconsts.begin() + nFilter);
 
           // calculate ECFs
-          for (unsigned iB(0); iB != 4; ++iB) {
-            calcECFN(betas[iB], sdconstsFiltered, ecfnManager_); // calculate for all Ns and os
-            for (int N : {1, 2, 3, 4}) {
-              for (int order : {1, 2, 3}) {
-                float ecf(ecfnManager_->ecfns[TString::Format("%i_%i", N, order)]);
-                if (!outJet.set_ecf(order, N, iB, ecf))
-                  throw std::runtime_error(TString::Format("FatJetsFiller Could not save o=%i, N=%i, iB=%i", order, N, iB).Data());
-              } // o loop
-            } // N loop
-          } // beta loop
+          ecfcalc_->calculate(sdconstsFiltered);
+          for (auto iter = ecfcalc_->begin(); iter != ecfcalc_->end(); ++iter) {
+            int oI = iter.get<pandaecf::Calculator::oP>() + 1;
+            int nI = iter.get<pandaecf::Calculator::nP>() + 1;
+            int bI = iter.get<pandaecf::Calculator::bP>();
+            bool success = outJet.set_ecf(oI, nI, bI,
+                                          static_cast<float>(iter.get<pandaecf::Calculator::ecfP>()));
+            if (!success)
+              throw std::runtime_error(
+                  TString::Format("FatJetsFiller Could not save oI=%i, nI=%i, bI=%i", oI, nI, bI).Data());
+          }
 
           outJet.tau3SD = tau_->getTau(3, sdconsts);
           outJet.tau2SD = tau_->getTau(2, sdconsts);
@@ -223,62 +239,6 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
         }
         else
           throw std::runtime_error("PandaProd::FatJetsFiller: Jet could not be clustered");
-
-        // now we do the double-b
-        for (auto& dbi : *doubleBTagInfo) {
-          auto& dbJet(*dbi.jet());
-          // we are matching identical jets here
-          if (reco::deltaR(dbJet, inJet) > 0.01 || std::abs(dbJet.pt() - inJet.pt()) / inJet.pt() > 0.01)
-            continue;
-
-          double minSubjetCSV(999.);
-          for (auto&& sjRef : outJet.subjets) {
-            auto& subjet(*sjRef);
-            if (subjet.csv < minSubjetCSV)
-              minSubjetCSV = subjet.csv;
-          }
-          if (minSubjetCSV < -1. || minSubjetCSV > 1.)
-            minSubjetCSV = -1.;
-
-          auto&& vars(dbi.taggingVariables());
-          outJet.double_sub =
-            jetBoostedBtaggingMVACalc_.mvaValue(outJet.m(),
-                                                -1, //j.partonFlavor(); // they're spectator variables
-                                                -1, //j.hadronFlavor(); // 
-                                                outJet.pt(),
-                                                outJet.eta(),
-                                                minSubjetCSV,
-                                                vars.get(reco::btau::z_ratio),
-                                                vars.get(reco::btau::trackSip3dSig_3),
-                                                vars.get(reco::btau::trackSip3dSig_2),
-                                                vars.get(reco::btau::trackSip3dSig_1),
-                                                vars.get(reco::btau::trackSip3dSig_0),
-                                                vars.get(reco::btau::tau2_trackSip3dSig_0),
-                                                vars.get(reco::btau::tau1_trackSip3dSig_0),
-                                                vars.get(reco::btau::tau2_trackSip3dSig_1),
-                                                vars.get(reco::btau::tau1_trackSip3dSig_1),
-                                                vars.get(reco::btau::trackSip2dSigAboveCharm),
-                                                vars.get(reco::btau::trackSip2dSigAboveBottom_0),
-                                                vars.get(reco::btau::trackSip2dSigAboveBottom_1),
-                                                vars.get(reco::btau::tau1_trackEtaRel_0),
-                                                vars.get(reco::btau::tau1_trackEtaRel_1),
-                                                vars.get(reco::btau::tau1_trackEtaRel_2),
-                                                vars.get(reco::btau::tau2_trackEtaRel_0),
-                                                vars.get(reco::btau::tau2_trackEtaRel_1),
-                                                vars.get(reco::btau::tau2_trackEtaRel_2),
-                                                vars.get(reco::btau::tau1_vertexMass),
-                                                vars.get(reco::btau::tau1_vertexEnergyRatio),
-                                                vars.get(reco::btau::tau1_vertexDeltaR),
-                                                vars.get(reco::btau::tau1_flightDistance2dSig),
-                                                vars.get(reco::btau::tau2_vertexMass),
-                                                vars.get(reco::btau::tau2_vertexEnergyRatio),
-                                                vars.get(reco::btau::tau2_flightDistance2dSig),
-                                                vars.get(reco::btau::jetNTracks),
-                                                vars.get(reco::btau::jetNSecondaryVertices),
-                                                false);
-
-          break;
-        }
       } // if computeSubstructure_
     }
 

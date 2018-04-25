@@ -38,20 +38,18 @@ else
   git checkout -t $REMOTE/$BRANCH
 fi
 
-# Check if the branch is already merged
-NDIFF=$(git rev-list --first-parent $BRANCH ^$MASTER | wc -l)
-if [ $NDIFF -eq 0 ]
+# Find the first deviation from the master branch
+FIRSTDEV=$(git rev-list --first-parent $BRANCH ^$MASTER | tail -n1)
+if ! [ $FIRSTDEV ]
 then
   echo "Branch $BRANCH of $REMOTE seems to have been merged to $MASTER already."
   exit 0
 fi
 
-# If not, merge BRANCH into a test branch and show the diff
-git checkout $MASTER
-git checkout -b merge-${REMOTE}-${BRANCH}
-git merge $REMOTE/$BRANCH -m "test merge"
+# The last commit in the master branch before the deviation
+LAST=$(git rev-list --first-parent $FIRSTDEV -n 2 | tail -n1)
 
 echo "Files changed:"
-git diff --name-only ${MASTER}..HEAD
+git diff --name-only ${LAST}..${BRANCH}
 
 cd $CD

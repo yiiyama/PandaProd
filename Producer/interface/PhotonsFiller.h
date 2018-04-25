@@ -20,7 +20,6 @@ class PhotonsFiller : public FillerBase {
   PhotonsFiller(std::string const&, edm::ParameterSet const&, edm::ConsumesCollector&);
   ~PhotonsFiller() {}
 
-  void addOutput(TFile&) override;
   void branchNames(panda::utils::BranchList& eventBranches, panda::utils::BranchList&) const override;
   void fill(panda::Event&, edm::Event const&, edm::EventSetup const&) override;
   void setRefs(ObjectMapStore const&) override;
@@ -45,7 +44,6 @@ class PhotonsFiller : public FillerBase {
   NamedToken<FloatMap> phIsoToken_;
   NamedToken<FloatMap> chIsoMaxToken_;
   NamedToken<double> rhoToken_;
-  NamedToken<pat::PackedGenParticleCollection> genParticlesToken_;
 
   EffectiveAreas chIsoEA_;
   EffectiveAreas nhIsoEA_;
@@ -54,8 +52,6 @@ class PhotonsFiller : public FillerBase {
   TFormula chIsoLeakage_[2];
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
-
-  std::set<std::string> triggerObjectNames_[panda::Photon::nTriggerObjects];
 };
 
 #endif

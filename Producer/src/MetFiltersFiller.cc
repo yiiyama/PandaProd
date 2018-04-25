@@ -29,7 +29,7 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
     auto&& filterNames(_inEvent.triggerNames(*inFilterResults));
     for (unsigned iF(0); iF != filterNames.size(); ++iF) {
       auto& name(filterNames.triggerName(iF));
-    
+
       if (name == "Flag_HBHENoiseFilter")
         outMetFilters.hbhe = !inFilterResults->accept(iF);
       else if (name == "Flag_HBHENoiseIsoFilter")
@@ -42,10 +42,16 @@ MetFiltersFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm:
         outMetFilters.globalHalo16 = !inFilterResults->accept(iF);
       else if (name == "Flag_goodVertices")
         outMetFilters.goodVertices = !inFilterResults->accept(iF);
+      else if (name == "Flag_badMuons") // reverse convention
+        outMetFilters.badMuons = inFilterResults->accept(iF);
+      else if (name == "Flag_duplicateMuons") // reverse convention
+        outMetFilters.duplicateMuons = inFilterResults->accept(iF);
       else if (name == "Flag_BadPFMuonFilter")
         outMetFilters.badPFMuons = !inFilterResults->accept(iF);
       else if (name == "Flag_BadChargedCandidateFilter")
         outMetFilters.badChargedHadrons = !inFilterResults->accept(iF);
+      else if (name == "Flag_ecalBadCalibFilter")
+        outMetFilters.ecalBadCalib = !inFilterResults->accept(iF);
     }
   }
 }

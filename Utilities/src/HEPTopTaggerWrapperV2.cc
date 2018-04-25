@@ -125,11 +125,11 @@ PseudoJet HEPTopTaggerV2::result(const PseudoJet & jet) const{
     int qtags = 0;
 
     tagger.set_qjets(q_zcut,
-		     q_dcut_fctr,
-		     q_exp_min,
-		     q_exp_max,
-		     q_rigidity,
-		     q_truncation_fctr);
+                     q_dcut_fctr,
+                     q_exp_min,
+                     q_exp_max,
+                     q_rigidity,
+                     q_truncation_fctr);
     //    tagger.set_qjets_rng(engine_);    
     tagger.do_qjets(true);
     tagger.run();
@@ -137,12 +137,13 @@ PseudoJet HEPTopTaggerV2::result(const PseudoJet & jet) const{
     for (int iq = 0; iq < niter; iq++) {
       tagger.run();
       if (tagger.is_tagged()) {
-	qtags++;
-	m_sum += tagger.t().m();
-	m2_sum += tagger.t().m() * tagger.t().m();
-	if (tagger.q_weight() > weight_q1)
-	  best_tagger = tagger;
-	  weight_q1=tagger.q_weight();             
+        qtags++;
+        m_sum += tagger.t().m();
+        m2_sum += tagger.t().m() * tagger.t().m();
+        if (tagger.q_weight() > weight_q1) {
+          best_tagger = tagger;
+          weight_q1=tagger.q_weight();      
+        }
       }
     }
     

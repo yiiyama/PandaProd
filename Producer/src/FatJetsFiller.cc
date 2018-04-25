@@ -8,7 +8,9 @@
 
 FatJetsFiller::FatJetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   JetsFiller(_name, _cfg, _coll),
-  doubleBTagTag_(getParameter_<std::string>(_cfg, "doubleBTag", "")),
+  shallowBBTagTag_(getParameter_<std::string>(_cfg, "shallowBBTag", "")),
+  deepBBprobQTag_(getParameter_<std::string>(_cfg, "deepBBprobQTag", "")),
+  deepBBprobHTag_(getParameter_<std::string>(_cfg, "deepBBprobHTag", "")),
   njettinessTag_(getParameter_<std::string>(_cfg, "njettiness")),
   sdKinematicsTag_(getParameter_<std::string>(_cfg, "sdKinematics")),
   prunedKinematicsTag_(getParameter_<std::string>(_cfg, "prunedKinematics")),
@@ -134,8 +136,12 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
       outJet.mSD  = inJet.userFloat(sdKinematicsTag_ + ":Mass");
       outJet.mPruned = inJet.userFloat(prunedKinematicsTag_ + ":Mass");
 
-      if (!doubleBTagTag_.empty())
-        outJet.double_sub = inJet.bDiscriminator(doubleBTagTag_);
+      if (!shallowBBTagTag_.empty())
+        outJet.double_sub = inJet.bDiscriminator(shallowBBTagTag_);
+      if (!deepBBprobQTag_.empty())
+        outJet.deepBBprobQ = inJet.bDiscriminator(deepBBprobQTag_);
+      if (!deepBBprobHTag_.empty())
+        outJet.deepBBprobH = inJet.bDiscriminator(deepBBprobHTag_);
 
       for (auto& inSubjet : inSubjets) {
         if (reco::deltaR(inSubjet.eta(), inSubjet.phi(), inJet.eta(), inJet.phi()) > R_) 

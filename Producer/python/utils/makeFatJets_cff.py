@@ -67,6 +67,7 @@ def initFatJets(process, isData, labels):
             # gen jets
             addattr('genJetsNoNu' + label,
                 ak4GenJets.clone(
+                    doAreaFastjet = cms.bool(False), # This flag is turned on by default in CMSSW and makes things much slower, do not turn this on
                     jetAlgorithm = cms.string(algoName),
                     rParam = cms.double(radius),
                     src = genParticlesNoNu
@@ -143,6 +144,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
 
     pfJets = addattr('pfJets',
         ak4PFJets.clone(
+            doAreaFastjet = cms.bool(False), # This flag is turned on by default in CMSSW and makes things much slower, do not turn this on
             jetAlgorithm = cms.string(algoName),
             rParam = cms.double(radius),
             src = cms.InputTag(candidates),
@@ -152,6 +154,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
 
     pfJetsSoftDrop = addattr('pfJetsSoftDrop',
         ak4PFJets.clone(
+            doAreaFastjet = cms.bool(False), # This flag is turned on by default in CMSSW and makes things much slower, do not turn this on
             jetAlgorithm = cms.string(algoName),
             rParam = cms.double(radius),
             src = cms.InputTag(candidates),
@@ -169,6 +172,7 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
 
     pfJetsPruned = addattr('pfJetsPruned',
         ak4PFJets.clone(
+            doAreaFastjet = cms.bool(False), # This flag is turned on by default in CMSSW and makes things much slower, do not turn this on
             jetAlgorithm = cms.string(algoName),
             rParam = cms.double(radius),
             src = cms.InputTag(candidates),

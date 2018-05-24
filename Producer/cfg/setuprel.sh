@@ -13,6 +13,8 @@ $INSTALL lsoffi CMSSW_9_4_0_pre3_TnP RecoEgamma/ElectronIdentification RecoEgamm
 # MVA electron ID
 # RecoEgamma/ElectronIdentification overlaps with the line above but most of the files added above are not contained in this branch and thus will not be overwritten
 $INSTALL guitargeek ElectronID_MVA2017_940pre3 RecoEgamma/EgammaTools RecoEgamma/ElectronIdentification -x RecoEgamma/ElectronIdentification/python/Identification/cutBasedElectronID_tools.py
+# This is getting ridiculous (difference between 94X and 101X is purely technical)
+cp $CMSSW_RELEASE_BASE/src/RecoEgamma/EgammaTools/src/EcalClusterLocal.cc $SRC/RecoEgamma/EgammaTools/src/EcalClusterLocal.cc
 
 # MVA weights for ID
 git clone -b CMSSW_9_4_0_pre3_TnP https://github.com/lsoffi/RecoEgamma-ElectronIdentification.git electronid
@@ -38,6 +40,12 @@ $INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils
 # Deep double B tagger from FNAL
 #$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
 $INSTALL DylanHsu double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
+
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronProducer.h $SRC/PhysicsTools/PatAlgos/plugins/PATElectronProducer.h
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATElectronProducer.cc
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATPhotonProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATPhotonProducer.cc
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronSlimmer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATElectronSlimmer.cc
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATCompositeCandidateProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATCompositeCandidateProducer.cc
 
 # clone to a temp area and move the contents to avoid including .git
 TEMP=$(mktemp -d)

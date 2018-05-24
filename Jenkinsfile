@@ -1,11 +1,11 @@
 //// DEFINE THESE PLEASE ////
 
-def in_files = ['E0A114B0-56F1-E711-8C5F-44A842B46A7E', '023E56A6-4FF3-E711-867C-68B59972C49E']
+def in_files = ['7C75991C-535C-E811-B931-FA163E3A8726', '7E2944AD-145E-E811-90D7-FA163E11797A']
 
-def cmssw_version = 'CMSSW_9_4_6'
+def cmssw_version = 'CMSSW_10_1_4'
 def scram_arch = 'slc6_amd64_gcc630'
 def panda_tree_user = 'PandaPhysics'
-def panda_tree_branch = 'branch-010-devel'
+def panda_tree_branch = 'master'
 
 //// Hopefully you don't need to change much of what follows
 

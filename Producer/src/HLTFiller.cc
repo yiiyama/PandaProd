@@ -141,8 +141,6 @@ HLTFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventS
     objMap.add(ptr, outObj);
     nameMap.add(ptr, filterNames_[iObj]);
   }
-
-  _outEvent.triggerObjects.makeMap(*filters_);
 }
 
 void

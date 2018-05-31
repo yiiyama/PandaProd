@@ -16,7 +16,7 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-options.config = '31Mar2018'
+options.config = '2018Prompt'
 
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions

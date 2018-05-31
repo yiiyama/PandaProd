@@ -16,7 +16,7 @@ options._tagOrder.remove('numEvent%d')
 
 options.parseArguments()
 
-options.config = '31Mar2018'
+options.config = 'Summer16'
 
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
@@ -33,6 +33,10 @@ elif options.config == 'Fall17':
     options.isData = False
     options.globaltag = '94X_mc2017_realistic_v14'
     options.pdfname = 'NNPDF3.1'
+    options.redojec = True
+elif options.config == 'Summer16':
+    options.isData = False
+    options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
     options.redojec = True
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)

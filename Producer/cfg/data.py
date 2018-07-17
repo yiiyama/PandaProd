@@ -322,7 +322,8 @@ fatJetSequence = cms.Sequence(
 )
 
 ### MERGE GEN PARTICLES
-if not options.isData:
+do_merge = not options.isData and False
+if do_merge:
     process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
     genMergeSequence = cms.Sequence( process.mergedGenParticles )
 else:
@@ -340,8 +341,7 @@ if not options.isData:
     # rParam and jetAlgorithm MUST match those used for jets to be associated with hadrons
     # More details on the tool: https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagMCTools#New_jet_flavour_definition
 
-    #process.selectedHadronsAndPartons.particles = 'prunedGenParticles'
-    process.selectedHadronsAndPartons.particles = 'mergedGenParticles'
+    process.selectedHadronsAndPartons.particles = 'mergedGenParticles' if do_merge else 'prunedGenParticles'
 
     process.ak4GenJetFlavourInfos = ak4JetFlavourInfos.clone(
         jets = 'slimmedGenJets'

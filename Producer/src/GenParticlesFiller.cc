@@ -257,7 +257,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   auto& inParticles(getProduct_(_inEvent, genParticlesToken_));
   // this is miniaod-specific - modify if we need to run on AOD for some reason
   PackedGenParticleView const* inFinalStates(0);
-  if (false && !finalStateParticlesToken_.second.isUninitialized())
+  if (!finalStateParticlesToken_.second.isUninitialized())
     inFinalStates = &getProduct_(_inEvent, finalStateParticlesToken_);
 
   std::map<reco::CandidatePtr, PNodeWithPtr*> nodeMap;

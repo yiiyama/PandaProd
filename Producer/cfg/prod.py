@@ -324,7 +324,7 @@ fatJetSequence = cms.Sequence(
 )
 
 ### MERGE GEN PARTICLES
-if not options.isData:
+if not options.isData and False:
     process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
     genMergeSequence = cms.Sequence( process.mergedGenParticles )
 else:

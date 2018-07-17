@@ -11,6 +11,11 @@
 typedef edm::Ptr<reco::GenParticle> GenParticlePtr;
 typedef edm::Ptr<pat::PackedGenParticle> PackedGenParticlePtr;
 
+namespace {
+  // Track the PNodeWithPtrs that are made from packed collections
+  std::unordered_set<const void*> miniaodPacked;
+}
+
 struct PNodeWithPtr : public PNode {
   reco::CandidatePtr candPtr{};
   reco::CandidatePtr replacedCandPtr{};
@@ -160,6 +165,7 @@ struct PNodeWithPtr : public PNode {
 
     outParticle.pdgid = pdgId;
     outParticle.finalState = (status == 1);
+    outParticle.miniaodPacked = (miniaodPacked.find(this) != miniaodPacked.end());
     outParticle.statusFlags = statusBits.to_ulong();
     outParticle.parent.idx() = parentIdx;
 
@@ -180,6 +186,7 @@ struct PNodeWithPtr : public PNode {
 
     outParticle.pdgid = pdgId;
     outParticle.finalState = (status == 1);
+    outParticle.miniaodPacked = (miniaodPacked.find(this) != miniaodPacked.end());
     outParticle.statusFlags = statusBits.to_ulong();
     outParticle.parent.idx() = parentIdx;
 
@@ -264,6 +271,9 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   std::vector<PNodeWithPtr*> rootNodes;
   std::vector<PNodeWithPtr*> orphans;
 
+  // A global set for tracking which PNodeWithPtr came from packed collection
+  miniaodPacked.clear();
+
   for (unsigned iP(0); iP != inParticles.size(); ++iP) {
     auto& inCand(inParticles.at(iP));
     if (inCand.motherRefVector().size() == 0)
@@ -273,6 +283,7 @@ GenParticlesFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, ed
   if (inFinalStates) {
     for (unsigned iP(0); iP != inFinalStates->size(); ++iP) {
       auto* finalState(new PNodeWithPtr(inFinalStates->ptrAt(iP), nodeMap));
+      miniaodPacked.insert(finalState);
       if (!finalState->mother)
         orphans.push_back(finalState);
     }

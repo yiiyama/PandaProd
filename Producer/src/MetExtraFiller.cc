@@ -83,14 +83,14 @@ MetExtraFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::E
     noMuMex = patMet.px();
     noMuMey = patMet.py();
   }
-  else if (enabled_[kGen]) {
+  else if (genMets && enabled_[kGen]) {
     auto& genMet(genMets->at(0));
 
     _outEvent.genMet.pt = genMet.pt();
     _outEvent.genMet.phi = genMet.phi();
   }
 
-  if (noHFMets) {
+  if (noHFMets && enabled_[kNoHF]) {
     auto& noHFMet(noHFMets->at(0));
 
     _outEvent.noHFMet.pt = noHFMet.pt();

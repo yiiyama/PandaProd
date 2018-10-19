@@ -96,6 +96,9 @@ del process.panda.fillers.common.finalStateParticles
 process.panda.fillers.genParticles.outputMode = 1
 process.panda.fillers.ak4GenJets.genJets = 'ak4GenJets'
 process.panda.fillers.ak8GenJets.genJets = 'ak8GenJets'
+del process.panda.fillers.extraMets.patMet
+del process.panda.fillers.extraMets.noHFMet
+process.panda.fillers.extraMets.genMet = cms.untracked.string('genMetTrue')
 process.panda.fillers.extraMets.types = ['gen']
 
 process.panda.outputFile = options.outputFile

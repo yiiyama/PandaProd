@@ -44,7 +44,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process('NTUPLES')
 
 process.options = cms.untracked.PSet(
-    numberOfThreads = cms.untracked.uint32(8),
+    numberOfThreads = cms.untracked.uint32(1),
     numberOfStreams = cms.untracked.uint32(0)
 )
 

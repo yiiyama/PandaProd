@@ -1,8 +1,7 @@
-#include "FWCore/Framework/interface/LuminosityBlock.h"
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
-#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Run.h"
+#include "FWCore/Framework/interface/LuminosityBlock.h"
+#include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "FWCore/Common/interface/TriggerNames.h"
@@ -27,7 +26,7 @@ double toMS(SClock::duration const& interval)
   return std::chrono::duration_cast<std::chrono::nanoseconds>(interval).count() * 1.e-6;
 }
 
-class PandaProducer : public edm::EDAnalyzer {
+class PandaProducer : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns, edm::one::WatchLuminosityBlocks> {
 public:
   explicit PandaProducer(edm::ParameterSet const&);
   ~PandaProducer();
@@ -44,8 +43,8 @@ private:
   std::vector<FillerBase*> fillers_;
   ObjectMapStore objectMaps_;
 
-  VString selectEvents_;
-  edm::EDGetTokenT<edm::TriggerResults> skimResultsToken_;
+  VString const selectEvents_;
+  edm::EDGetTokenT<edm::TriggerResults> const skimResultsToken_;
 
   TFile* outputFile_{0};
   TTree* eventTree_{0};
@@ -56,9 +55,9 @@ private:
 
   unsigned nEventsInLumi_;
 
-  std::string outputName_;
-  bool useTrigger_;
-  unsigned printLevel_;
+  std::string const outputName_;
+  bool const useTrigger_;
+  unsigned const printLevel_;
 
   std::vector<SClock::duration> timers_;
   SClock::time_point lastAnalyze_; //! Time point of last return from analyze()
@@ -136,6 +135,10 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
       for (auto* filler : this->fillers_)
         filler->notifyNewProduct(branchDescription, coll);
     });
+
+  // Might use some thread-unsafe resource and therefore cannot run concurrently with another edm::one module
+  // This is being super-conservative - can do better by collecting information from the individual fillers.
+  usesResource();
 }
 
 PandaProducer::~PandaProducer()

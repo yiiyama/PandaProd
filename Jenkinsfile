@@ -37,7 +37,7 @@ def produce_panda(cmssw_version, do_src, base) {
            INPUT=''' + in_files_dir + '''/$BASE.root
            # Get the number of events to run. Sort of based on the size of the event content.
            MAX=$(edmEventSize -v $INPUT | perl -ne '/\\. [\\d\\.]+ [\\d\\.]+$/ && print $_' | perl -ane '$sum += $F[1]} END { print int(1e4 * exp($sum/-2e5))')
-           cmsRun $(perl -ne '/^\\/store\\/(data|mc)\\// && print $1' $HOME/miniaod/$BASE.txt).py inputFiles=file:$INPUT outputFile=$BASE.root maxEvents=$MAX
+           cmsRun $(perl -ne '/^\\/store\\/(data|mc)\\// && print $1; /2018.*\\/PromptReco/ && print "-2018Prompt"' $HOME/miniaod/$BASE.txt).py inputFiles=file:$INPUT outputFile=$BASE.root maxEvents=$MAX
            '''
       }
     }

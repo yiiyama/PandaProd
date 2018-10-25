@@ -10,7 +10,7 @@ if options.config == '31Mar2018':
     options.redojec = True
 elif options.config == '2018Prompt':
     options.isData = True
-    options.globaltag = '101X_dataRun2_Prompt_v10'
+    options.globaltag = '101X_dataRun2_Prompt_v11'
 elif options.config == 'Fall17':
     options.isData = False
     options.globaltag = '94X_mc2017_realistic_v14'

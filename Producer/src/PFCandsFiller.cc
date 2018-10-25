@@ -118,8 +118,8 @@ PFCandsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
       outCand.packedPhi = exposer.packedPhi();
       outCand.packedM = exposer.packedM();
       if (useExistingWeights_) {
-        outCand.packedPuppiW = exposer.packedPuppiweight();
-        outCand.packedPuppiWNoLepDiff = exposer.packedPuppiweightNoLepDiff();
+        // Except for PUPPI weights, which have changed in 10_2_4, unfortunately
+        outCand.setPuppiW(inPacked->puppiWeight(), inPacked->puppiWeightNoLep());
       }
 
       auto vtxRef(inPacked->vertexRef());

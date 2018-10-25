@@ -41,11 +41,15 @@ $INSTALL cms-met METRecipe94x PhysicsTools/PatAlgos PhysicsTools/PatUtils
 #$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
 $INSTALL DylanHsu double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
 
-cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronProducer.h $SRC/PhysicsTools/PatAlgos/plugins/PATElectronProducer.h
-cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATElectronProducer.cc
-cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATPhotonProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATPhotonProducer.cc
-cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATElectronSlimmer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATElectronSlimmer.cc
-cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/PATCompositeCandidateProducer.cc $SRC/PhysicsTools/PatAlgos/plugins/PATCompositeCandidateProducer.cc
+# Last contribtion to PhysicsTools/PatAlgos from cms-met/METRecipe94x was on Nov 6, 2017.
+# It was merged into CMSSW as commit 8a9523901e3fc5cec4c6200ed2160e0f45baca7d, so this should be safe
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/* $SRC/PhysicsTools/PatAlgos/plugins/.
+
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/interface/MuonMvaEstimator.h $SRC/PhysicsTools/PatAlgos/interface/.
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/src/MuonMvaEstimator.cc $SRC/PhysicsTools/PatAlgos/src/.
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/interface/SoftMuonMvaEstimator.h $SRC/PhysicsTools/PatAlgos/interface/.
+cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/src/SoftMuonMvaEstimator.cc $SRC/PhysicsTools/PatAlgos/src/.
+
 
 # clone to a temp area and move the contents to avoid including .git
 TEMP=$(mktemp -d)

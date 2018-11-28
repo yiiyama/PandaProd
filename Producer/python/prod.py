@@ -30,6 +30,11 @@ import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('NTUPLES')
 
+process.options = cms.untracked.PSet(
+    numberOfThreads = cms.untracked.uint32(1),
+    numberOfStreams = cms.untracked.uint32(0)
+)
+
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 for cat in ['PandaProducer', 'JetPtMismatchAtLowPt', 'JetPtMismatch', 'NullTransverseMomentum', 'MissingJetConstituent']:

@@ -132,7 +132,6 @@ from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMet
 runMetCorAndUncFromMiniAOD(
     process,
     isData = options.isData,
-    reapplyJEC = options.redojec
 )
 metSequence = cms.Sequence(
     process.fullPatMetSequence

@@ -20,6 +20,9 @@ elif options.config == 'Summer16':
     options.isData = False
     options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
     options.redojec = True
+elif options.config == 'Autumn18':
+    options.isData = False
+    options.globaltag = '102X_upgrade2018_realistic_v15'
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 
@@ -129,7 +132,7 @@ from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMet
 runMetCorAndUncFromMiniAOD(
     process,
     isData = options.isData,
-) 
+)
 metSequence = cms.Sequence(
     process.fullPatMetSequence
 )
@@ -222,6 +225,7 @@ from PandaProd.Producer.utils.makeJets_cff import makeJets
 slimmedJetsSequence = makeJets(process, options.isData, 'AK4PFchs', 'pfCHS', 'DeepFlavor')
 
 if options.redojec:
+
     ### JET RE-CORRECTION
     from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff import updatedPatJetCorrFactors, updatedPatJets
 
@@ -229,7 +233,10 @@ if options.redojec:
     if options.isData:
         jecLevels.append('L2L3Residual')
 
-    # slimmedJets made from scratch
+    #
+    # slimmedJets are made from scratch (makeJets_cff)
+    #
+
     #process.updatedPatJetCorrFactors = updatedPatJetCorrFactors.clone(
     #    src = cms.InputTag('slimmedJets', '', cms.InputTag.skipCurrentProcess()),
     #    levels = cms.vstring(*jecLevels),
@@ -466,3 +473,6 @@ if options.connect:
     process.GlobalTag.connect = options.connect
     for toGet in process.GlobalTag.toGet:
         toGet.connect = options.connect
+
+if options.dumpPython:
+    print process.dumpPython()

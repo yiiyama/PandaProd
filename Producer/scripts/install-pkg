@@ -57,15 +57,34 @@ do
   shift
 done
 
-# Thought about reusing the temporary directory and the cloned repository
-# However it turns out this is faster
 cd $TEMP
-git clone --depth 1 -n -b $REF https://github.com/$ACCOUNT/cmssw.git
-cd cmssw
 
-git checkout HEAD -- $PKGS
+if [ -z "$PKGS" ]
+then
 
-recursive-mv . $CMSSW_BASE/src $EXCLUDES
+  ORIGINAL_SRC=$CMSSW_BASE/src
+
+  scram p CMSSW $CMSSW_RELEASE
+  cd $CMSSW_RELEASE/src
+  eval `scram runtime -sh`
+  git cms-merge-topic $ACCOUNT:$REF
+  recursive-mv . $ORIGINAL_SRC
+
+else
+
+  # Thought about reusing the temporary directory and the cloned repository
+  # However it turns out this is faster
+  git clone --depth 1 -n https://github.com/cms-sw/cmssw.git
+  cd cmssw
+
+  git remote add $ACCOUNT https://github.com/$ACCOUNT/cmssw.git
+  git fetch $ACCOUNT $REF
+  git merge $ACCOUNT/$REF
+  git checkout HEAD -- $PKGS
+  
+  recursive-mv . $CMSSW_BASE/src $EXCLUDES
+
+fi
 
 cd $CWD
 

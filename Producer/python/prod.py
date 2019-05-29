@@ -3,26 +3,42 @@ from .opts import options
 # Global tags
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions
 
-if options.config == '31Mar2018':
-    # re-miniaod of 2017 legacy rereco
+# https://twiki.cern.ch/twiki/pub/CMS/PdmVAnalysisSummaryTable
+if options.config == '17Jul2018':
+    # re-miniaod of 2016 data 07Aug17 rereco
     options.isData = True
-    options.globaltag = '94X_dataRun2_ReReco_EOY17_v6'
+    options.globaltag = '94X_dataRun2_v10'
+elif options.config == '31Mar2018':
+    # re-miniaod of 2017 data 17Nov2017 rereco
+    options.isData = True
+    options.globaltag = '94X_dataRun2_v11'
     options.redojec = True
 elif options.config == '2018Prompt':
+    # Run2018D (equivalent to 17Sep2018 rereco of ABC)
     options.isData = True
-    options.globaltag = '101X_dataRun2_Prompt_v11'
-elif options.config == 'Fall17':
+    options.globaltag = '102X_dataRun2_Prompt_v13'
+elif options.config == '17Sep2018':
+    # 2018 ABC data rereco. Use also for parking 05May2019 reconstruction
+    options.isData = True
+    options.globaltag = '102X_dataRun2_Sep2018ABC_v2'
+elif options.config == 'Summer16v3':
+    # 2016 MC
     options.isData = False
-    options.globaltag = '94X_mc2017_realistic_v14'
+    options.globaltag = '102X_mcRun2_asymptotic_v6'
+    options.pdfname = 'NNPDF3.0'
+elif options.config == 'Fall17v2':
+    # 2017 MC
+    options.isData = False
+    options.globaltag = '102X_mc2017_realistic_v6'
     options.pdfname = 'NNPDF3.1'
-    options.redojec = True
-elif options.config == 'Summer16':
-    options.isData = False
-    options.globaltag = '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
+    # MINIAOD production globaltag = 94X_mc2017_realistic_v14
     options.redojec = True
 elif options.config == 'Autumn18':
     options.isData = False
-    options.globaltag = '102X_upgrade2018_realistic_v15'
+    options.globaltag = '102X_upgrade2018_realistic_v18'
+    options.pdfname = 'NNPDF3.1'
+    # MINIAOD production globaltag = 102_upgrade2018_realistic_v15
+    options.redojec = True
 elif options.config:
     raise RuntimeError('Unknown config ' + options.config)
 

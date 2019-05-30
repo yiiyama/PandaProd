@@ -74,14 +74,9 @@ else
 
   # Thought about reusing the temporary directory and the cloned repository
   # However it turns out this is faster
-  git clone --depth 1 -n https://github.com/cms-sw/cmssw.git
+  git clone --depth 1 -n -b $REF https://github.com/$ACCOUNT/cmssw.git
   cd cmssw
-
-  git remote add $ACCOUNT https://github.com/$ACCOUNT/cmssw.git
-  git fetch $ACCOUNT $REF
-  git merge $ACCOUNT/$REF
   git checkout HEAD -- $PKGS
-  
   recursive-mv . $CMSSW_BASE/src $EXCLUDES
 
 fi

@@ -301,8 +301,8 @@ def makeFatJets(process, isData, label, candidates, ptMin = 100.):
     patJetsMod.jetCorrFactorsSource = [jetCorrFactors]
     patJetsMod.discriminatorSources = [
         cms.InputTag('pfBoostedDoubleSVBJetTags' + label),
-        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probQ'),
-        cms.InputTag('pfDeepDoubleBJetTags' + label, 'probH')
+        cms.InputTag('pfDeepDoubleBvLJetTags' + label, 'probQCD'),
+        cms.InputTag('pfDeepDoubleBvLJetTags' + label, 'probHbb')
     ]
     if not isData:
         patJetsMod.genJetMatch = genJetMatch

@@ -6,28 +6,25 @@ CWD=`pwd`
 SRC=$CMSSW_BASE/src
 INSTALL=$CMSSW_BASE/src/PandaProd/Producer/scripts/install-pkg
 
-# EGM add EGammaPostRecoTools
+# EGM: Add EGammaPostRecoTools
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaPostRecoRecipes
-#$INSTALL cms-egamma EgammaPostRecoTools RecoEgamma/EgammaTools
 $INSTALL cms-egamma EgammaPostRecoTools
 
-# Deep double B tagger from FNAL
-#$INSTALL jmduarte double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
-#$INSTALL DylanHsu double-b-rebased-94x  RecoBTag/Combined RecoBTag/Configuration RecoBTag/DeepFlavour DataFormats/BTauReco PhysicsTools/PatAlgos
+# EGM: 2018 preliminary energy corrections
+# https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaPostRecoRecipes
+# optional but speeds up the photon ID value module so things fun faster
+$INSTALL cms-egamma PhotonIDValueMapSpeedup1029
+# fixes the Run2018D dictionary issue, see https://github.com/cms-sw/cmssw/issues/26182
+$INSTALL cms-egamma slava77-btvDictFix_10210
+# check out the package otherwise code accessing it will crash
+$INSTALL cms-sw $CMSSW_RELEASE EgammaAnalysis/ElectronTools
+# delete the data directory so and populate it from cms-egamma latest
+rm -rf $SRC/EgammaAnalysis/ElectronTools/data
+git clone git@github.com:cms-egamma/EgammaAnalysis-ElectronTools.git $SRC/EgammaAnalysis/ElectronTools/data
+cd $SRC/EgammaAnalysis/ElectronTools/data
+git checkout ScalesSmearing2018_Dev
+cd -
+$INSTALL cms-egamma EgammaPostRecoTools_dev
 
-# Last contribtion to PhysicsTools/PatAlgos from cms-met/METRecipe94x was on Nov 6, 2017.
-# It was merged into CMSSW as commit 8a9523901e3fc5cec4c6200ed2160e0f45baca7d, so this should be safe
-#cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/plugins/* $SRC/PhysicsTools/PatAlgos/plugins/.
-
-#cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/interface/MuonMvaEstimator.h $SRC/PhysicsTools/PatAlgos/interface/.
-#cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/src/MuonMvaEstimator.cc $SRC/PhysicsTools/PatAlgos/src/.
-#cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/interface/SoftMuonMvaEstimator.h $SRC/PhysicsTools/PatAlgos/interface/.
-#cp $CMSSW_RELEASE_BASE/src/PhysicsTools/PatAlgos/src/SoftMuonMvaEstimator.cc $SRC/PhysicsTools/PatAlgos/src/.
-
-
-## clone to a temp area and move the contents to avoid including .git
-#TEMP=$(mktemp -d)
-#git clone https://github.com/jmduarte/RecoBTag-Combined.git $TEMP/data -b deepdoubleb_v0
-#mkdir -p $SRC/RecoBTag/Combined/data
-#mv $TEMP/data/DeepDoubleB $SRC/RecoBTag/Combined/data/
-#rm -rf $TEMP
+# JME: PUPPI v12 tune
+$INSTALL ahinzmann puppi-v12-102X

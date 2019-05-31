@@ -9,36 +9,42 @@ if not options.config:
 # https://twiki.cern.ch/twiki/pub/CMS/PdmVAnalysisSummaryTable
 if options.config == '17Jul2018':
     # re-miniaod of 2016 data 07Aug17 rereco
-    options.isData = True
-    options.globaltag = '94X_dataRun2_v10'
+    isData = True
+    globaltag = '94X_dataRun2_v10'
 elif options.config == '31Mar2018':
     # re-miniaod of 2017 data 17Nov2017 rereco
-    options.isData = True
-    options.globaltag = '94X_dataRun2_v11'
+    isData = True
+    globaltag = '94X_dataRun2_v11'
 elif options.config == '2018Prompt':
     # Run2018D (equivalent to 17Sep2018 rereco of ABC)
-    options.isData = True
-    options.globaltag = '102X_dataRun2_Prompt_v13'
+    isData = True
+    globaltag = '102X_dataRun2_Prompt_v13'
 elif options.config == '17Sep2018':
     # 2018 ABC data rereco. Use also for parking 05May2019 reconstruction
-    options.isData = True
-    options.globaltag = '102X_dataRun2_Sep2018ABC_v2'
+    isData = True
+    globaltag = '102X_dataRun2_Sep2018ABC_v2'
 elif options.config == 'Summer16v3':
     # 2016 MC
-    options.isData = False
-    options.globaltag = '102X_mcRun2_asymptotic_v6'
-    options.pdfname = 'NNPDF3.0'
+    isData = False
+    globaltag = '102X_mcRun2_asymptotic_v6'
+    pdfname = 'NNPDF3.0'
 elif options.config == 'Fall17v2':
     # 2017 MC
-    options.isData = False
-    options.globaltag = '102X_mc2017_realistic_v6'
-    options.pdfname = 'NNPDF3.1'
+    isData = False
+    globaltag = '102X_mc2017_realistic_v6'
+    pdfname = 'NNPDF3.1'
 elif options.config == 'Autumn18':
-    options.isData = False
-    options.globaltag = '102X_upgrade2018_realistic_v18'
-    options.pdfname = 'NNPDF3.1'
+    isData = False
+    globaltag = '102X_upgrade2018_realistic_v18'
+    pdfname = 'NNPDF3.1'
 else:
     raise RuntimeError('Unknown config ' + options.config)
+
+# Override from commandline
+if options.globaltag:
+    globaltag = options.globaltag
+if options.pdfname:
+    pdfname = options.pdfname
 
 import FWCore.ParameterSet.Config as cms
 
@@ -80,13 +86,13 @@ if options.lumilist != '':
 ##############
 
 process.load('Configuration.Geometry.GeometryRecoDB_cff') 
-if not options.isData:
+if not isData:
     process.load('Configuration.Geometry.GeometrySimDB_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
-process.GlobalTag.globaltag = options.globaltag
+process.GlobalTag.globaltag = globaltag
 
 process.RandomNumberGeneratorService.panda = cms.PSet(
     initialSeed = cms.untracked.uint32(1234567),
@@ -190,7 +196,7 @@ else:
 
 runMetCorAndUncFromMiniAOD(
     process,
-    isData=options.isData,
+    isData=isData,
     pfCandColl=cms.InputTag("packedPFCandidates"),
     recoMetFromPFCs=True,
     CHS=True,
@@ -201,7 +207,7 @@ runMetCorAndUncFromMiniAOD(
 
 slimmedJetsSequence = makeJets(
     process,
-    options.isData,
+    isData,
     suffix='',
     patModule=process.patJets,
     patSequence=process.patMetModuleSequence # subsequence of fullPatMetSequence that contains patMets
@@ -209,7 +215,7 @@ slimmedJetsSequence = makeJets(
 
 runMetCorAndUncFromMiniAOD(
     process,
-    isData=options.isData,
+    isData=isData,
     metType="Puppi",
     pfCandColl=cms.InputTag("puppiForMET"),
     recoMetFromPFCs=True,
@@ -221,7 +227,7 @@ runMetCorAndUncFromMiniAOD(
 
 slimmedJetsPuppiSequence = makeJets(
     process,
-    options.isData,
+    isData,
     suffix='Puppi',
     patModule=process.patJetsPuppi,
     patSequence=process.patMetModuleSequencePuppi # subsequence of fullPatMetSequencePuppi that contains patMetsPuppi
@@ -238,25 +244,25 @@ jetMETSequence = cms.Sequence(
 
 from PandaProd.Producer.utils.makeFatJets_cff import initFatJets, makeFatJets
 
-fatJetInitSequence = initFatJets(process, options.isData, ['AK8', 'CA15'])
+fatJetInitSequence = initFatJets(process, isData, ['AK8', 'CA15'])
 
 ak8CHSSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = isData,
     label = 'AK8PFchs',
     candidates = 'pfCHS'
 )
 
 ak8PuppiSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = isData,
     label = 'AK8PFPuppi',
     candidates = 'puppi'
 )
 
 ca15PuppiSequence = makeFatJets(
     process,
-    isData = options.isData,
+    isData = isData,
     label = 'CA15PFPuppi',
     candidates = 'puppi'
 )
@@ -269,7 +275,7 @@ fatJetSequence = cms.Sequence(
 )
 
 ### MERGE GEN PARTICLES
-do_merge = not options.isData and False
+do_merge = not isData and False
 if do_merge:
     process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
     genMergeSequence = cms.Sequence( process.mergedGenParticles )
@@ -277,7 +283,7 @@ else:
     genMergeSequence = cms.Sequence()
 
 ### GEN JET FLAVORS
-if not options.isData:
+if not isData:
     from PandaProd.Producer.utils.setupGenJetFlavor_cff import setupGenJetFlavor
     genJetFlavorSequence = setupGenJetFlavor(process)
 else:
@@ -305,18 +311,18 @@ process.reco = cms.Path(
 #############
 
 process.load('PandaProd.Producer.panda_cfi')
-process.panda.isRealData = options.isData
+process.panda.isRealData = isData
 process.panda.useTrigger = options.useTrigger
 #process.panda.SelectEvents = ['reco'] # no skim
 
-if options.isData:
+if isData:
     process.panda.fillers.partons.enabled = False
     process.panda.fillers.genParticles.enabled = False
     process.panda.fillers.ak4GenJets.enabled = False
     process.panda.fillers.ak8GenJets.enabled = False
     process.panda.fillers.ca15GenJets.enabled = False
 else:
-    process.panda.fillers.weights.pdfType = options.pdfname
+    process.panda.fillers.weights.pdfType = pdfname
     process.panda.fillers.extraMets.types.append('gen')
 
 if not options.useTrigger:
@@ -345,9 +351,6 @@ process.ntuples = cms.EndPath(process.panda)
 ##############
 
 process.schedule = cms.Schedule(process.reco, process.ntuples)
-
-#from FWCore.ParameterSet.Utilities import convertToUnscheduled
-#process = convertToUnscheduled(process)
 
 if options.connect:
     if options.connect == 'mit':

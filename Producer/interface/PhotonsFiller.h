@@ -27,31 +27,27 @@ class PhotonsFiller : public FillerBase {
  protected:
   typedef edm::View<reco::Photon> PhotonView;
   typedef edm::View<reco::GsfElectron> GsfElectronView;
-  typedef edm::ValueMap<bool> BoolMap;
   typedef edm::ValueMap<float> FloatMap;
 
   NamedToken<PhotonView> photonsToken_;
-  NamedToken<PhotonView> smearedPhotonsToken_;
-  NamedToken<PhotonView> regressionPhotonsToken_;
   NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
-  NamedToken<BoolMap> looseIdToken_;
-  NamedToken<BoolMap> mediumIdToken_;
-  NamedToken<BoolMap> tightIdToken_;
-  NamedToken<FloatMap> chIsoToken_;
-  NamedToken<FloatMap> nhIsoToken_;
-  NamedToken<FloatMap> phIsoToken_;
   NamedToken<FloatMap> chIsoMaxToken_;
   NamedToken<double> rhoToken_;
 
-  EffectiveAreas chIsoEA_;
-  EffectiveAreas nhIsoEA_;
-  EffectiveAreas phIsoEA_;
+  std::string looseIdName_;
+  std::string mediumIdName_;
+  std::string tightIdName_;
+  std::string chIsoName_;
+  std::string nhIsoName_;
+  std::string phIsoName_;
 
   TFormula chIsoLeakage_[2];
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
+
+  bool fillCorrectedPts_;
 };
 
 #endif

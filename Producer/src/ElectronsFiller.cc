@@ -30,7 +30,8 @@ ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet con
   // mvaCategoriesName_(getParameter_<std::string>(_cfg, "mvaCategories", "")),
   combIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "combIsoEA")).fullPath()),
   ecalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "ecalIsoEA")).fullPath()),
-  hcalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "hcalIsoEA")).fullPath())
+  hcalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "hcalIsoEA")).fullPath()),
+  fillCorrectedPts_(getParameter_<bool>(_cfg, "fillCorrectedPts"))
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
@@ -236,7 +237,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
-    if (isPAT) {
+    if (fillCorrectedPts_ && isPAT) {
       auto& patElectron(static_cast<pat::Electron const&>(inElectron));
       outElectron.smearedPt = patElectron.pt() * (1. + patElectron.userFloat("energySigmaValue"));
       outElectron.regPt = patElectron.pt() * patElectron.userFloat("ecalTrkEnergyPostCorr") / patElectron.energy();

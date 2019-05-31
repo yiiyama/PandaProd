@@ -159,7 +159,8 @@ panda = cms.EDAnalyzer('PandaProducer',
             mvaCategories = cms.untracked.string(''),
             combIsoEA = cms.untracked.string(''),
             ecalIsoEA = cms.untracked.string(''),
-            hcalIsoEA = cms.untracked.string('')
+            hcalIsoEA = cms.untracked.string(''),
+            fillCorrectedPts = cms.untracked.bool(True)
         ),
         muons = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),
@@ -176,26 +177,14 @@ panda = cms.EDAnalyzer('PandaProducer',
             enabled = cms.untracked.bool(True),
             filler = cms.untracked.string('Photons'),
             photons = cms.untracked.string('slimmedPhotons'),
-            smearedPhotons = cms.untracked.string('smearedPhotons'),
             looseId = cms.untracked.string(''),
             mediumId = cms.untracked.string(''),
             tightId = cms.untracked.string(''),
-            chIso = cms.untracked.string('photonIDValueMapProducer:phoChargedIsolation'),
-            nhIso = cms.untracked.string('photonIDValueMapProducer:phoNeutralHadronIsolation'),
-            phIso = cms.untracked.string('photonIDValueMapProducer:phoPhotonIsolation'),
             chIsoMax = cms.untracked.string('worstIsolationProducer'),
-            chIsoEA = cms.untracked.string(''),
-            nhIsoEA = cms.untracked.string(''),
-            phIsoEA = cms.untracked.string(''),
             chIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
-            nhIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.0148 * x + 0.000017 * x * x'),
-                EE = cms.untracked.string('0.0163 * x + 0.000014 * x * x')
-            ),
-            phIsoLeakage = cms.untracked.PSet(
-                EB = cms.untracked.string('0.0047 * x'),
-                EE = cms.untracked.string('0.0034 * x')
-            )
+            nhIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
+            phIsoLeakage = cms.untracked.PSet(EB = cms.untracked.string(''), EE = cms.untracked.string('')),
+            fillCorrectedPts = cms.untracked.bool(True)
         ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

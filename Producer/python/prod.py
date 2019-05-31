@@ -99,6 +99,23 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
 
 from PandaProd.Producer.utils.makeJets_cff import makeJets
 
+### PUPPI V12
+# https://twiki.cern.ch/twiki/bin/view/CMS/PUPPI
+# This block has to come before EGM because puppiForMET_cff creates an empty egmPhotonIDs
+
+from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
+# Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
+# By default, does not use specific photon ID for PuppiPhoton (which was the case in 80X)
+makePuppiesFromMiniAOD(process, createScheduledSequence=True)
+
+# puppi sequences created by makePuppiesFromMiniAOD reuses weights in MINIAOD by default
+process.puppiNoLep.useExistingWeights = False
+process.puppi.useExistingWeights = False
+
+puppiV12Sequence = cms.Sequence(
+    process.puppiMETSequence
+)
+
 ### EGAMMA CORRECTIONS AND VIDS
 # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaPostRecoRecipes
 
@@ -112,48 +129,48 @@ elif options.config in ['31Mar2018', 'Fall17v2']:
 elif options.config in ['2018Prompt', '17Sep2018', 'Autumn18']:
     setupEgammaPostRecoSeq(process, runVID=True, era='2018-Prompt')
 
-electronIdParams = {
-    'vetoId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-veto',
-    'looseId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-loose',
-    'mediumId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-medium',
-    'tightId': 'egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V1-tight',
-    'mvaWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp90',
-    'mvaWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wp80',
-    'mvaWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-noIso-V1-wpLoose',
-    'mvaIsoWP90': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp90',
-    'mvaIsoWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80',
-    'mvaIsoWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose',
-    'hltId': 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1', # seems like we don't have these for >= 2017?
-    'mvaValues': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
-    #'mvaCategories': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
+#process.egmPhotonIDs.physicsObjectSrc
+
+electronFillerParams = {
+    'vetoId': 'cutBasedElectronID-Fall17-94X-V1-veto',
+    'looseId': 'cutBasedElectronID-Fall17-94X-V1-loose',
+    'mediumId': 'cutBasedElectronID-Fall17-94X-V1-medium',
+    'tightId': 'cutBasedElectronID-Fall17-94X-V1-tight',
+    'mvaWP90': 'mvaEleID-Fall17-noIso-V1-wp90',
+    'mvaWP80': 'mvaEleID-Fall17-noIso-V1-wp80',
+    'mvaWPLoose': 'mvaEleID-Fall17-noIso-V1-wpLoose',
+    'mvaIsoWP90': 'mvaEleID-Fall17-iso-V1-wp90',
+    'mvaIsoWP80': 'mvaEleID-Fall17-iso-V1-wp80',
+    'mvaIsoWPLoose': 'mvaEleID-Fall17-iso-V1-wpLoose',
+    'hltId': '', # seems like we don't have these for >= 2017?
+    'mvaValues': 'ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
+    #'mvaCategories': 'ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
     'combIsoEA': 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt',
     'ecalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt',
     'hcalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'
 }
 
-photonIdParams = {
-    'looseId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-loose',
-    'mediumId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-medium',
-    'tightId': 'egmPhotonIDs:cutBasedPhotonID-Fall17-94X-V1-tight',
-    'chIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfChargedHadrons_90percentBased_TrueVtx.txt',
-    'nhIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfNeutralHadrons_90percentBased_TrueVtx.txt',
-    'phIsoEA': 'RecoEgamma/PhotonIdentification/data/Fall17/effAreaPhotons_cone03_pfPhotons_90percentBased_TrueVtx.txt'
+# Iso leakage formulas are not consistent with the ID version (leakage for Spring16 but ID is Fall17 V1)
+# Kept as is for compatibility with existing 014 samples; for the next panda release we should move to Fall17 V2 anyway
+photonFillerParams = {
+    'looseId': 'cutBasedPhotonID-Fall17-94X-V1-loose',
+    'mediumId': 'cutBasedPhotonID-Fall17-94X-V1-medium',
+    'tightId': 'cutBasedPhotonID-Fall17-94X-V1-tight',
+    'chIsoLeakage': {'EB': '', 'EE': ''},
+    'nhIsoLeakage': {'EB': '0.0148 * x + 0.000017 * x * x', 'EE': '0.0163 * x + 0.000014 * x * x'},
+    'phIsoLeakage': {'EB': '0.0047 * x', 'EE': '0.0034 * x'}
 }
 
-### PUPPI V12
-# https://twiki.cern.ch/twiki/bin/view/CMS/PUPPI
+if options.config in ['17Jul2018', 'Summer16v3', '2018Prompt', '17Sep2018', 'Autumn18']:
+    # energy scale & smearing not available for 2018 at the moment (31 May 2018, for panda 014)
+    electronFillerParams['fillCorrectedPts'] = False
+    photonFillerParams['fillCorrectedPts'] = False
 
-from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-# Creates process.puppiMETSequence which includes 'puppi' and 'puppiForMET' (= EDProducer('PuppiPhoton'))
-# By default, does not use specific photon ID for PuppiPhoton (which was the case in 80X)
-makePuppiesFromMiniAOD(process, createScheduledSequence=True)
+process.load('PandaProd.Auxiliary.WorstIsolationProducer_cfi')
 
-# puppi sequences created by makePuppiesFromMiniAOD reuses weights in MINIAOD by default
-process.puppiNoLep.useExistingWeights = False
-process.puppi.useExistingWeights = False
-
-puppiV12Sequence = cms.Sequence(
-    process.puppiMETSequence
+egmCorrectionsSequence = cms.Sequence(
+    process.egammaPostRecoSeq +
+    process.worstIsolationProducer
 )
 
 ### Vanilla JET+MET (+ EE NOISE MITIGATION FOR 2017)
@@ -274,7 +291,7 @@ process.MonoXFilter.taggingMode = True
 ### RECO PATH
 
 process.reco = cms.Path(
-    process.egammaPostRecoSeq +
+    egmCorrectionsSequence +
     puppiV12Sequence +
     jetMETSequence +
     process.MonoXFilter +
@@ -305,11 +322,16 @@ else:
 if not options.useTrigger:
     process.panda.fillers.hlt.enabled = False
 
-for name, value in electronIdParams.items():
+for name, value in electronFillerParams.items():
     setattr(process.panda.fillers.electrons, name, value)
 
-for name, value in photonIdParams.items():
-    setattr(process.panda.fillers.photons, name, value)
+for name, value in photonFillerParams.items():
+    if type(value) is dict:
+        pset = getattr(process.panda.fillers.photons, name)
+        for k, v in value.items():
+            setattr(pset, k, v)
+    else:
+        setattr(process.panda.fillers.photons, name, value)
 
 process.panda.fillers.muons.rochesterCorrectionSource = 'PandaProd/Utilities/data/RoccoR2017v0.txt'
 
@@ -323,6 +345,9 @@ process.ntuples = cms.EndPath(process.panda)
 ##############
 
 process.schedule = cms.Schedule(process.reco, process.ntuples)
+
+#from FWCore.ParameterSet.Utilities import convertToUnscheduled
+#process = convertToUnscheduled(process)
 
 if options.connect:
     if options.connect == 'mit':

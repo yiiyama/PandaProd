@@ -65,6 +65,8 @@ class ElectronsFiller : public FillerBase {
   EffectiveAreas combIsoEA_;
   EffectiveAreas ecalIsoEA_;
   EffectiveAreas hcalIsoEA_;
+
+  bool fillCorrectedPts_;
 };
 
 #endif

@@ -5,7 +5,6 @@
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
 #include "DataFormats/EcalDetId/interface/EEDetId.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
-#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Photon.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -14,22 +13,15 @@
 
 PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
-  chIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "chIsoEA")).fullPath()),
-  nhIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "nhIsoEA")).fullPath()),
-  phIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "phIsoEA")).fullPath())
+  looseIdName_(getParameter_<std::string>(_cfg, "looseId")),
+  mediumIdName_(getParameter_<std::string>(_cfg, "mediumId")),
+  tightIdName_(getParameter_<std::string>(_cfg, "tightId")),
+  fillCorrectedPts_(getParameter_<bool>(_cfg, "fillCorrectedPts"))
 {
   getToken_(photonsToken_, _cfg, _coll, "photons");
-  getToken_(smearedPhotonsToken_, _cfg, _coll, "smearedPhotons", false);
-  getToken_(regressionPhotonsToken_, _cfg, _coll, "regressionPhotons", false);
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
-  getToken_(looseIdToken_, _cfg, _coll, "looseId");
-  getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
-  getToken_(tightIdToken_, _cfg, _coll, "tightId");
-  getToken_(chIsoToken_, _cfg, _coll, "chIso");
-  getToken_(nhIsoToken_, _cfg, _coll, "nhIso");
-  getToken_(phIsoToken_, _cfg, _coll, "phIso");
   getToken_(chIsoMaxToken_, _cfg, _coll, "chIsoMax");
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
 
@@ -54,17 +46,9 @@ void
 PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inPhotons(getProduct_(_inEvent, photonsToken_));
-  auto* inSmearedPhotons(getProductSafe_(_inEvent, smearedPhotonsToken_));
-  auto* inRegressionPhotons(getProductSafe_(_inEvent, regressionPhotonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
-  auto& looseId(getProduct_(_inEvent, looseIdToken_));
-  auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
-  auto& tightId(getProduct_(_inEvent, tightIdToken_));
-  auto& chIso(getProduct_(_inEvent, chIsoToken_));
-  auto& nhIso(getProduct_(_inEvent, nhIsoToken_));
-  auto& phIso(getProduct_(_inEvent, phIsoToken_));
   auto& chIsoMax(getProduct_(_inEvent, chIsoMaxToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
 
@@ -139,49 +123,58 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     outPhoton.sipip = inPhoton.full5x5_showerShapeVariables().sigmaIphiIphi;
     outPhoton.hOverE = inPhoton.hadTowOverEm();
 
-    outPhoton.chIso = chIso[inRef] - chIsoEA_.getEffectiveArea(scEta) * rho;
-    if (chIsoLeakage_[iDet].IsValid())
-      outPhoton.chIso -= chIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.nhIso = nhIso[inRef] - nhIsoEA_.getEffectiveArea(scEta) * rho;
-    if (nhIsoLeakage_[iDet].IsValid())
-      outPhoton.nhIso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.phIso = phIso[inRef] - phIsoEA_.getEffectiveArea(scEta) * rho;
-    if (phIsoLeakage_[iDet].IsValid())
-      outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
-    outPhoton.chIsoMax = chIsoMax[inRef];
+    if (isPAT) {
+      // We have now abandoned saving ID bits and isolations when running on AOD, but in practice we never do that
+      auto& patPhoton(static_cast<pat::Photon const&>(inPhoton));
 
-    // backward compatibility
-    outPhoton.loose = looseId[inRef];
-    outPhoton.medium = mediumId[inRef];
-    outPhoton.tight = tightId[inRef];
-    // Effective area hard-coded!!
-    double highptEA(0.);
-    if (scEta < 0.9)
-      highptEA = 0.17;
-    else if (scEta < 1.479)
-      highptEA = 0.14;
-    else if (scEta < 2.)
-      highptEA = 0.11;
-    else if (scEta < 2.2)
-      highptEA = 0.14;
-    else
-      highptEA = 0.22;
+      double chIso(patPhoton.userFloat("phoChargedIsolation"));
+      double nhIso(patPhoton.userFloat("phoNeutralHadronIsolation"));
+      double phIso(patPhoton.userFloat("phoPhotonIsolation"));
 
-    if (scEta < 1.479)
-      outPhoton.highpt = outPhoton.hOverE < 0.05 &&
-        outPhoton.sieie < 0.0105 &&
-        chIso[inRef] < 5. &&
-        phIso[inRef] + 0.0045 * outPhoton.pt() - highptEA * rho < 5.25;
-    else if (scEta < 2.)
-      outPhoton.highpt = outPhoton.hOverE < 0.05 &&
-        outPhoton.sieie < 0.028 &&
-        chIso[inRef] < 5. &&
-        phIso[inRef] + 0.0045 * outPhoton.pt() - highptEA * rho < 4.5;
-    else
-      outPhoton.highpt = outPhoton.hOverE < 0.05 &&
-        outPhoton.sieie < 0.028 &&
-        chIso[inRef] < 5. &&
-        phIso[inRef] + 0.003 * outPhoton.pt() - highptEA * rho < 4.5;
+      outPhoton.chIso = chIso;
+      if (chIsoLeakage_[iDet].IsValid())
+        outPhoton.chIso -= chIsoLeakage_[iDet].Eval(outPhoton.pt());
+      outPhoton.nhIso = nhIso;
+      if (nhIsoLeakage_[iDet].IsValid())
+        outPhoton.nhIso -= nhIsoLeakage_[iDet].Eval(outPhoton.pt());
+      outPhoton.phIso = phIso;
+      if (phIsoLeakage_[iDet].IsValid())
+        outPhoton.phIso -= phIsoLeakage_[iDet].Eval(outPhoton.pt());
+      outPhoton.chIsoMax = chIsoMax[inRef];
+
+      outPhoton.loose = patPhoton.photonID(looseIdName_);
+      outPhoton.medium = patPhoton.photonID(mediumIdName_);
+      outPhoton.tight = patPhoton.photonID(tightIdName_);
+
+      // Effective area hard-coded!!
+      double highptEA(0.);
+      if (scEta < 0.9)
+        highptEA = 0.17;
+      else if (scEta < 1.479)
+        highptEA = 0.14;
+      else if (scEta < 2.)
+        highptEA = 0.11;
+      else if (scEta < 2.2)
+        highptEA = 0.14;
+      else
+        highptEA = 0.22;
+
+      if (scEta < 1.479)
+        outPhoton.highpt = outPhoton.hOverE < 0.05 &&
+          outPhoton.sieie < 0.0105 &&
+          chIso < 5. &&
+          phIso + 0.0045 * outPhoton.pt() - highptEA * rho < 5.25;
+      else if (scEta < 2.)
+        outPhoton.highpt = outPhoton.hOverE < 0.05 &&
+          outPhoton.sieie < 0.028 &&
+          chIso < 5. &&
+          phIso + 0.0045 * outPhoton.pt() - highptEA * rho < 4.5;
+      else
+        outPhoton.highpt = outPhoton.hOverE < 0.05 &&
+          outPhoton.sieie < 0.028 &&
+          chIso < 5. &&
+          phIso + 0.003 * outPhoton.pt() - highptEA * rho < 4.5;
+    }
 
     outPhoton.pixelVeto = !inPhoton.hasPixelSeed();
     if (isPAT)
@@ -254,22 +247,10 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
     if (matchedPF.isNonnull())
       outPhoton.pfPt = matchedPF->pt();
 
-    if (inSmearedPhotons) {
-      for (auto& smeared : *inSmearedPhotons) {
-        if (smeared.superCluster() == scRef) {
-          outPhoton.smearedPt = smeared.pt();
-          break;
-        }
-      }
-    }
-
-    if (inRegressionPhotons) {
-      for (auto& reg : *inRegressionPhotons) {
-        if (reg.superCluster() == scRef) {
-          outPhoton.regPt = reg.pt();
-          break;
-        }
-      }
+    if (fillCorrectedPts_ && isPAT) {
+      auto& patPhoton(static_cast<pat::Photon const&>(inPhoton));
+      outPhoton.smearedPt = patPhoton.pt() * (1. + patPhoton.userFloat("energySigmaValue"));;
+      outPhoton.regPt = patPhoton.pt() * patPhoton.userFloat("ecalEnergyPostCorr") / patPhoton.energy();
     }
 
     ptrList.push_back(inPhotons.ptrAt(iPh));

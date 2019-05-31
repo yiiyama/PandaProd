@@ -92,14 +92,6 @@ process.RandomNumberGeneratorService.panda = cms.PSet(
     initialSeed = cms.untracked.uint32(1234567),
     engineName = cms.untracked.string('TRandom3')
 )
-process.RandomNumberGeneratorService.smearedElectrons = cms.PSet(
-    initialSeed = cms.untracked.uint32(89101112),
-    engineName = cms.untracked.string('TRandom3')
-)
-process.RandomNumberGeneratorService.smearedPhotons = cms.PSet(
-    initialSeed = cms.untracked.uint32(13141516),
-    engineName = cms.untracked.string('TRandom3')
-)
 
 #############################
 ## RECO SEQUENCE AND SKIMS ##
@@ -132,8 +124,8 @@ electronIdParams = {
     'mvaIsoWP80': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wp80',
     'mvaIsoWPLoose': 'egmGsfElectronIDs:mvaEleID-Fall17-iso-V1-wpLoose',
     'hltId': 'egmGsfElectronIDs:cutBasedElectronHLTPreselection-Summer16-V1', # seems like we don't have these for >= 2017?
-    'mvaValuesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
-    #'mvaCategoriesMap': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
+    'mvaValues': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values',
+    #'mvaCategories': 'electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Categories',
     'combIsoEA': 'RecoEgamma/ElectronIdentification/data/Fall17/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_92X.txt',
     'ecalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_ecalPFClusterIso.txt',
     'hcalIsoEA': 'RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_HLT_hcalPFClusterIso.txt'

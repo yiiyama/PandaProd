@@ -2,6 +2,7 @@ import FWCore.ParameterSet.Config as cms
 
 from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
 from RecoJets.JetProducers.QGTagger_cfi import QGTagger
+from RecoJets.JetProducers.PileupJetID_cfi import pileupJetId
 from PhysicsTools.PatAlgos.producersLayer1.jetProducer_cfi import patJets
 from PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cfi import updatedPatJets
 from PhysicsTools.PatAlgos.selectionLayer1.jetSelector_cfi import selectedPatJets
@@ -92,6 +93,15 @@ def makeJets(process, isData, suffix, jecType='', candidates='', patModule=None,
         )
     )
 
+    puJetId = addattr('pileupJetId',
+        pileupJetId.clone(
+            jets = jets,
+            inputIsCorrected = True,
+            applyJec = True,
+            vertexes = pvSource
+        )
+    )
+
     if not isData:
         genJetMatch = addattr('genJetMatch',
             patJetGenJetMatch.clone(
@@ -107,7 +117,15 @@ def makeJets(process, isData, suffix, jecType='', candidates='', patModule=None,
     else:
         addattr.sequence += patModule
 
-    patModule.userData.userFloats.src = [qgTagger.getModuleLabel() + ':qgLikelihood']
+    patModule.userData.userInts.src = [
+        puJetId.getModuleLabel() + ':fullId'
+    ]
+    patModule.userData.userInts.labelPostfixesToStrip = cms.vstring(suffix)
+
+    patModule.userData.userFloats.src = [
+        qgTagger.getModuleLabel() + ':qgLikelihood',
+        puJetId.getModuleLabel() + ':fullDiscriminant'
+    ]
     patModule.userData.userFloats.labelPostfixesToStrip = cms.vstring(suffix)
 
     if not isData:

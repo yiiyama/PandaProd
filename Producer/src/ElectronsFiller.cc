@@ -8,50 +8,42 @@
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/Conversion.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
-#include "DataFormats/HepMCCandidate/interface/GenStatusFlags.h"
+#include "DataFormats/PatCandidates/interface/Photon.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
 #include <cmath>
 
 ElectronsFiller::ElectronsFiller(std::string const& _name, edm::ParameterSet const& _cfg, edm::ConsumesCollector& _coll) :
   FillerBase(_name, _cfg),
+  vetoIdName_(getParameter_<std::string>(_cfg, "vetoId")),
+  looseIdName_(getParameter_<std::string>(_cfg, "looseId")),
+  mediumIdName_(getParameter_<std::string>(_cfg, "mediumId")),
+  tightIdName_(getParameter_<std::string>(_cfg, "tightId")),
+  hltIdName_(getParameter_<std::string>(_cfg, "hltId", "")),
+  mvaWP90Name_(getParameter_<std::string>(_cfg, "mvaWP90", "")),
+  mvaWP80Name_(getParameter_<std::string>(_cfg, "mvaWP80", "")),
+  mvaWPLooseName_(getParameter_<std::string>(_cfg, "mvaWPLoose", "")),
+  mvaIsoWP90Name_(getParameter_<std::string>(_cfg, "mvaIsoWP90", "")),
+  mvaIsoWP80Name_(getParameter_<std::string>(_cfg, "mvaIsoWP80", "")),
+  mvaIsoWPLooseName_(getParameter_<std::string>(_cfg, "mvaIsoWPLoose", "")),
+  mvaValuesName_(getParameter_<std::string>(_cfg, "mvaValues", "")),
+  // mvaCategoriesName_(getParameter_<std::string>(_cfg, "mvaCategories", "")),
   combIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "combIsoEA")).fullPath()),
   ecalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "ecalIsoEA")).fullPath()),
-  hcalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "hcalIsoEA")).fullPath()),
-  phCHIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "chIsoEA")).fullPath()),
-  phNHIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "nhIsoEA")).fullPath()),
-  phPhIsoEA_(edm::FileInPath(getFillerParameter_<std::string>(_cfg, "photons", "phIsoEA")).fullPath())
+  hcalIsoEA_(edm::FileInPath(getParameter_<std::string>(_cfg, "hcalIsoEA")).fullPath())
 {
   getToken_(electronsToken_, _cfg, _coll, "electrons");
-  getToken_(smearedElectronsToken_, _cfg, _coll, "smearedElectrons", false);
-  getToken_(regressionElectronsToken_, _cfg, _coll, "regressionElectrons", false);
   getToken_(photonsToken_, _cfg, _coll, "photons", "photons");
   getToken_(conversionsToken_, _cfg, _coll, "common", "conversions");
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
+  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
   getToken_(beamSpotToken_, _cfg, _coll, "common", "beamSpot");
-  getToken_(vetoIdToken_, _cfg, _coll, "vetoId");
-  getToken_(looseIdToken_, _cfg, _coll, "looseId");
-  getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
-  getToken_(tightIdToken_, _cfg, _coll, "tightId");
-  getToken_(hltIdToken_, _cfg, _coll, "hltId", false);
-  getToken_(mvaWP90Token_, _cfg, _coll, "mvaWP90", false);
-  getToken_(mvaWP80Token_, _cfg, _coll, "mvaWP80", false);
-  getToken_(mvaWPLooseToken_, _cfg, _coll, "mvaWPLoose", false);
-  getToken_(mvaIsoWP90Token_, _cfg, _coll, "mvaIsoWP90", false);
-  getToken_(mvaIsoWP80Token_, _cfg, _coll, "mvaIsoWP80", false);
-  getToken_(mvaIsoWPLooseToken_, _cfg, _coll, "mvaIsoWPLoose", false);
-  getToken_(mvaValuesMapToken_, _cfg, _coll, "mvaValuesMap", false);
-  //  getToken_(mvaCategoriesMapToken_, _cfg, _coll, "mvaCategoriesMap", false);
-  getToken_(phCHIsoToken_, _cfg, _coll, "photons", "chIso");
-  getToken_(phNHIsoToken_, _cfg, _coll, "photons", "nhIso");
-  getToken_(phPhIsoToken_, _cfg, _coll, "photons", "phIso");
-  getToken_(ecalIsoToken_, _cfg, _coll, "ecalIso", false);
-  getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso", false);
   getToken_(rhoToken_, _cfg, _coll, "rho", "rho");
   getToken_(rhoCentralCaloToken_, _cfg, _coll, "rho", "rhoCentralCalo");
-  getToken_(verticesToken_, _cfg, _coll, "common", "vertices");
+  getToken_(ecalIsoToken_, _cfg, _coll, "ecalIso", false);
+  getToken_(hcalIsoToken_, _cfg, _coll, "hcalIso", false);
 }
 
 void
@@ -67,30 +59,12 @@ void
 ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::EventSetup const& _setup)
 {
   auto& inElectrons(getProduct_(_inEvent, electronsToken_));
-  auto* inSmearedElectrons(getProductSafe_(_inEvent, smearedElectronsToken_));
-  auto* inRegressionElectrons(getProductSafe_(_inEvent, regressionElectronsToken_));
   auto& photons(getProduct_(_inEvent, photonsToken_));
   auto& pfCandidates(getProduct_(_inEvent, pfCandidatesToken_));
+  auto& vertices(getProduct_(_inEvent, verticesToken_));
   auto& ebHits(getProduct_(_inEvent, ebHitsToken_));
   auto& eeHits(getProduct_(_inEvent, eeHitsToken_));
   auto& beamSpot(getProduct_(_inEvent, beamSpotToken_));
-  auto& vetoId(getProduct_(_inEvent, vetoIdToken_));
-  auto& looseId(getProduct_(_inEvent, looseIdToken_));
-  auto& mediumId(getProduct_(_inEvent, mediumIdToken_));
-  auto& tightId(getProduct_(_inEvent, tightIdToken_));
-  auto* hltId(getProductSafe_(_inEvent, hltIdToken_));
-  auto* mvaWP90(getProductSafe_(_inEvent, mvaWP90Token_));
-  auto* mvaWP80(getProductSafe_(_inEvent, mvaWP80Token_));
-  auto* mvaWPLoose(getProductSafe_(_inEvent, mvaWPLooseToken_));
-  auto* mvaIsoWP90(getProductSafe_(_inEvent, mvaIsoWP90Token_));
-  auto* mvaIsoWP80(getProductSafe_(_inEvent, mvaIsoWP80Token_));
-  auto* mvaIsoWPLoose(getProductSafe_(_inEvent, mvaIsoWPLooseToken_));
-  auto* mvaValuesMap(getProductSafe_(_inEvent, mvaValuesMapToken_));
-  //  auto* mvaCategoriesMap(getProductSafe_(_inEvent, mvaCategoriesMapToken_));
-  auto& phCHIso(getProduct_(_inEvent, phCHIsoToken_));
-  auto& phNHIso(getProduct_(_inEvent, phNHIsoToken_));
-  auto& phPhIso(getProduct_(_inEvent, phPhIsoToken_));
-  auto& vertices(getProduct_(_inEvent, verticesToken_));
   auto* ecalIso(getProductSafe_(_inEvent, ecalIsoToken_));
   auto* hcalIso(getProductSafe_(_inEvent, hcalIsoToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
@@ -146,35 +120,43 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     auto&& scRef(inElectron.superCluster());
     auto& sc(*scRef);
 
+    bool isPAT(dynamic_cast<pat::Electron const*>(&inElectron) != nullptr);
+
     auto& outElectron(outElectrons.create_back());
 
     fillP4(outElectron, inElectron);
 
-    auto idBit([&inRef](BoolMap const* map)->bool {
-        if (map)
-          return (*map)[inRef];
-        else
-          return false;
-      });
+    if (isPAT) {
+      // We have now abandoned saving ID bits when running on AOD, but in practice we never do that
+      auto& patElectron(static_cast<pat::Electron const&>(inElectron));
 
-    outElectron.veto = vetoId[inRef];
-    outElectron.loose = looseId[inRef];
-    outElectron.medium = mediumId[inRef];
-    outElectron.tight = tightId[inRef];
-    outElectron.hltsafe = idBit(hltId);
-    outElectron.mvaWP90 = idBit(mvaWP90);
-    outElectron.mvaWP80 = idBit(mvaWP80);
-    outElectron.mvaWPLoose = idBit(mvaWPLoose);
-    outElectron.mvaIsoWP90 = idBit(mvaIsoWP90);
-    outElectron.mvaIsoWP80 = idBit(mvaIsoWP80);
-    outElectron.mvaIsoWPLoose = idBit(mvaIsoWPLoose);
+      auto idBit([&patElectron](std::string const& name)->bool {
+          if (name.empty())
+            return false;
+          else
+            return patElectron.electronID(name) > 0.;
+        });
+
+      outElectron.veto = idBit(vetoIdName_);
+      outElectron.loose = idBit(looseIdName_);
+      outElectron.medium = idBit(mediumIdName_);
+      outElectron.tight = idBit(tightIdName_);
+      outElectron.hltsafe = idBit(hltIdName_);
+      outElectron.mvaWP90 = idBit(mvaWP90Name_);
+      outElectron.mvaWP80 = idBit(mvaWP80Name_);
+      outElectron.mvaWPLoose = idBit(mvaWPLooseName_);
+      outElectron.mvaIsoWP90 = idBit(mvaIsoWP90Name_);
+      outElectron.mvaIsoWP80 = idBit(mvaIsoWP80Name_);
+      outElectron.mvaIsoWPLoose = idBit(mvaIsoWPLooseName_);
+
+      outElectron.mvaVal = mvaValuesName_.empty() ? 0. : patElectron.userFloat(mvaValuesName_);
+    }
 
     outElectron.conversionVeto = !ConversionTools::hasMatchedConversion(inElectron, conversionsHandle, beamSpot.position());
 
     auto&& chargeInfo(inElectron.chargeInfo());
     outElectron.tripleCharge = chargeInfo.isGsfCtfConsistent && chargeInfo.isGsfCtfScPixConsistent && chargeInfo.isGsfScPixConsistent;
 
-    outElectron.mvaVal = mvaValuesMap ? (*mvaValuesMap)[inRef] : 0.;
     // outElectron.mvaCategory = mvaCategoriesMap ? (*mvaCategoriesMap)[inRef] : -1;
     outElectron.charge = inElectron.charge();
 
@@ -209,7 +191,7 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     outElectron.puIso = pfIso.sumPUPt;
     outElectron.isoPUOffset = combIsoEA_.getEffectiveArea(scEta) * rho;
 
-    if (dynamic_cast<pat::Electron const*>(&inElectron)) {
+    if (isPAT) {
       auto& patElectron(static_cast<pat::Electron const&>(inElectron));
       outElectron.ecalIso = patElectron.ecalPFClusterIso() - ecalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
       outElectron.hcalIso = patElectron.hcalPFClusterIso() - hcalIsoEA_.getEffectiveArea(scEta) * rhoCentralCalo;
@@ -238,13 +220,14 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     else
       outElectron.dEtaInSeed = std::numeric_limits<float>::max();
 
-    unsigned iPh(0);
     for (auto& photon : photons) {
       if (photon.superCluster() == scRef) {
-        auto&& photonRef(photons.refAt(iPh));
-        outElectron.chIsoPh = phCHIso[photonRef] - phCHIsoEA_.getEffectiveArea(scEta) * rho;
-        outElectron.nhIsoPh = phNHIso[photonRef] - phNHIsoEA_.getEffectiveArea(scEta) * rho;
-        outElectron.phIsoPh = phPhIso[photonRef] - phPhIsoEA_.getEffectiveArea(scEta) * rho;
+        auto* patPhoton(dynamic_cast<pat::Photon const*>(&photon));
+        if (patPhoton != nullptr) {
+          outElectron.chIsoPh = patPhoton->userFloat("phoChargedIsolation");
+          outElectron.nhIsoPh = patPhoton->userFloat("phoNeutralHadronIsolation");
+          outElectron.phIsoPh = patPhoton->userFloat("phoPhotonIsolation");
+        }
       }
     }
 
@@ -253,22 +236,10 @@ ElectronsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::
     if (matchedPF.isNonnull())
       outElectron.pfPt = matchedPF->pt();
 
-    if (inSmearedElectrons) {
-      for (auto& smeared : *inSmearedElectrons) {
-        if (smeared.superCluster() == scRef) {
-          outElectron.smearedPt = smeared.pt();
-          break;
-        }
-      }
-    }
-
-    if (inRegressionElectrons) {
-      for (auto& reg : *inRegressionElectrons) {
-        if (reg.superCluster() == scRef) {
-          outElectron.regPt = reg.pt();
-          break;
-        }
-      }
+    if (isPAT) {
+      auto& patElectron(static_cast<pat::Electron const&>(inElectron));
+      outElectron.smearedPt = patElectron.pt() * (1. + patElectron.userFloat("energySigmaValue"));
+      outElectron.regPt = patElectron.pt() * patElectron.userFloat("ecalTrkEnergyPostCorr") / patElectron.energy();
     }
 
     ptrList.push_back(inElectrons.ptrAt(iEl));

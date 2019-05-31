@@ -30,7 +30,6 @@ class JetsFiller : public FillerBase {
   typedef edm::View<reco::GenJet> GenJetView;
 
   NamedToken<JetView> jetsToken_;
-  NamedToken<edm::View<pat::Jet>> puidJetsToken_;
   NamedToken<GenJetView> genJetsToken_;
   NamedToken<double> rhoToken_;
   std::string jecName_;
@@ -38,6 +37,7 @@ class JetsFiller : public FillerBase {
   std::string csvTag_;
   std::string cmvaTag_;
   std::string qglTag_;
+  std::string puidTag_;
 
   enum deepSuff {
     udsg = 0,
@@ -60,8 +60,6 @@ class JetsFiller : public FillerBase {
 
   std::string deepCsvTag_;
   std::string deepCmvaTag_;
-
-  std::string puidTag_;
 
   JetCorrectionUncertainty* jecUncertainty_{0};
 

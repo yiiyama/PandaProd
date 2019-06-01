@@ -1,9 +1,16 @@
 //// DEFINE THESE PLEASE ////
 
-def in_files = ['3E56C96C-1935-FB42-BCE8-E09BA813F441', '592C4C53-9E40-3A4C-8E5C-854C8D7021C3',
-                '86D3C5F3-C2F0-4B4B-ADB7-413EF9C94C38', 'EDA1C953-5E41-FF4B-BF50-E7FE0F46962F']
+def in_files = [
+  '3E56C96C-1935-FB42-BCE8-E09BA813F441', //// WZ_Autumn28_102X:mc-Autum18
+  '460A12B6-3F72-E811-A61A-FA163E19E2C3', //// DYBJetsToLL_madgraph_94X:mc-Fall17v2
+  'B22320DB-EBBC-E811-A987-14187763B811', //// TT_powheg_Summer16v3:mc-Summer16v3
+  '86D3C5F3-C2F0-4B4B-ADB7-413EF9C94C38', //// SingleMuon_2018C_Sept2018:data-17Sep2018
+  'EDA1C953-5E41-FF4B-BF50-E7FE0F46962F', //// SingleMuon_2018D_Prompt:data-2018Prompt
+  'AA13B7F5-A938-E811-82CE-0CC47A7C356A', //// SingleMuon_2017_31Mar2018:data-31Mar2018
+  'A04390E4-219B-E811-B4A7-002590FD5E82'  //// SingleMuon_2016_ReReco:data-17Jul2018
+]
 
-def cmssw_version = 'CMSSW_10_2_4_patch1'
+def cmssw_version = 'CMSSW_10_2_15'
 def scram_arch = 'slc6_amd64_gcc700'
 def panda_tree_user = 'PandaPhysics'
 def panda_tree_branch = 'master'
@@ -38,7 +45,7 @@ def produce_panda(cmssw_version, do_src, base) {
            INPUT=''' + in_files_dir + '''/$BASE.root
            # Get the number of events to run. Sort of based on the size of the event content.
            MAX=$(edmEventSize -v $INPUT | perl -ne '/\\. [\\d\\.]+ [\\d\\.]+$/ && print $_' | perl -ane '$sum += $F[1]} END { print int(1e4 * exp($sum/-2e5))')
-           cmsRun $(perl -ne '/^\\/store\\/(data|mc)\\// && print $1; /2018.*\\/PromptReco/ && print "-2018Prompt"' $HOME/miniaod/$BASE.txt).py inputFiles=file:$INPUT outputFile=$BASE.root maxEvents=$MAX
+           cmsRun $(sed -n 2p $HOME/miniaod/$BASE.txt).py inputFiles=file:$INPUT outputFile=$BASE.root maxEvents=$MAX
            '''
       }
     }

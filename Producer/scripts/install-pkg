@@ -64,8 +64,8 @@ then
 
   ORIGINAL_SRC=$CMSSW_BASE/src
 
-  scram p CMSSW $CMSSW_RELEASE
-  cd $CMSSW_RELEASE/src
+  scram p CMSSW $CMSSW_VERSION
+  cd $CMSSW_VERSION/src
   eval `scram runtime -sh`
   git cms-merge-topic $ACCOUNT:$REF
   recursive-mv . $ORIGINAL_SRC

@@ -195,7 +195,11 @@ panda = cms.EDAnalyzer('PandaProducer',
             phIsoLeakage = cms.untracked.PSet(
                 EB = cms.untracked.string('0.0047 * x'),
                 EE = cms.untracked.string('0.0034 * x')
-            )
+            ),
+            doPulseFit = cms.untracked.bool(False),
+            ebDigis = cms.untracked.string('selectDigi:selectedEcalEBDigiCollection'),
+            eeDigis = cms.untracked.string('selectDigi:selectedEcalEEDigiCollection')
+
         ),
         pfCandidates = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

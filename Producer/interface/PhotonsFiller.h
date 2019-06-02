@@ -8,12 +8,19 @@
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
+#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
+#include "CondFormats/EcalObjects/interface/EcalGainRatios.h"
+#include "CondFormats/EcalObjects/interface/EcalPedestals.h"
+#include "CondFormats/EcalObjects/interface/EcalTimeOffsetConstant.h"
+#include "CondFormats/EcalObjects/interface/EcalTimeCalibConstants.h"
 
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 
 #include "TFormula.h"
+#include "TGraphErrors.h"
+#include "TF1.h"
 
 class PhotonsFiller : public FillerBase {
  public:
@@ -25,6 +32,8 @@ class PhotonsFiller : public FillerBase {
   void setRefs(ObjectMapStore const&) override;
 
  protected:
+  void pulseFit_(panda::Photon& outPhoton, DetId const& seedId, EBDigiCollection const&, EEDigiCollection const&, EcalGainRatios const&, EcalPedestals const&, EcalTimeOffsetConstant const&, EcalTimeCalibConstants const&);
+  
   typedef edm::View<reco::Photon> PhotonView;
   typedef edm::View<reco::GsfElectron> GsfElectronView;
   typedef edm::ValueMap<bool> BoolMap;
@@ -36,6 +45,8 @@ class PhotonsFiller : public FillerBase {
   NamedToken<reco::CandidateView> pfCandidatesToken_;
   NamedToken<EcalRecHitCollection> ebHitsToken_;
   NamedToken<EcalRecHitCollection> eeHitsToken_;
+  NamedToken<EBDigiCollection> ebDigisToken_;
+  NamedToken<EEDigiCollection> eeDigisToken_;
   NamedToken<BoolMap> looseIdToken_;
   NamedToken<BoolMap> mediumIdToken_;
   NamedToken<BoolMap> tightIdToken_;
@@ -52,6 +63,10 @@ class PhotonsFiller : public FillerBase {
   TFormula chIsoLeakage_[2];
   TFormula nhIsoLeakage_[2];
   TFormula phIsoLeakage_[2];
+
+  bool doPulseFit_{false};
+  TGraphErrors* samples_{0};
+  TF1* pulse_{0};
 };
 
 #endif

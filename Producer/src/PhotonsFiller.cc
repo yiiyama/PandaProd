@@ -9,6 +9,10 @@
 #include "DataFormats/PatCandidates/interface/Photon.h"
 #include "DataFormats/Common/interface/RefToPtr.h"
 #include "DataFormats/Math/interface/deltaR.h"
+#include "CondFormats/DataRecord/interface/EcalPedestalsRcd.h"
+#include "CondFormats/DataRecord/interface/EcalGainRatiosRcd.h"
+#include "CondFormats/DataRecord/interface/EcalTimeOffsetConstantRcd.h"
+#include "CondFormats/DataRecord/interface/EcalTimeCalibConstantsRcd.h"
 
 #include <cmath>
 
@@ -24,6 +28,8 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   getToken_(pfCandidatesToken_, _cfg, _coll, "common", "pfCandidates");
   getToken_(ebHitsToken_, _cfg, _coll, "common", "ebHits");
   getToken_(eeHitsToken_, _cfg, _coll, "common", "eeHits");
+  getToken_(ebDigisToken_, _cfg, _coll, "ebDigis", false);
+  getToken_(eeDigisToken_, _cfg, _coll, "eeDigis", false);
   getToken_(looseIdToken_, _cfg, _coll, "looseId");
   getToken_(mediumIdToken_, _cfg, _coll, "mediumId");
   getToken_(tightIdToken_, _cfg, _coll, "tightId");
@@ -39,6 +45,21 @@ PhotonsFiller::PhotonsFiller(std::string const& _name, edm::ParameterSet const& 
   nhIsoLeakage_[1].Compile(getParameter_<std::string>(_cfg, "nhIsoLeakage.EE", "").c_str());
   phIsoLeakage_[0].Compile(getParameter_<std::string>(_cfg, "phIsoLeakage.EB", "").c_str());
   phIsoLeakage_[1].Compile(getParameter_<std::string>(_cfg, "phIsoLeakage.EE", "").c_str());
+
+  doPulseFit_ = getParameter_<bool>(_cfg, "doPulseFit", false);
+  if (doPulseFit_) {
+    if (ebDigisToken_.second.isUninitialized() || eeDigisToken_.second.isUninitialized())
+      throw std::runtime_error("Digis required to perform pulse fit");
+
+    samples_ = new TGraphErrors(10);
+    pulse_ = new TF1("pulse", "[0] * TMath::Power(TMath::Max(0., 1. + (x - [3]) / [1] / [2]), [1]) * TMath::Exp(-(x - [3]) / [2])", -0.5, 9.5);
+  }
+}
+
+PhotonsFiller::~PhotonsFiller()
+{
+  delete samples_;
+  delete pulse_;
 }
 
 void
@@ -48,6 +69,8 @@ PhotonsFiller::branchNames(panda::utils::BranchList& _eventBranches, panda::util
 
   if (isRealData_)
     _eventBranches += {"!photons.matchedGen_"};
+  if (!doPulseFit_)
+    _eventBranches += {"!photons.alphaSeed", "!photons.betaSeed", "!photons.t0Seed", "!photons.ampSeed"};
 }
 
 void
@@ -67,6 +90,30 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
   auto& phIso(getProduct_(_inEvent, phIsoToken_));
   auto& chIsoMax(getProduct_(_inEvent, chIsoMaxToken_));
   double rho(getProduct_(_inEvent, rhoToken_));
+
+  EBDigiCollection const* ebDigis(0);
+  EEDigiCollection const* eeDigis(0);
+  EcalGainRatios const* gainRatios(0);
+  EcalPedestals const* pedestals(0);
+  EcalTimeOffsetConstant const* timeOffset(0);
+  EcalTimeCalibConstants const* timeCalibs(0);
+  if (doPulseFit_) {
+    ebDigis = &getProduct_(_inEvent, ebDigisToken_);
+    eeDigis = &getProduct_(_inEvent, eeDigisToken_);
+
+    edm::ESHandle<EcalGainRatios> gainRatiosHandle;
+    _setup.get<EcalGainRatiosRcd>().get(gainRatiosHandle);
+    gainRatios = gainRatiosHandle.product();
+    edm::ESHandle<EcalPedestals> pedestalsHandle;
+    _setup.get<EcalPedestalsRcd>().get(pedestalsHandle);
+    pedestals = pedestalsHandle.product();
+    edm::ESHandle<EcalTimeOffsetConstant> timeOffsetHandle;
+    _setup.get<EcalTimeOffsetConstantRcd>().get(timeOffsetHandle);
+    timeOffset = timeOffsetHandle.product();
+    edm::ESHandle<EcalTimeCalibConstants> timeCalibsHandle;
+    _setup.get<EcalTimeCalibConstantsRcd>().get(timeCalibsHandle);
+    timeCalibs = timeCalibsHandle.product();
+  }
 
   auto findHit([&ebHits, &eeHits](DetId const& id)->EcalRecHit const* {
       EcalRecHitCollection const* hits(0);
@@ -236,6 +283,9 @@ PhotonsFiller::fill(panda::Event& _outEvent, edm::Event const& _inEvent, edm::Ev
         outPhoton.ix = 0;
         outPhoton.iy = 0;
       }
+
+      if (doPulseFit_)
+        pulseFit_(outPhoton, seedId, *ebDigis, *eeDigis, *gainRatios, *pedestals, *timeOffset, *timeCalibs);
     }
 
     outPhoton.timeSpan = 0.;    

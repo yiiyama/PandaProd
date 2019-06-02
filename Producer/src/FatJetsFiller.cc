@@ -191,7 +191,7 @@ FatJetsFiller::fillDetails_(panda::Event& _outEvent, edm::Event const& _inEvent,
 
         // calculate ECFs, groomed tauN
         VPseudoJet vjet;
-        for (auto&& ptr : inJet.getJetConstituents()) { 
+        for (auto&& ptr : inJet.daughterPtrVector()) {
           // create vector of PseudoJets
           auto& cand(*ptr);
           if (cand.pt() < 0.01) 

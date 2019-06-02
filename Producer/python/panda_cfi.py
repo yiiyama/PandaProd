@@ -191,7 +191,9 @@ panda = cms.EDAnalyzer('PandaProducer',
             filler = cms.untracked.string('PFCands'),
             puppiMap = cms.untracked.string('puppi'),
             puppiInput = cms.untracked.string('packedPFCandidates'),
-            useExistingWeights = cms.untracked.bool(True)
+            puppiNoLepMap = cms.untracked.string('puppiNoLep'),
+            puppiNoLepInput = cms.untracked.string('pfNoLepPUPPI'),
+            useExistingWeights = cms.untracked.bool(False)
         ),
         partons = cms.untracked.PSet(
             enabled = cms.untracked.bool(True),

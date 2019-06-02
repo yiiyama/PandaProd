@@ -35,8 +35,7 @@ JetsFiller::JetsFiller(std::string const& _name, edm::ParameterSet const& _cfg, 
   R_(getParameter_<double>(_cfg, "R", 0.4)),
   minPt_(getParameter_<double>(_cfg, "minPt", 15.)),
   maxEta_(getParameter_<double>(_cfg, "maxEta", 4.7)),
-  fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false)),
-  subjetsOffset_(getParameter_<unsigned>(_cfg, "subjetsOffset", 0))
+  fillConstituents_(getParameter_<bool>(_cfg, "fillConstituents", false))
 {
   if (_name == "chsAK4Jets")
     outputSelector_ = [](panda::Event& _event)->panda::JetCollection& { return _event.chsAK4Jets; };
@@ -322,6 +321,10 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
       auto& inJet(*link.first);
       auto& outJet(*link.second);
 
+      auto* inPATJet(dynamic_cast<pat::Jet const*>(&inJet));
+      if (inPATJet == nullptr)
+        continue;
+
       auto addPFRef([&outJet, &pfMap](reco::CandidatePtr const& _ptr) {
           reco::CandidatePtr p(_ptr);
           while (true) {
@@ -340,23 +343,9 @@ JetsFiller::setRefs(ObjectMapStore const& _objectMaps)
             }
           }
         });
-
-      auto&& constituents(inJet.getJetConstituents());
-
-      unsigned iConst(0);
       
-      for (; iConst != subjetsOffset_ && iConst != constituents.size(); ++iConst) {
-        // constituents up to subjetsOffset are actually subjets
-        auto* subjet(dynamic_cast<reco::Jet const*>(constituents[iConst].get()));
-        if (!subjet)
-          throw std::runtime_error(TString::Format("Constituent %d is not a subjet", iConst).Data());
-
-        for (auto&& ptr : subjet->getJetConstituents())
-          addPFRef(ptr);
-      }
-
-      for (; iConst != constituents.size(); ++iConst)
-        addPFRef(constituents[iConst]);
+      for (auto&& ptr : inPATJet->daughterPtrVector())
+        addPFRef(ptr);
     }
   }
 

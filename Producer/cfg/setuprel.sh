@@ -15,12 +15,13 @@ $INSTALL cms-egamma EgammaPostRecoTools
 # optional but speeds up the photon ID value module so things fun faster
 $INSTALL cms-egamma PhotonIDValueMapSpeedup1029
 # fixes the Run2018D dictionary issue, see https://github.com/cms-sw/cmssw/issues/26182
-$INSTALL cms-egamma slava77-btvDictFix_10210
+# -> this is already merged in 10_2_15 plus the exact PR doesn't really help us - see PandaProducer callWhenNewProduct..
+#$INSTALL cms-egamma slava77-btvDictFix_10210
 # check out the package otherwise code accessing it will crash
 $INSTALL cms-sw $CMSSW_VERSION EgammaAnalysis/ElectronTools
 # delete the data directory so and populate it from cms-egamma latest
 rm -rf $SRC/EgammaAnalysis/ElectronTools/data
-git clone git@github.com:cms-egamma/EgammaAnalysis-ElectronTools.git $SRC/EgammaAnalysis/ElectronTools/data
+git clone https://github.com/cms-egamma/EgammaAnalysis-ElectronTools.git $SRC/EgammaAnalysis/ElectronTools/data
 cd $SRC/EgammaAnalysis/ElectronTools/data
 git checkout ScalesSmearing2018_Dev
 cd -

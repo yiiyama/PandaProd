@@ -188,11 +188,18 @@ egmCorrectionsSequence = cms.Sequence(
 from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
 
 if options.config in ['31Mar2018', 'Fall17v2']:
-    fixEE2017 = True
-    fixEE2017Params = {'userawPt': True, 'ptThreshold':50.0, 'minEtaThreshold':2.65, 'maxEtaThreshold': 3.139}
+    fixEE2017Args = {
+        'fixEE2017': True,
+        'fixEE2017Params': {'userawPt': True, 'ptThreshold':50.0, 'minEtaThreshold':2.65, 'maxEtaThreshold': 3.139},
+        'jetCollUnskimmed': 'slimmedJets::' + cms.InputTag.skipCurrentProcess()
+    }
+    fixEE2017PuppiArgs = dict(fixEE2017Args)
+    fixEE2017PuppiArgs['jetCollUnskimmed'] = 'slimmedJetsPuppi::' + cms.InputTag.skipCurrentProcess()
 else:
-    fixEE2017 = False
-    fixEE2017Params = {}
+    fixEE2017Args = {
+        'fixEE2017': False
+    }
+    fixEE2017PuppiArgs = fixEE2017Args
 
 runMetCorAndUncFromMiniAOD(
     process,
@@ -201,8 +208,8 @@ runMetCorAndUncFromMiniAOD(
     recoMetFromPFCs=True,
     CHS=True,
     reclusterJets=True,
-    fixEE2017=fixEE2017,
-    fixEE2017Params=fixEE2017Params
+    **fixEE2017Args
+    
 )
 
 slimmedJetsSequence = makeJets(
@@ -219,10 +226,10 @@ runMetCorAndUncFromMiniAOD(
     metType="Puppi",
     pfCandColl=cms.InputTag("puppiForMET"),
     recoMetFromPFCs=True,
+    reclusterJets=True,
     jetFlavor="AK4PFPuppi",
     postfix="Puppi",
-    fixEE2017=fixEE2017,
-    fixEE2017Params=fixEE2017Params
+    **fixEE2017PuppiArgs
 )
 
 slimmedJetsPuppiSequence = makeJets(
@@ -278,14 +285,14 @@ fatJetSequence = cms.Sequence(
 do_merge = not isData and False
 if do_merge:
     process.load('PandaProd.Auxiliary.MergedGenProducer_cfi')
-    genMergeSequence = cms.Sequence( process.mergedGenParticles )
+    genMergeSequence = cms.Sequence(process.mergedGenParticles)
 else:
     genMergeSequence = cms.Sequence()
 
 ### GEN JET FLAVORS
 if not isData:
     from PandaProd.Producer.utils.setupGenJetFlavor_cff import setupGenJetFlavor
-    genJetFlavorSequence = setupGenJetFlavor(process)
+    genJetFlavorSequence = setupGenJetFlavor(process, do_merge)
 else:
     genJetFlavorSequence = cms.Sequence()
 

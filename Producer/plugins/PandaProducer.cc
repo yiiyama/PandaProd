@@ -86,8 +86,9 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     if (fillerName == "common")
       continue;
 
-    auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
     try {
+      auto& fillerPSet(fillersCfg.getUntrackedParameterSet(fillerName));
+      
       if (!fillerPSet.getUntrackedParameter<bool>("enabled"))
         continue;
 
@@ -129,16 +130,25 @@ PandaProducer::PandaProducer(edm::ParameterSet const& _cfg) :
     timers_.push_back(SClock::duration::zero());
   }
 
+  std::cout << "callWhen" << std::endl;
+
   // The lambda function inside will be called by CMSSW Framework whenever a new product is registered
   callWhenNewProductsRegistered([this](edm::BranchDescription const& branchDescription) {
+      if (branchDescription.dropped())
+        return;
+      
       auto&& coll(this->consumesCollector());
       for (auto* filler : this->fillers_)
         filler->notifyNewProduct(branchDescription, coll);
     });
 
+  std::cout << "usesResource" << std::endl;
+
   // Might use some thread-unsafe resource and therefore cannot run concurrently with another edm::one module
   // This is being super-conservative - can do better by collecting information from the individual fillers.
   usesResource();
+
+  std::cout << "returning" << std::endl;
 }
 
 PandaProducer::~PandaProducer()

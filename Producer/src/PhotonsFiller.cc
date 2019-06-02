@@ -396,4 +396,79 @@ PhotonsFiller::setRefs(ObjectMapStore const& _objectMaps)
   }
 }
 
+void
+PhotonsFiller::pulseFit_(panda::Photon& _outPhoton, DetId const& _seedId, EBDigiCollection const& _ebDigis, EEDigiCollection const& _eeDigis, EcalGainRatios const& _gainRatios, EcalPedestals const& _pedestals, EcalTimeOffsetConstant const& _timeOffset, EcalTimeCalibConstants const& _timeCalibs)
+{
+  edm::DataFrame const* df(0);
+  EcalMGPAGainRatio const* gainRatio(0);
+  EcalPedestal const* pedestal(0);
+  double timeShift(0.);
+
+  if (_seedId.subdetId() == EcalBarrel) {
+    auto&& digiItr(_ebDigis.find(_seedId));
+    if (digiItr == _ebDigis.end())
+      return;
+
+    df = &*digiItr;
+    unsigned idx(EBDetId(_seedId).hashedIndex());
+    gainRatio = &_gainRatios.barrel(idx);
+    pedestal = &_pedestals.barrel(idx);
+    timeShift = _timeOffset.getEBValue() + _timeCalibs.barrel(idx);
+  }
+  else {
+    auto&& digiItr(_eeDigis.find(_seedId));
+    if (digiItr == _eeDigis.end())
+      return;
+
+    df = &*digiItr;
+    unsigned idx(EEDetId(_seedId).hashedIndex());
+    gainRatio = &_gainRatios.endcap(idx);
+    pedestal = &_pedestals.endcap(idx);
+    timeShift = _timeOffset.getEEValue() + _timeCalibs.endcap(idx);
+  }
+
+  EcalDataFrame digi(*df);
+
+  double maxAmplitude(0.);
+  unsigned iMax(0);
+
+  for (unsigned iS(0); iS != 10; ++iS) {    
+    auto&& sample(digi.sample(iS));
+
+    switch (sample.gainId()) {
+    case 1:
+      samples_->SetPoint(iS, iS, sample.adc() - pedestal->mean_x12);
+      samples_->SetPointError(iS, 0., pedestal->rms_x12);
+      break;
+    case 2:
+      samples_->SetPoint(iS, iS, (sample.adc() - pedestal->mean_x6) * gainRatio->gain12Over6());
+      samples_->SetPointError(iS, 0., pedestal->rms_x6 * gainRatio->gain12Over6());
+      break;
+    case 3:
+      samples_->SetPoint(iS, iS, (sample.adc() - pedestal->mean_x1) * gainRatio->gain12Over6() * gainRatio->gain6Over1());
+      samples_->SetPointError(iS, 0., pedestal->rms_x1 * gainRatio->gain12Over6() * gainRatio->gain6Over1());
+      break;
+    default:
+      samples_->SetPoint(iS, iS, (4095. - pedestal->mean_x1) * gainRatio->gain12Over6() * gainRatio->gain6Over1());
+      samples_->SetPointError(iS, 0., pedestal->rms_x1 * gainRatio->gain12Over6() * gainRatio->gain6Over1());
+      break;
+    }
+
+    if (samples_->GetY()[iS] > maxAmplitude) {
+      maxAmplitude = samples_->GetY()[iS];
+      iMax = iS;
+    }
+  }
+                                               
+  // norm, alpha, beta, t0
+  pulse_->SetParameters(maxAmplitude, 1., 1.7, iMax);
+
+  samples_->Fit(pulse_, "Q");
+
+  _outPhoton.ampSeed = pulse_->GetParameter(0);
+  _outPhoton.alphaSeed = pulse_->GetParameter(1);
+  _outPhoton.betaSeed = pulse_->GetParameter(2);
+  _outPhoton.t0Seed = (pulse_->GetParameter(3) - 5.) * 25. + timeShift;
+}
+
 DEFINE_TREEFILLER(PhotonsFiller);
